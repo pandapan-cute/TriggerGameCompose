@@ -1,0 +1,5 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "./lambda_server/rust_app/Cargo.toml"
+  ]
+}

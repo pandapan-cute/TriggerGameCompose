@@ -1,0 +1,158 @@
+@startuml UnitAggregation
+
+title ユニット集約 (Unit Aggregation)
+
+package "ユニット集約(UnitAggregation)" {
+    ' 1. エンティティの定義
+    class "Unit(ユニット)" as Unit << (R,red) RootEntity >> {
+        UnitId: UnitId
+        UnitTypeId: UnitTypeId
+        OwnerPlayerId: OwnerPlayerId
+        CurrentActionPoints: CurrentActionPoints
+        WaitTime: WaitTime
+        Position: Position
+        UsingMainTriggerId: UsingMainTriggerId
+        UsingSubTriggerId: UsingSubTriggerId
+        HavingMainTriggerIds: HavingMainTriggerIds
+        HavingSubTriggerIds: HavingSubTriggerIds
+        MainTriggerHP: MainTriggerHP
+        SubTriggerHP: SubTriggerHP
+        SightRange: SightRange
+        IsBailout: IsBailout
+    }
+
+    ' 2. 属性の定義
+    class "UnitId(ユニットID)" as UnitId {
+        + value: string
+    }
+
+    class "UnitTypeId(ユニット種別ID)" as UnitTypeId {
+        + value: string
+    }
+
+    class "OwnerPlayerId(所有プレイヤーID)" as OwnerPlayerId {
+        + value: string
+    }
+
+    class "CurrentActionPoints(現在の行動ポイント)" as CurrentActionPoints {
+        + value: int
+    }
+
+    class "WaitTime(待機時間)" as WaitTime {
+        + value: int
+    }
+
+    class "Position(セル座標)" as Position {
+        + value: { x: int, y: int }
+    }
+
+    class "UsingMainTriggerId(使用中メイントリガーID)" as UsingMainTriggerId {
+        + value: string
+    }
+
+    class "UsingSubTriggerId(使用中サブトリガーID)" as UsingSubTriggerId {
+        + value: string
+    }
+
+    class "HavingMainTriggerIds(所持メイントリガーID)" as HavingMainTriggerIds {
+        + value: List<string>
+    }
+
+    class "HavingSubTriggerIds(所持サブトリガーID)" as HavingSubTriggerIds {
+        + value: List<string>
+    }
+
+    class "MainTriggerHP(メイントリガー体力)" as MainTriggerHP {
+        + value: int
+    }
+
+    class "SubTriggerHP(サブトリガー体力)" as SubTriggerHP {
+        + value: int
+    }
+
+    class "SightRange(視界範囲)" as SightRange {
+        + value: int
+    }
+
+    class "IsBailout(戦闘不能フラグ)" as IsBailout {
+        + value: bool
+    }
+
+    ' 3. ルールの追加
+    note bottom of UnitId
+        - 一意のGUID
+    end note
+
+    note bottom of UnitTypeId
+        - ユニット種別ID
+    end note
+
+    note bottom of OwnerPlayerId
+        - 一意のGUID
+    end note
+
+    note bottom of CurrentActionPoints
+        - 0以上の整数
+    end note
+
+    note bottom of WaitTime
+        - 0以上の整数
+    end note
+
+    note bottom of Position
+        - x: MIN = 0, MAX = マップ幅-1
+        - y: MIN = 0, MAX = マップ高さ-1
+    end note
+
+    note bottom of UsingMainTriggerId
+        - 一文字以上の文字列
+    end note
+
+    note bottom of UsingSubTriggerId
+        - 一文字以上の文字列
+    end note
+
+    note bottom of HavingMainTriggerIds
+        - ユニットが所持しているメイントリガーIDのリスト形式
+    end note
+
+    note bottom of HavingSubTriggerIds
+        - ユニットが所持しているサブトリガーIDのリスト形式
+    end note
+
+    note bottom of MainTriggerHP
+        - 0以上の整数
+    end note
+
+    note bottom of SubTriggerHP
+        - 0以上の整数
+    end note
+
+    note bottom of SightRange
+        - 1以上の整数（ポジションとマップ情報から計算で求める）
+    end note
+
+    note bottom of IsBailout
+        - true: 戦闘不能
+        - false: 戦闘可能
+    end note
+
+    ' 4. 関連性の定義
+    Unit *-down- UnitId
+    Unit *-down- UnitTypeId
+    Unit *-down- OwnerPlayerId
+    Unit *-down- CurrentActionPoints
+    Unit *-down- WaitTime
+    Unit *-down- Position
+    Unit *-down- UsingMainTriggerId
+    Unit *-down- UsingSubTriggerId
+    Unit *-down- HavingMainTriggerIds
+    Unit *-down- HavingSubTriggerIds
+    Unit *-down- MainTriggerHP
+    Unit *-down- SubTriggerHP
+    Unit *-down- SightRange
+    Unit *-down- IsBailout
+
+}
+
+@enduml

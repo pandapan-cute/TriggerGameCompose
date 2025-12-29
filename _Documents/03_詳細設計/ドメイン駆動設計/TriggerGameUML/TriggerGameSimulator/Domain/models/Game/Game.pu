@@ -1,0 +1,204 @@
+@startuml GameAggregation
+
+title ゲーム集約 (Game Aggregation)
+
+package "ゲーム集約(GameAggregation)" {
+    ' 1. エンティティの定義
+    class "Game(ゲーム)" as Game << (R,red) RootEntity >> {
+        GameId: GameId
+        MatchId: MatchId
+        currentTurnNumber: CurrentTurnNumber
+        UnitIds: UnitIds
+    }
+
+    class "Turn(ターン)" as Turn << (E,green) Entity >> {
+        TurnId: TurnId
+        GameId: GameId
+        TurnNumber: TurnNumber
+        TurnStartDatetime: TurnStartDatetime
+        TurnEndDatetime: TurnEndDatetime
+        TurnStatus: TurnStatus
+    }
+
+    class "Step(行動)" as Step << (E,green) Entity >> {
+        StepId: StepId
+        UnitData: UnitData 
+        TurnId: TurnId
+        StepType: StepType
+    }
+
+    class "Combat(コンバット)" as Combat << (E,green) Entity >> {
+        CombatId: CombatId
+        StepId: StepId
+        AttackingUnitId: AttackingUnitId
+        DefendingUnitId: DefendingUnitId
+        IsAvoided: IsAvoided
+    }
+
+    class "GameId(ゲームID)" as GameId {
+        + value: string
+    }
+
+    class "MatchId(マッチングID)" as MatchId {
+        + value: string
+    }
+
+    class "CurrentTurnNumber(現在のターン数)" as CurrentTurnNumber {
+        + value: int
+    }
+
+    class "UnitIds(ユニットID一覧)" as UnitIds {
+        + value: List<string>
+    }
+
+    class "TurnId(ターンID)" as TurnId {
+        + value: string
+    }
+
+    class "TurnNumber(ターン数)" as TurnNumber {
+        + value: int
+    }
+
+    class "TurnStartDatetime(ターン開始日時)" as TurnStartDatetime {
+        + value: DateTime
+    }
+
+    class "TurnEndDatetime(ターン終了日時)" as TurnEndDatetime {
+        + value: DateTime
+    }
+
+    class "TurnStatus(ターン状態)" as TurnStatus {
+        + value: Enum { StepSetting, UnitStepping, Completed }
+    }
+
+    class "StepId(行動ID)" as StepId {
+        + value: string
+    }
+
+    class "UnitData(ユニットデータ)" as UnitData {
+        + value: Unit
+    }
+
+    class "StepType(行動種別)" as StepType {
+        + value: Enum { Move, Attack, Wait, Guard, UniqueCommand, PursuitMove }
+    }
+
+    class "CombatId(コンバットID)" as CombatId {
+        + value: string
+    }
+
+    class "AttackingUnitId(攻撃ユニットID)" as AttackingUnitId {
+        + value: string
+    }
+
+    class "DefendingUnitId(防御ユニットID)" as DefendingUnitId {
+        + value: string
+    }
+
+    class "IsAvoided(命中判定結果)" as IsAvoided {
+        + value: bool
+    }
+
+    ' 3. ルールの追加
+    note bottom of GameId
+        - 一意のGUID
+    end note
+
+    note bottom of MatchId
+        - 一意のGUID
+    end note
+
+    note bottom of CurrentTurnNumber
+        - 初期値：1
+    end note
+
+    note bottom of UnitIds
+        - ユニットIDのリスト形式
+        - 一意のGUID
+    end note
+
+    note bottom of TurnId
+        - 一意のGUID
+    end note
+
+    note bottom of TurnNumber
+        - MAX = 6 (ターンの最大数)
+        - MIN = 1
+    end note
+
+    note bottom of TurnStartDatetime
+        - yyyy-MM-dd HH:mm:ss形式
+    end note
+
+    note bottom of TurnEndDatetime
+        - yyyy-MM-dd HH:mm:ss形式
+    end note
+
+    note bottom of TurnStatus
+        - step_setting: 行動設定中
+        - unit_stepping: ユニット行動中
+        - completed: ターン完了
+    end note
+
+    note bottom of StepId
+        - 一意のGUID
+    end note
+
+    note bottom of StepType
+        - move: 移動
+        - attack: 攻撃
+        - wait: 待機
+        - guard: ガード
+        - unique_command: ユニークコマンド
+        - pursuit_move: 追撃移動
+    end note
+
+    note bottom of CombatId
+        - 一意のGUID
+    end note
+
+    note bottom of AttackingUnitId
+        - 一意のGUID
+    end note
+
+    note bottom of DefendingUnitId
+        - 一意のGUID
+    end note
+
+    note bottom of IsAvoided
+        - true: 回避
+        - false: 命中
+    end note
+
+    ' 4. 関連性の定義
+    Game "0..1" -- "1" MatchId
+    Game "1" -- "0..*" Turn
+    Turn "1" -- "0..*" Step
+    Step "1" -- "0..*" Combat
+
+    Game *-down- GameId
+    Game *-down- MatchId
+    Game *-down- CurrentTurnNumber
+    Game *-down- UnitIds
+
+    Turn *-down- TurnId
+    Turn *-down- GameId
+    Turn *-down- TurnNumber
+    Turn *-down- TurnStartDatetime
+    Turn *-down- TurnEndDatetime
+    Turn *-down- TurnStatus
+
+    Step *-down- StepId
+    Step *-down- UnitData
+    Step *-down- TurnId
+    Step *-down- StepType
+
+    Combat *-down- CombatId
+    Combat *-down- StepId
+    Combat *-down- AttackingUnitId
+    Combat *-down- DefendingUnitId
+    Combat *-down- IsAvoided
+
+}
+
+@enduml

@@ -1,0 +1,56 @@
+@startuml BookAggregation
+
+title プレイヤー集約 (Player Aggregation)
+
+package "プレイヤー集約(PlayerAggregation)" {
+    ' 1. エンティティの定義
+    class "Player(プレイヤー)" as Player << (R,red) RootEntity >> {
+        PlayerId: PlayerId
+        PlayerName: PlayerName
+        RegisteredDatetime: RegisteredDatetime
+        MFAAuthentication: MFAAuthentication
+    }
+
+    ' 2. 属性の定義
+    class "PlayerId(プレイヤーID)" as PlayerId {
+        + value: string
+    }
+
+    class "PlayerName(プレイヤー名)" as PlayerName {
+        + value: string
+    }
+
+    class "RegisteredDatetime(登録日時)" as RegisteredDatetime {
+        + value: DateTime
+    }
+
+    class "MFAAuthentication(MFA認証)" as MFAAuthentication {
+        + value: Boolean
+    }
+
+    ' 3. ルールの追加
+    note bottom of PlayerId
+        - 一意のGUID
+    end note
+
+    note bottom of PlayerName
+        - MAX_LENGTH = 20
+        - MIN_LENGTH = 1
+    end note
+
+    note bottom of RegisteredDatetime
+        - yyyy-MM-dd HH:mm:ss形式
+    end note
+
+    note bottom of MFAAuthentication
+        - TODO: 詳細設計 --- IGNORE ---
+    end note
+
+    ' 4. 関連性の定義
+    Player *-down- PlayerId
+    Player *-down- PlayerName
+    Player *-down- RegisteredDatetime
+    Player *-down- MFAAuthentication
+}
+
+@enduml

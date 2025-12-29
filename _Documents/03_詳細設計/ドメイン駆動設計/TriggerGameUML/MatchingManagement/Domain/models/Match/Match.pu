@@ -1,0 +1,86 @@
+@startuml BookAggregation
+
+title マッチング集約 (Matching Aggregation)
+
+package "マッチング集約(MatchingAggregation)" {
+    ' 1. エンティティの定義
+    class "Matching(マッチング)" as Matching << (R,red) RootEntity >> {
+        MatchingId: MatchingId
+        PlayerAId: PlayerId
+        PlayerBId: PlayerId
+        MatchingStartDatetime: MatchingStartDatetime
+        MatchingEndDatetime: 
+        MatchingStatus: MatchingStatus
+    }
+
+    ' 2. 属性の定義
+    class "MatchingId" as MatchingId {
+        + value: string
+    }
+
+    class "PlayerId(プレイヤーのID)" as PlayerId {
+        + value: string
+    }
+
+    class "MatchingStartDatetime(マッチング開始日時)" as MatchingStartDatetime {
+        + value: DateTime
+    }
+
+    class "MatchingEndDatetime(マッチング終了日時)" as MatchingEndDatetime {
+        + value: Option<DateTime>
+    }
+
+    class "MatchingStatus(マッチング状態)" as MatchingStatus {
+        + value: Enum { InProgress, Interrupted, Completed }
+    }
+
+    class "MatchingError" as MatchingError << (E,orange) Error >> {
+        + InvalidStatusTransition
+        + InvalidDateRange
+        + AlreadyCompleted
+    }
+
+    Matching ..> MatchingError : returns
+
+    ' 3. ルールの追加
+    note bottom of MatchingId
+        - 一意のGUID
+    end note
+    
+    note bottom of PlayerAId
+        - 一意のGUID
+        - PlayerBIdと異なること
+    end note
+
+    note bottom of PlayerBId
+        - 一意のGUID
+        - PlayerAIdと異なること
+    end note
+
+    note bottom of MatchingStartDatetime
+        - yyyy-MM-dd HH:mm:ss形式
+        - MatchingEndDatetimeより前であること
+    end note
+
+    note bottom of MatchingEndDatetime
+        - yyyy-MM-dd HH:mm:ss形式
+        - MatchingStartDatetimeより後であること
+        - マッチング状態がCompletedまたはInterruptedの場合に必須
+    end note
+
+    note bottom of MatchingStatus
+        - progress: マッチング中
+        - interrupted: マッチング中断済み
+        - completed: マッチング完了
+    end note
+
+    ' 4. 関連性の定義
+    Matching *-down- MatchingId
+    Matching *-down- PlayerAId
+    Matching *-down- PlayerBId
+    Matching *-down- MatchingStartDatetime
+    Matching *-down- MatchingEndDatetime
+    Matching *-down- MatchingStatus
+}
+
+@enduml

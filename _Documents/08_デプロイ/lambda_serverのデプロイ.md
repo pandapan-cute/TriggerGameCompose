@@ -1,4 +1,4 @@
-# lambda_serverのデプロイ
+# game_serverのデプロイ
 
 ## 参考
 

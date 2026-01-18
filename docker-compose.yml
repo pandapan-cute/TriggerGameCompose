@@ -1,0 +1,83 @@
+services:
+  # DynamoDB Local 初期化コンテナ 
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    working_dir: /home/dynamodblocal
+    command: -jar DynamoDBLocal.jar -sharedDb -inMemory 
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - trigger-game-network
+
+  # DynamoDB Local に Goでテーブル作成と初期データ投入するコンテナ
+  dynamodb-local-initialize:
+    build: ./local-dynamodb-initialize
+    depends_on:
+      - dynamodb-local
+    networks:
+      - trigger-game-network
+
+  # WebSocket API Gatewayのローカル環境
+  websocket-apigateway:
+    build:
+      context: ./local-websocket-apigateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./local-websocket-apigateway:/app  # ソースコードをマウント
+    networks:
+      - trigger-game-network
+
+  # Lambda開発環境（cargo-lambda watch）
+  game-server:
+    build: ./game_server
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./game_server/rust_app/src:/app/src:ro
+    environment:
+      RUST_BACKTRACE: "full"           # 完全なスタックトレース
+      RUST_LOG: "game_server=debug,aws_sdk_dynamodb=debug"  # ログレベル
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      WEBSOCKET_GATEWAY_ENDPOINT: http://websocket-apigateway:8080
+    networks:
+      - trigger-game-network
+
+  # ゲームクライアント開発環境（Next.js)
+  game-client:
+    build: ./game-client
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development            # ホットリロードを有効化
+      - CHOKIDAR_USEPOLLING=true        # ファイル監視（Docker/WSL対応）
+      - WATCHPACK_POLLING=true          # Webpack 5のポーリング
+      - NEXT_PUBLIC_API_URL=http://localhost:9000
+      - NEXT_PUBLIC_WS_URL=ws://websocket-apigateway:8080
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - ./game-client:/app:cached
+      # node_modules は除外（コンテナ内のものを使用）
+      - /app/node_modules
+      # .next も除外（ビルドキャッシュ）
+      - /app/.next
+    networks:
+      - trigger-game-network
+    depends_on:
+      - websocket-apigateway
+
+networks:
+  trigger-game-network:
+
+volumes:
+  # dynamodb-local のデータ永続化用ボリューム
+  dynamodb-data:

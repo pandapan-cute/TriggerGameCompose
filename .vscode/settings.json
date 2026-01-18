@@ -1,5 +1,18 @@
 {
   "rust-analyzer.linkedProjects": [
-    "./lambda_server/rust_app/Cargo.toml"
-  ]
+    "./game_server/rust_app/Cargo.toml"
+  ],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "rust-lang.rust-analyzer",
+  "editor.formatOnPaste": true,
+
+  // GO言語のフォーマットとか
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  }
 }

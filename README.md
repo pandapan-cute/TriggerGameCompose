@@ -25,3 +25,14 @@ docker compose up --build
 # composeの停止と関連コンテナの削除
 docker compose down
 ```
+
+## ツール
+
+### VSCode拡張機能
+
+* todo-tree
+
+## タスクリスト
+
+- [ ] ~~プレイヤーidとクライアントIDの保存機能実装~~
+- [ ] ~~プレイヤーidからクライアントIDを取得する機能実装~~

@@ -6,7 +6,7 @@ Description: >
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 256
+    MemorySize: 128
 
 Resources:
   TriggerGameFunction:
@@ -25,6 +25,18 @@ Resources:
             Action:
               - execute-api:ManageConnections
             Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${TriggerGameWebSocketApi}/*'
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:GetItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              # NOTE: テーブル追加時にはここも更新すること 
+              - !GetAtt MatchingsTable.Arn
+              - !Sub '${MatchingsTable.Arn}/index/*'
 
   # WebSocket API
   TriggerGameWebSocketApi:

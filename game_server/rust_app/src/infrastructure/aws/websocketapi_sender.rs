@@ -17,7 +17,7 @@ impl WebSocketapiSender {
 
 #[async_trait]
 impl WebSocketSender for WebSocketapiSender {
-    // TODO: この関数でwebsocketメッセージを遅れるようにするにはどうすればよいか
+    /// WebSocketメッセージを送信する
     async fn send_message(
         &self,
         connection_id: &str,

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::connection_dynamodb_repository::DynamoDbConnectionRepository;
+    use crate::domain::player_management::repositories::connection_repository::ConnectionRepository;
     use aws_sdk_dynamodb::{
         config::{BehaviorVersion, Region},
         operation::put_item::{PutItemInput, PutItemOutput},

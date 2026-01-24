@@ -2,9 +2,10 @@
 
 use crate::domain::matching_management::models::matching::{
     Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
-    MatchingStatusValue, PlayerId,
+    MatchingStatusValue,
 };
 use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
@@ -199,11 +200,11 @@ impl MatchingRepository for DynamoDbMatchingRepository {
         let player2_id = matching_item
             .get("player2_id")
             .and_then(|v| v.as_s().ok())
-            .map(|id| PlayerId::new(id));
+            .map(|id| PlayerId::new(id.to_string()));
 
         Ok(Some(Matching::new(
             MatchingId::new(matching_id_str.to_string()),
-            PlayerId::new(player1_id_str),
+            PlayerId::new(player1_id_str.to_string()),
             player2_id,
             MatchingStartDatetime::new_string(matching_start_datetime_str),
             MatchingEndDatetime::new(None),

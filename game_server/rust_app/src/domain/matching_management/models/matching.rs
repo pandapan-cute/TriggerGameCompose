@@ -2,17 +2,15 @@ pub mod matching_end_datetime;
 pub mod matching_id;
 pub mod matching_start_datetime;
 pub mod matching_status;
-pub mod player_id;
 
 use chrono::Utc;
 use uuid::Uuid;
 
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 pub use matching_end_datetime::matching_end_datetime::MatchingEndDatetime;
 pub use matching_id::matching_id::MatchingId;
 pub use matching_start_datetime::matching_start_datetime::MatchingStartDatetime;
 pub use matching_status::matching_status::{MatchingStatus, MatchingStatusValue};
-pub use player_id::player_id::PlayerId;
-
 /// Matching 集約ルート
 ///
 /// マッチングは2人のプレイヤーをマッチングさせるプロセスを管理する集約です。
@@ -95,7 +93,7 @@ impl Matching {
             return Err("既にマッチング相手が存在します".to_string());
         }
 
-        self.player2_id = Some(player2_id.clone());
+        self.player2_id = Some(player2_id);
         self.matching_status = MatchingStatus::new(MatchingStatusValue::Completed);
         Ok(())
     }

@@ -16,6 +16,7 @@ use crate::{
             websocket_sender::WebSocketSender,
         },
     },
+    domain::player_management::repositories::connection_repository::ConnectionRepository,
     infrastructure::{
         aws::websocketapi_sender::WebSocketapiSender,
         dynamodb::{
@@ -110,39 +111,40 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                 let dynamo_client = create_dynamodb_client().await;
 
                 // コネクションIDを保存するリポジトリ
-                let connection_dynamodb_repository =
+                let connection_repository =
                     DynamoDbConnectionRepository::new(dynamo_client.clone());
 
                 // アクションごとの処理
-                let response = match message {
+                match message {
                     // NOTE: ここに他のアクションも追加していく
                     // マッチメイキングリクエストの処理
                     WebSocketRequest::Matchmaking { player_id } => {
                         // コネクションIDとPlayerIDの紐付けを保存
-                        connection_dynamodb_repository
-                            .save(&event.request_context.connection_id, &player_id)
+                        connection_repository
+                            .save(&player_id, &event.request_context.connection_id)
                             .await?;
+
+                        // マッチングリポジトリとサービスの作成
                         let matching_repository =
                             DynamoDbMatchingRepository::new(dynamo_client.clone());
                         let service = MatchmakingApplicationService::new(
                             Arc::new(matching_repository),
+                            Arc::new(connection_repository),
                             Arc::new(websocket_sender),
                         );
                         // マッチメイキング処理を実行
-                        match service
+                        service
                             .execute(&player_id, &event.request_context.connection_id)
-                            .await
-                        {
-                            Ok(result_message) => WebSocketResponse::MatchmakingResult {
-                                status: result_message,
-                            },
-                            Err(err_message) => WebSocketResponse::Error {
-                                message: err_message,
-                            },
-                        }
+                            .await?;
                     }
 
-                    WebSocketRequest::Ping => WebSocketResponse::Pong,
+                    WebSocketRequest::Ping => {
+                        // Pongレスポンスを返す
+                        let pong_response = WebSocketResponse::Pong;
+                        websocket_sender
+                            .send_message(&event.request_context.connection_id, &pong_response)
+                            .await?;
+                    }
                 };
             }
         }

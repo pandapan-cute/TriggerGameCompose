@@ -23,10 +23,6 @@ impl WebSocketSender for WebSocketapiSender {
         connection_id: &str,
         response: &WebSocketResponse,
     ) -> Result<(), String> {
-        println!(
-            "Sending message to connection_id {}: {:?}",
-            connection_id, response
-        );
         let data =
             serde_json::to_vec(response).map_err(|e| format!("Serialization error: {}", e))?;
 
@@ -37,6 +33,11 @@ impl WebSocketSender for WebSocketapiSender {
             .send()
             .await
             .map_err(|e| format!("Failed to send message: {}", e))?;
+
+        println!(
+            "WebSocketメッセージを送信 {}, {:?}",
+            connection_id, response
+        );
 
         Ok(())
     }

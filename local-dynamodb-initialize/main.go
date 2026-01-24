@@ -50,9 +50,9 @@ func main() {
 	}
 
 	// テストデータ投入
-	if err := insertTestData(ctx, client); err != nil {
-		log.Fatalf("Failed to insert test data: %v", err)
-	}
+	// if err := insertTestData(ctx, client); err != nil {
+	// 	log.Fatalf("Failed to insert test data: %v", err)
+	// }
 
 	log.Println("✅ Initialization complete!")
 }

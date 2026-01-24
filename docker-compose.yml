@@ -59,10 +59,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development            # ホットリロードを有効化
-      - CHOKIDAR_USEPOLLING=true        # ファイル監視（Docker/WSL対応）
-      - WATCHPACK_POLLING=true          # Webpack 5のポーリング
-      - NEXT_PUBLIC_API_URL=http://localhost:9000
-      - NEXT_PUBLIC_WS_URL=ws://websocket-apigateway:8080
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8080
     volumes:
       # ソースコードをマウント（ホットリロード用）
       - ./game-client:/app:cached

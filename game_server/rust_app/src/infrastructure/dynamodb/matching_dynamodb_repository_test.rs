@@ -1,11 +1,14 @@
 #[cfg(test)]
 mod tests {
-    use crate::domain::matching_management::{
-        models::matching::{
-            Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
-            MatchingStatusValue, PlayerId,
+    use crate::domain::{
+        matching_management::{
+            models::matching::{
+                Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
+                MatchingStatusValue,
+            },
+            repositories::matching_repository::MatchingRepository,
         },
-        repositories::matching_repository::MatchingRepository,
+        player_management::models::player::player_id::player_id::PlayerId,
     };
 
     use super::super::matching_dynamodb_repository::DynamoDbMatchingRepository;
@@ -45,7 +48,7 @@ mod tests {
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
         let matching = Matching::new(
             MatchingId::new(Uuid::new_v4().to_string()),
-            PlayerId::new(uuid1),
+            PlayerId::new(uuid1.to_string()),
             None,
             MatchingStartDatetime::new(datetime),
             MatchingEndDatetime::new(None),
@@ -72,8 +75,8 @@ mod tests {
         let uuid2 = "550e8400-e29b-41d4-a716-446655440002";
         let matching = Matching::new(
             MatchingId::new(Uuid::new_v4().to_string()),
-            PlayerId::new(uuid1),
-            Some(PlayerId::new(uuid2)),
+            PlayerId::new(uuid1.to_string()),
+            Some(PlayerId::new(uuid2.to_string())),
             MatchingStartDatetime::new(datetime),
             MatchingEndDatetime::new(Some(datetime)),
             MatchingStatus::new(MatchingStatusValue::Completed),
@@ -95,7 +98,7 @@ mod tests {
     async fn test_get_latest_waiting_matching_found() {
         let matching_id = MatchingId::new(Uuid::new_v4().to_string());
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
-        let player_id = PlayerId::new(uuid1);
+        let player_id = PlayerId::new(uuid1.to_string());
         let datetime = Utc::now();
 
         // 返却するアイテムを構築

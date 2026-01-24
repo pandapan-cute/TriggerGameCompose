@@ -1,6 +1,7 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
 use crate::domain::player_management::models::player::Player;
+use crate::domain::player_management::repositories::connection_repository::ConnectionRepository;
 use crate::domain::player_management::repositories::player_repository::PlayerRepository;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -42,43 +43,13 @@ impl DynamoDbConnectionRepository {
         );
         item
     }
+}
 
-    /// PlayerIdからConnectionIdを取得するメソッド
-    pub async fn get_connection_id(&self, player_id: &str) -> Result<String, String> {
-        // Connectionアイテムを取得
-        let result = self
-            .client
-            .query()
-            .table_name(self.connections_table)
-            .index_name("PlayerIndex") // GSI名
-            .key_condition_expression("player_id = :player_id")
-            .expression_attribute_values(":player_id", AttributeValue::S(player_id.to_string()))
-            .scan_index_forward(true) // 昇順（最も古いデータが先頭）
-            .limit(1) // 1件のみ取得
-            .send()
-            .await
-            .map_err(|e| format!("Failed to query connection: {}", e))?;
-
-        println!("Query result: {:?}", result);
-
-        let items = result.items();
-        if items.is_empty() {
-            return Err("Connectionが見つかりません".to_string());
-        }
-
-        let connection_item = &items[0];
-
-        // Matchingの属性を抽出
-        let connection_id_str = connection_item
-            .get("connection_id")
-            .and_then(|v| v.as_s().ok())
-            .ok_or("connection_id not found")?;
-
-        Ok(connection_id_str.to_string())
-    }
-
+#[async_trait]
+impl ConnectionRepository for DynamoDbConnectionRepository {
+    /// コネクション情報を保存
     /// Connectionアイテムを保存
-    pub async fn save(&self, player_id: &str, connection_id: &str) -> Result<(), String> {
+    async fn save(&self, player_id: &str, connection_id: &str) -> Result<(), String> {
         let connection_item = self.connection_to_item(player_id, connection_id);
         self.client
             .put_item()
@@ -88,5 +59,31 @@ impl DynamoDbConnectionRepository {
             .await
             .map_err(|e| format!("コネクション情報の保存に失敗しました: {}", e))?;
         Ok(())
+    }
+
+    /// コネクション情報を取得
+    /// PlayerIdからConnectionIdを取得するメソッド
+    async fn get_connection_id(&self, player_id: &str) -> Result<String, String> {
+        // プライマリキーで直接取得（GSI不要）
+        let result = self
+            .client
+            .get_item()
+            .table_name(self.connections_table)
+            .key("player_id", AttributeValue::S(player_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to get connection: {}", e))?;
+
+        let item = result
+            .item()
+            .ok_or_else(|| format!("Connectionが見つかりません: {}", player_id))?;
+
+        // connection_id属性を抽出
+        let connection_id_str = item
+            .get("connection_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("connection_id not found")?;
+
+        Ok(connection_id_str.to_string())
     }
 }

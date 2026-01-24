@@ -6,6 +6,24 @@
   "editor.defaultFormatter": "rust-lang.rust-analyzer",
   "editor.formatOnPaste": true,
 
+  // --- TypeScript固有のフォーマット設定 ---
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.tabSize": 2
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.tabSize": 2
+  },
+
+  // --- TypeScriptの細かな整形ルール ---
+  "typescript.format.semicolons": "insert",                // セミコロンを強制（"remove"なら削除）
+  "typescript.format.insertSpaceAfterCommaDelimiter": true, // カンマの後にスペース
+  "typescript.format.insertSpaceBeforeAndAfterBinaryOperators": true, // 演算子の前後にスペース
+
   // GO言語のフォーマットとか
   "[go]": {
     "editor.defaultFormatter": "golang.go",

@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
+    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+
     use super::super::matching::*;
     use uuid::Uuid;
 
     fn create_test_player_ids() -> (PlayerId, PlayerId) {
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
         let uuid2 = "550e8400-e29b-41d4-a716-446655440002";
-        let player1_id = PlayerId::new(uuid1);
-        let player2_id = PlayerId::new(uuid2);
+        let player1_id = PlayerId::new(uuid1.to_string());
+        let player2_id = PlayerId::new(uuid2.to_string());
         (player1_id, player2_id)
     }
 
@@ -15,7 +17,7 @@ mod tests {
     #[should_panic(expected = "同じプレイヤー同士のマッチングはできません")]
     fn test_create_matching_with_same_player() {
         let uuid3 = "550e8400-e29b-41d4-a716-446655440003";
-        let player_id = PlayerId::new(uuid3);
+        let player_id = PlayerId::new(uuid3.to_string());
         let mut matching = Matching::create(player_id.clone());
         matching.matchmaking(player_id).unwrap();
     }

@@ -16,7 +16,7 @@ pub struct DynamoDbConnectionRepository {
 }
 
 impl DynamoDbConnectionRepository {
-    pub fn new(client: DynamoDbClient, connection_id: &str, player_id: &str) -> Self {
+    pub fn new(client: DynamoDbClient) -> Self {
         // テーブル名
         const CONNECTIONS_TABLE_NAME: &str = "Connections";
         Self {
@@ -37,7 +37,7 @@ impl DynamoDbConnectionRepository {
             AttributeValue::S(connection_id.to_string()),
         );
         item.insert(
-            "player_name".to_string(),
+            "player_id".to_string(),
             AttributeValue::S(player_id.to_string()),
         );
         item

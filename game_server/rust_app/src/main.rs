@@ -18,7 +18,10 @@ use crate::{
     },
     infrastructure::{
         aws::websocketapi_sender::WebSocketapiSender,
-        dynamodb::matching_dynamodb_repository::DynamoDbMatchingRepository,
+        dynamodb::{
+            connection_dynamodb_repository::DynamoDbConnectionRepository,
+            matching_dynamodb_repository::DynamoDbMatchingRepository,
+        },
     },
 };
 
@@ -107,17 +110,30 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                 // DynamoDBクライアントの作成
                 let dynamo_client = create_dynamodb_client().await;
 
+                // コネクションIDを保存するリポジトリ
+                let connection_dynamodb_repository =
+                    DynamoDbConnectionRepository::new(dynamo_client.clone());
+
                 // アクションごとの処理
                 let response = match message {
+                    // NOTE: ここに他のアクションも追加していく
                     // マッチメイキングリクエストの処理
                     WebSocketRequest::Matchmaking { player_id } => {
+                        // コネクションIDとPlayerIDの紐付けを保存
+                        connection_dynamodb_repository
+                            .save(&event.request_context.connection_id, &player_id)
+                            .await?;
                         let matching_repository =
                             DynamoDbMatchingRepository::new(dynamo_client.clone());
                         let service = MatchmakingApplicationService::new(
                             Arc::new(matching_repository),
                             Arc::new(websocket_sender),
                         );
-                        match service.execute(&player_id).await {
+                        // マッチメイキング処理を実行
+                        match service
+                            .execute(&player_id, &event.request_context.connection_id)
+                            .await
+                        {
                             Ok(result_message) => WebSocketResponse::MatchmakingResult {
                                 status: result_message,
                             },

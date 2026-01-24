@@ -60,8 +60,9 @@ func main() {
 func createTables(ctx context.Context, client *dynamodb.Client) error {
 	log.Println("📋 Creating tables...")
 
+	// NOTE: テーブル追加時にはここも更新すること
 	// Matchingsテーブル
-	_, err := client.CreateTable(ctx, &dynamodb.CreateTableInput{
+	_, errMatchings := client.CreateTable(ctx, &dynamodb.CreateTableInput{
 		TableName: aws.String("Matchings"),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{AttributeName: aws.String("matching_id"), AttributeType: types.ScalarAttributeTypeS},
@@ -84,12 +85,30 @@ func createTables(ctx context.Context, client *dynamodb.Client) error {
 		BillingMode: types.BillingModePayPerRequest,
 	})
 
-	if err != nil {
-		log.Printf("⚠️  Matchings table: %v", err)
+	if errMatchings != nil {
+		log.Printf("⚠️  Matchings table: %v", errMatchings)
 	} else {
 		log.Println("✅ Matchings table created")
 	}
 
+	// Connectionsテーブル
+	_, errConnections := client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String("Connections"),
+		AttributeDefinitions: []types.AttributeDefinition{
+			{AttributeName: aws.String("player_id"), AttributeType: types.ScalarAttributeTypeS},
+		},
+		KeySchema: []types.KeySchemaElement{
+			// プライマリキーを player_id に設定することで、一意のプレイヤーに対して最新の接続IDを保存できる
+			{AttributeName: aws.String("player_id"), KeyType: types.KeyTypeHash},
+		},
+		BillingMode: types.BillingModePayPerRequest,
+	})
+
+	if errConnections != nil {
+		log.Printf("⚠️  Connections table: %v", errConnections)
+	} else {
+		log.Println("✅ Connections table created")
+	}
 	return nil
 }
 

@@ -37,7 +37,7 @@ mod tests {
             .then_output(|| PutItemOutput::builder().build());
 
         let client = setup_mock_client(put_item_rule);
-        let repo = DynamoDbConnectionRepository::new(client, connection_id, player_id);
+        let repo = DynamoDbConnectionRepository::new(client);
 
         let result = repo.save(player_id, connection_id).await;
 
@@ -73,7 +73,7 @@ mod tests {
             });
 
         let client = setup_mock_client(query_rule);
-        let repo = DynamoDbConnectionRepository::new(client, connection_id, player_id);
+        let repo = DynamoDbConnectionRepository::new(client);
 
         let result = repo.get_connection_id(player_id).await;
 
@@ -96,7 +96,7 @@ mod tests {
             .then_output(|| QueryOutput::builder().set_items(Some(vec![])).build());
 
         let client = setup_mock_client(query_rule);
-        let repo = DynamoDbConnectionRepository::new(client, connection_id, player_id);
+        let repo = DynamoDbConnectionRepository::new(client);
 
         let result = repo.get_connection_id(player_id).await;
 

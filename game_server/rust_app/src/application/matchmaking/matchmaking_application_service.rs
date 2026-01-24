@@ -28,7 +28,11 @@ impl MatchmakingApplicationService {
     }
 
     /// マッチメイキング処理を実行するメソッド
-    pub async fn execute(&self, player_id: &str) -> Result<MatchingStatusValue, String> {
+    pub async fn execute(
+        &self,
+        player_id: &str,
+        connection_id: &str,
+    ) -> Result<MatchingStatusValue, String> {
         println!("Executing matchmaking for player_id: {}", player_id);
         // 待機中のマッチングを取得
         let waiting_matching = self
@@ -85,7 +89,7 @@ impl MatchmakingApplicationService {
 
         // WebSocket で通知を送信
         self.websocket_sender
-            .send_message(player_id, &response)
+            .send_message(connection_id, &response)
             .await?;
 
         Ok(status)

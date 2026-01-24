@@ -37,6 +37,8 @@ Resources:
               # NOTE: テーブル追加時にはここも更新すること 
               - !GetAtt MatchingsTable.Arn
               - !Sub '${MatchingsTable.Arn}/index/*'
+              - !GetAtt ConnectionsTable.Arn
+              # - !Sub '${ConnectionsTable.Arn}/index/*' グローバルセカンダリインデックスは無いのでコメントアウト
 
   # WebSocket API
   TriggerGameWebSocketApi:
@@ -172,6 +174,7 @@ Resources:
     Properties:
       CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchLogsRole.Arn
 
+  # NOTE: テーブル追加時にはここも更新すること
   # Mathing用DynamoDBテーブル
   MatchingsTable:
     Type: AWS::DynamoDB::Table
@@ -196,6 +199,20 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # コネクション管理用DynamoDBテーブル
+  ConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Connections
+      AttributeDefinitions:
+        # プライマリキーを player_id に設定することで、一意のプレイヤーに対して最新の接続IDを保存できる
+        - AttributeName: player_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
 Outputs:

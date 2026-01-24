@@ -21,8 +21,8 @@ var (
 )
 
 type Message struct {
-	Action   string `json:"action"`    // matchmaking など
-	PlayerId string `json:"player_id"` // プレイヤーID
+	Action   string `json:"action"`   // matchmaking など
+	PlayerId string `json:"playerId"` // プレイヤーID
 	// Characters []string `json:"characters"` // キャラクターのリスト
 }
 

@@ -30,6 +30,7 @@ mod domain;
 mod infrastructure;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WebSocketEvent {
     #[serde(rename = "requestContext")]
     request_context: RequestContext,
@@ -37,19 +38,17 @@ struct WebSocketEvent {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RequestContext {
-    #[serde(rename = "connectionId")]
     connection_id: String,
-    #[serde(rename = "routeKey")]
     route_key: String,
-    #[serde(rename = "domainName")]
     domain_name: String,
     stage: String,
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Response {
-    #[serde(rename = "statusCode")]
     status_code: u16,
     body: String,
 }

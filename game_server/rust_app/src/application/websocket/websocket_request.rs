@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// {
 ///     "action": "matchmaking",
-///     "player_id": "player_123"
+///     "playerId": "player_123"
 /// }
 /// Ping の場合
 /// {
@@ -13,8 +13,11 @@ use serde::{Deserialize, Serialize};
 /// }
 ///
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(tag = "action")]
-#[serde(rename_all = "snake_case")]
+#[serde(
+    tag = "action",
+    rename_all = "camelCase", // Matchmaking -> matchmaking
+    rename_all_fields = "camelCase" // player_id -> playerId
+)]
 pub enum WebSocketRequest {
     /// マッチメイキングリクエスト
     Matchmaking { player_id: String },

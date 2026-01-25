@@ -1,4 +1,4 @@
-# Lambda関数のデプロイ
+# lambda_serverのプロジェクト構築
 
 ## 参考
 

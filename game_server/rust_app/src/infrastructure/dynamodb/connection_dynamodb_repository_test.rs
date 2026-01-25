@@ -4,8 +4,8 @@ mod tests {
     use crate::domain::player_management::repositories::connection_repository::ConnectionRepository;
     use aws_sdk_dynamodb::{
         config::{BehaviorVersion, Region},
+        operation::get_item::{GetItemInput, GetItemOutput},
         operation::put_item::{PutItemInput, PutItemOutput},
-        operation::query::{QueryInput, QueryOutput},
         types::AttributeValue,
         Client, Config,
     };
@@ -29,7 +29,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_save_connection() {
-        let player_id = "test-player-123";
+        let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
 
         // PutItemの成功レスポンスをモック
@@ -51,10 +51,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_connection_id_success() {
-        let player_id = "test-player-123";
+        let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
 
-        // Queryの成功レスポンスをモック
+        // GetItemの成功レスポンスをモック
         let mut item = HashMap::new();
         item.insert(
             "connection_id".to_string(),
@@ -65,15 +65,15 @@ mod tests {
             AttributeValue::S(player_id.to_string()),
         );
 
-        let query_rule = mock!(Client::query)
-            .match_requests(|_: &QueryInput| true)
+        let get_item_rule = mock!(Client::get_item)
+            .match_requests(|_: &GetItemInput| true)
             .then_output(move || {
-                QueryOutput::builder()
-                    .set_items(Some(vec![item.clone()]))
+                GetItemOutput::builder()
+                    .set_item(Some(item.clone()))
                     .build()
             });
 
-        let client = setup_mock_client(query_rule);
+        let client = setup_mock_client(get_item_rule);
         let repo = DynamoDbConnectionRepository::new(client);
 
         let result = repo.get_connection_id(player_id).await;
@@ -88,15 +88,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_connection_id_not_found() {
-        let player_id = "test-player-123";
+        let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
 
-        // 空の結果を返すQueryレスポンスをモック
-        let query_rule = mock!(Client::query)
-            .match_requests(|_: &QueryInput| true)
-            .then_output(|| QueryOutput::builder().set_items(Some(vec![])).build());
+        // 空の結果を返すGetItemレスポンスをモック
+        let get_item_rule = mock!(Client::get_item)
+            .match_requests(|_: &GetItemInput| true)
+            .then_output(|| GetItemOutput::builder().build());
 
-        let client = setup_mock_client(query_rule);
+        let client = setup_mock_client(get_item_rule);
         let repo = DynamoDbConnectionRepository::new(client);
 
         let result = repo.get_connection_id(player_id).await;
@@ -105,6 +105,9 @@ mod tests {
             result.is_err(),
             "Expected error for non-existent connection"
         );
-        assert_eq!(result.unwrap_err(), "Connectionが見つかりません");
+        assert_eq!(
+            result.unwrap_err(),
+            format!("Connectionが見つかりません: {}", player_id)
+        );
     }
 }

@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+
     use super::super::current_action_points::current_action_points::CurrentActionPoints;
     use super::super::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
     use super::super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
@@ -19,6 +21,7 @@ mod tests {
 
     fn create_test_unit() -> Unit {
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
+        let game_id = GameId::new(Uuid::new_v4().to_string());
         let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
         let position = Position::new(0, 0);
         let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
@@ -26,6 +29,7 @@ mod tests {
 
         Unit::create(
             unit_type_id,
+            game_id,
             owner_player_id,
             position,
             having_main_trigger_ids,
@@ -236,6 +240,7 @@ mod tests {
     fn test_reconstruct_unit() {
         let unit_id = UnitId::new(Uuid::new_v4().to_string());
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
+        let game_id = GameId::new(Uuid::new_v4().to_string());
         let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
         let current_action_points = CurrentActionPoints::new(15);
         let wait_time = WaitTime::new(50);
@@ -252,6 +257,7 @@ mod tests {
         let unit = Unit::reconstruct(
             unit_id.clone(),
             unit_type_id.clone(),
+            game_id.clone(),
             owner_player_id.clone(),
             current_action_points.clone(),
             wait_time.clone(),
@@ -283,6 +289,7 @@ mod tests {
     fn test_unit_equality() {
         let unit_id = UnitId::new(Uuid::new_v4().to_string());
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
+        let game_id = GameId::new(Uuid::new_v4().to_string());
         let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
         let current_action_points = CurrentActionPoints::new(10);
         let wait_time = WaitTime::new(0);
@@ -297,6 +304,7 @@ mod tests {
         let unit1 = Unit::reconstruct(
             unit_id.clone(),
             unit_type_id.clone(),
+            game_id.clone(),
             owner_player_id.clone(),
             current_action_points.clone(),
             wait_time.clone(),
@@ -314,6 +322,7 @@ mod tests {
         let unit2 = Unit::reconstruct(
             unit_id.clone(),
             unit_type_id,
+            game_id,
             owner_player_id,
             current_action_points,
             wait_time,

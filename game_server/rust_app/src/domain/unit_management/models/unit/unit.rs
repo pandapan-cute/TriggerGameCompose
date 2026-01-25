@@ -1,3 +1,5 @@
+use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+
 use super::current_action_points::current_action_points::CurrentActionPoints;
 use super::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
 use super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
@@ -20,6 +22,7 @@ use uuid::Uuid;
 pub struct Unit {
     unit_id: UnitId,
     unit_type_id: UnitTypeId,
+    game_id: GameId,
     owner_player_id: OwnerPlayerId,
     current_action_points: CurrentActionPoints,
     wait_time: WaitTime,
@@ -40,6 +43,7 @@ impl Unit {
     fn new(
         unit_id: UnitId,
         unit_type_id: UnitTypeId,
+        game_id: GameId,
         owner_player_id: OwnerPlayerId,
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
@@ -56,6 +60,7 @@ impl Unit {
         Self {
             unit_id,
             unit_type_id,
+            game_id,
             owner_player_id,
             current_action_points,
             wait_time,
@@ -74,6 +79,7 @@ impl Unit {
     /// 新規ユニットの生成
     pub fn create(
         unit_type_id: UnitTypeId,
+        game_id: GameId,
         owner_player_id: OwnerPlayerId,
         position: Position,
         having_main_trigger_ids: HavingMainTriggerIds,
@@ -94,6 +100,7 @@ impl Unit {
         Self::new(
             unit_id,
             unit_type_id,
+            game_id,
             owner_player_id,
             current_action_points,
             wait_time,
@@ -114,6 +121,7 @@ impl Unit {
     pub fn reconstruct(
         unit_id: UnitId,
         unit_type_id: UnitTypeId,
+        game_id: GameId,
         owner_player_id: OwnerPlayerId,
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
@@ -130,6 +138,7 @@ impl Unit {
         Self::new(
             unit_id,
             unit_type_id,
+            game_id,
             owner_player_id,
             current_action_points,
             wait_time,
@@ -146,7 +155,11 @@ impl Unit {
     }
 
     /// ユニットを移動
-    pub fn move_to(&mut self, new_position: Position, action_point_cost: i32) -> Result<(), String> {
+    pub fn move_to(
+        &mut self,
+        new_position: Position,
+        action_point_cost: i32,
+    ) -> Result<(), String> {
         if self.is_bailout.is_bailout() {
             return Err("ベイルアウト済みのユニットは移動できません".to_string());
         }
@@ -154,7 +167,8 @@ impl Unit {
             return Err("行動ポイントが不足しています".to_string());
         }
         self.position = new_position;
-        self.current_action_points = CurrentActionPoints::new(self.current_action_points.value() - action_point_cost);
+        self.current_action_points =
+            CurrentActionPoints::new(self.current_action_points.value() - action_point_cost);
         Ok(())
     }
 
@@ -165,7 +179,7 @@ impl Unit {
         }
         let new_hp = self.main_trigger_hp.value() - damage;
         self.main_trigger_hp = MainTriggerHP::new(new_hp.max(0));
-        
+
         // HPが0になったら自動ベイルアウト
         if self.main_trigger_hp.value() == 0 {
             self.bailout();
@@ -211,7 +225,8 @@ impl Unit {
         if self.current_action_points.value() < amount {
             return Err("行動ポイントが不足しています".to_string());
         }
-        self.current_action_points = CurrentActionPoints::new(self.current_action_points.value() - amount);
+        self.current_action_points =
+            CurrentActionPoints::new(self.current_action_points.value() - amount);
         Ok(())
     }
 
@@ -287,6 +302,10 @@ impl Unit {
 
     pub fn unit_type_id(&self) -> &UnitTypeId {
         &self.unit_type_id
+    }
+
+    pub fn game_id(&self) -> &GameId {
+        &self.game_id
     }
 
     pub fn owner_player_id(&self) -> &OwnerPlayerId {

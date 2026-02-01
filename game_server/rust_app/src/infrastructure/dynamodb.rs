@@ -1,5 +1,7 @@
 pub mod connection_dynamodb_repository;
 pub mod connection_dynamodb_repository_test;
+pub mod game_dynamodb_repository;
+pub mod game_dynamodb_repository_test;
 pub mod matching_dynamodb_repository;
 pub mod matching_dynamodb_repository_test;
 pub mod player_dynamodb_repository;

@@ -13,7 +13,13 @@ use crate::{
             models::player::player_id::player_id::PlayerId,
             repositories::connection_repository::ConnectionRepository,
         },
-        triggergame_simulator::models::game::game_id::game_id::GameId,
+        triggergame_simulator::{
+            models::game::{
+                current_turn_number::current_turn_number::CurrentTurnNumber, game::Game,
+                game_id::game_id::GameId,
+            },
+            repositories::game_repository::GameRepository,
+        },
         unit_management::{
             models::unit::{self, Unit},
             repositories::unit_repository::UnitRepository,
@@ -27,6 +33,7 @@ pub struct MatchmakingApplicationService {
     matching_repository: Arc<dyn MatchingRepository>,
     connection_repository: Arc<dyn ConnectionRepository>,
     unit_repository: Arc<dyn UnitRepository>,
+    game_repository: Arc<dyn GameRepository>,
     websocket_sender: Arc<dyn WebSocketSender>,
 }
 
@@ -37,12 +44,14 @@ impl MatchmakingApplicationService {
         matching_repository: Arc<dyn MatchingRepository>,
         connection_repository: Arc<dyn ConnectionRepository>,
         unit_repository: Arc<dyn UnitRepository>,
+        game_repository: Arc<dyn GameRepository>,
         websocket_sender: Arc<dyn WebSocketSender>,
     ) -> Self {
         Self {
             matching_repository,
             connection_repository,
             unit_repository,
+            game_repository,
             websocket_sender,
         }
     }
@@ -101,7 +110,14 @@ impl MatchmakingApplicationService {
                     // 更新失敗時のエラーハンドリング
                     return Err(result.err().unwrap());
                 }
-                // TODO: ゲーム情報を登録
+                // ゲーム情報を登録
+                let game_id = GameId::new(matching.matching_id().value().to_string());
+                let game = Game::new(game_id.clone(), CurrentTurnNumber::new(1));
+                let result = self.game_repository.save(&game).await;
+                if result.is_err() {
+                    return Err(result.err().unwrap());
+                }
+
                 println!("Matching updated successfully for player_id: {}", player_id);
                 // ユニット情報をエンティティに変換
                 let unit_entities: Vec<Unit> = CreateUnitDto::to_units(

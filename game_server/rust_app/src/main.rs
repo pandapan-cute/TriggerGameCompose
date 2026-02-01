@@ -21,6 +21,7 @@ use crate::{
         aws::websocketapi_sender::WebSocketapiSender,
         dynamodb::{
             connection_dynamodb_repository::DynamoDbConnectionRepository,
+            game_dynamodb_repository::DynamoDbGameRepository,
             matching_dynamodb_repository::DynamoDbMatchingRepository,
             unit_dynamodb_repository::DynamoDbUnitRepository,
         },
@@ -115,6 +116,8 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                     DynamoDbConnectionRepository::new(dynamo_client.clone());
                 // ユニット情報を保存するリポジトリ
                 let unit_repository = DynamoDbUnitRepository::new(dynamo_client.clone());
+                // ゲーム情報を保存するリポジトリ
+                let game_repository = DynamoDbGameRepository::new(dynamo_client.clone());
 
                 // アクションごとの処理
                 match message {
@@ -133,6 +136,7 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                             Arc::new(matching_repository),
                             Arc::new(connection_repository),
                             Arc::new(unit_repository),
+                            Arc::new(game_repository),
                             Arc::new(websocket_sender),
                         );
                         // マッチメイキング処理を実行

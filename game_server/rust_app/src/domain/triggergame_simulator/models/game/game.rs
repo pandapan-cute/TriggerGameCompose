@@ -8,7 +8,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Game {
     game_id: GameId,
-    unit_ids: Vec<UnitId>,
     current_turn_number: CurrentTurnNumber,
 }
 
@@ -16,28 +15,23 @@ impl Game {
     const MAX_TURNS: i32 = 6;
 
     // privateなコンストラクタ
-    fn new(game_id: GameId, unit_ids: Vec<UnitId>, current_turn_number: CurrentTurnNumber) -> Self {
+    pub fn new(game_id: GameId, current_turn_number: CurrentTurnNumber) -> Self {
         Self {
             game_id,
-            unit_ids,
             current_turn_number,
         }
     }
 
     /// 新規ゲームの生成
-    pub fn create(game_id: GameId, unit_ids: Vec<UnitId>) -> Self {
+    pub fn create(game_id: GameId) -> Self {
         let current_turn_number = CurrentTurnNumber::initial();
 
-        Self::new(game_id, unit_ids, current_turn_number)
+        Self::new(game_id, current_turn_number)
     }
 
     /// ゲームの再構築（リポジトリから取得時に使用）
-    pub fn reconstruct(
-        game_id: GameId,
-        unit_ids: Vec<UnitId>,
-        current_turn_number: CurrentTurnNumber,
-    ) -> Self {
-        Self::new(game_id, unit_ids, current_turn_number)
+    pub fn reconstruct(game_id: GameId, current_turn_number: CurrentTurnNumber) -> Self {
+        Self::new(game_id, current_turn_number)
     }
 
     /// 次のターンへ進める
@@ -56,28 +50,9 @@ impl Game {
         self.current_turn_number.value() >= Self::MAX_TURNS
     }
 
-    /// ユニットをゲームに追加
-    pub fn add_unit(&mut self, unit_id: &str) {
-        self.unit_ids.push(UnitId::new(unit_id.to_string()));
-    }
-
-    /// 指定したユニットがゲームに含まれているか確認
-    pub fn contains_unit(&self, unit_id: &str) -> bool {
-        self.unit_ids.contains(&UnitId::new(unit_id.to_string()))
-    }
-
-    /// ゲーム内のユニット数を取得
-    pub fn unit_count(&self) -> usize {
-        self.unit_ids.len()
-    }
-
     // ゲッター
     pub fn game_id(&self) -> &GameId {
         &self.game_id
-    }
-
-    pub fn unit_ids(&self) -> &Vec<UnitId> {
-        &self.unit_ids
     }
 
     pub fn current_turn_number(&self) -> &CurrentTurnNumber {

@@ -39,6 +39,9 @@ Resources:
               - !Sub '${MatchingsTable.Arn}/index/*'
               - !GetAtt ConnectionsTable.Arn
               # - !Sub '${ConnectionsTable.Arn}/index/*' グローバルセカンダリインデックスは無いのでコメントアウト
+              - !GetAtt UnitsTable.Arn
+              - !Sub '${UnitsTable.Arn}/index/*'
+              - !GetAtt GamesTable.Arn
 
   # WebSocket API
   TriggerGameWebSocketApi:
@@ -212,6 +215,42 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: player_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+
+  # Units用DynamoDBテーブル
+  UnitsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Units
+      AttributeDefinitions:
+        - AttributeName: unit_id
+          AttributeType: S
+        - AttributeName: game_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: unit_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: GameIdIndex
+          KeySchema:
+            - AttributeName: game_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # Games用DynamoDBテーブル
+  GamesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Games
+      AttributeDefinitions:
+        - AttributeName: game_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: game_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 

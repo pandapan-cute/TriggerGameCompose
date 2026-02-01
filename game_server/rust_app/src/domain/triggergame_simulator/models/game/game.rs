@@ -1,6 +1,5 @@
 use super::current_turn_number::current_turn_number::CurrentTurnNumber;
 use super::game_id::game_id::GameId;
-use super::match_id::match_id::MatchId;
 use super::unit_id::unit_id::UnitId;
 use uuid::Uuid;
 
@@ -9,7 +8,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Game {
     game_id: GameId,
-    match_id: MatchId,
     unit_ids: Vec<UnitId>,
     current_turn_number: CurrentTurnNumber,
 }
@@ -18,36 +16,28 @@ impl Game {
     const MAX_TURNS: i32 = 6;
 
     // privateなコンストラクタ
-    fn new(
-        game_id: GameId,
-        match_id: MatchId,
-        unit_ids: Vec<UnitId>,
-        current_turn_number: CurrentTurnNumber,
-    ) -> Self {
+    fn new(game_id: GameId, unit_ids: Vec<UnitId>, current_turn_number: CurrentTurnNumber) -> Self {
         Self {
             game_id,
-            match_id,
             unit_ids,
             current_turn_number,
         }
     }
 
     /// 新規ゲームの生成
-    pub fn create(match_id: MatchId, unit_ids: Vec<UnitId>) -> Self {
-        let game_id = GameId::new(Uuid::new_v4().to_string());
+    pub fn create(game_id: GameId, unit_ids: Vec<UnitId>) -> Self {
         let current_turn_number = CurrentTurnNumber::initial();
 
-        Self::new(game_id, match_id, unit_ids, current_turn_number)
+        Self::new(game_id, unit_ids, current_turn_number)
     }
 
     /// ゲームの再構築（リポジトリから取得時に使用）
     pub fn reconstruct(
         game_id: GameId,
-        match_id: MatchId,
         unit_ids: Vec<UnitId>,
         current_turn_number: CurrentTurnNumber,
     ) -> Self {
-        Self::new(game_id, match_id, unit_ids, current_turn_number)
+        Self::new(game_id, unit_ids, current_turn_number)
     }
 
     /// 次のターンへ進める
@@ -84,10 +74,6 @@ impl Game {
     // ゲッター
     pub fn game_id(&self) -> &GameId {
         &self.game_id
-    }
-
-    pub fn match_id(&self) -> &MatchId {
-        &self.match_id
     }
 
     pub fn unit_ids(&self) -> &Vec<UnitId> {

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::application::matchmaking::matchmaking_dto::CreateUnitDto;
+
 /// WebSocketメッセージの種類
 /// tagにアクションを設定することで、シリアライズが以下のようになります
 ///
@@ -20,7 +22,10 @@ use serde::{Deserialize, Serialize};
 )]
 pub enum WebSocketRequest {
     /// マッチメイキングリクエスト
-    Matchmaking { player_id: String },
+    Matchmaking {
+        player_id: String,
+        units: Vec<CreateUnitDto>,
+    },
 
     /// Ping/Pong
     Ping,

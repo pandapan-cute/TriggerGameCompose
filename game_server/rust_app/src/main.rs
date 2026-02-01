@@ -22,6 +22,7 @@ use crate::{
         dynamodb::{
             connection_dynamodb_repository::DynamoDbConnectionRepository,
             matching_dynamodb_repository::DynamoDbMatchingRepository,
+            unit_dynamodb_repository::DynamoDbUnitRepository,
         },
     },
 };
@@ -109,16 +110,17 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
 
                 // DynamoDBクライアントの作成
                 let dynamo_client = create_dynamodb_client().await;
-
                 // コネクションIDを保存するリポジトリ
                 let connection_repository =
                     DynamoDbConnectionRepository::new(dynamo_client.clone());
+                // ユニット情報を保存するリポジトリ
+                let unit_repository = DynamoDbUnitRepository::new(dynamo_client.clone());
 
                 // アクションごとの処理
                 match message {
                     // NOTE: ここに他のアクションも追加していく
                     // マッチメイキングリクエストの処理
-                    WebSocketRequest::Matchmaking { player_id } => {
+                    WebSocketRequest::Matchmaking { player_id, units } => {
                         // コネクションIDとPlayerIDの紐付けを保存
                         connection_repository
                             .save(&player_id, &event.request_context.connection_id)
@@ -130,11 +132,12 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                         let service = MatchmakingApplicationService::new(
                             Arc::new(matching_repository),
                             Arc::new(connection_repository),
+                            Arc::new(unit_repository),
                             Arc::new(websocket_sender),
                         );
                         // マッチメイキング処理を実行
                         service
-                            .execute(&player_id, &event.request_context.connection_id)
+                            .execute(&player_id, &event.request_context.connection_id, units)
                             .await?;
                     }
 

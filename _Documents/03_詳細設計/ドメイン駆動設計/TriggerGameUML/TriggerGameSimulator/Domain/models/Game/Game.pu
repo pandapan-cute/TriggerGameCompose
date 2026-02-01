@@ -6,7 +6,6 @@ package "ゲーム集約(GameAggregation)" {
     ' 1. エンティティの定義
     class "Game(ゲーム)" as Game << (R,red) RootEntity >> {
         GameId: GameId
-        MatchId: MatchId
         currentTurnNumber: CurrentTurnNumber
         UnitIds: UnitIds
     }
@@ -36,10 +35,6 @@ package "ゲーム集約(GameAggregation)" {
     }
 
     class "GameId(ゲームID)" as GameId {
-        + value: string
-    }
-
-    class "MatchId(マッチングID)" as MatchId {
         + value: string
     }
 
@@ -101,10 +96,6 @@ package "ゲーム集約(GameAggregation)" {
 
     ' 3. ルールの追加
     note bottom of GameId
-        - 一意のGUID
-    end note
-
-    note bottom of MatchId
         - 一意のGUID
     end note
 
@@ -171,13 +162,11 @@ package "ゲーム集約(GameAggregation)" {
     end note
 
     ' 4. 関連性の定義
-    Game "0..1" -- "1" MatchId
     Game "1" -- "0..*" Turn
     Turn "1" -- "0..*" Step
     Step "1" -- "0..*" Combat
 
     Game *-down- GameId
-    Game *-down- MatchId
     Game *-down- CurrentTurnNumber
     Game *-down- UnitIds
 

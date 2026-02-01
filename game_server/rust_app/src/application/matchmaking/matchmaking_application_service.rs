@@ -1,6 +1,7 @@
 use crate::{
-    application::websocket::{
-        websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
+    application::{
+        matchmaking::matchmaking_dto::CreateUnitDto,
+        websocket::{websocket_response::WebSocketResponse, websocket_sender::WebSocketSender},
     },
     domain::{
         matching_management::{
@@ -11,6 +12,8 @@ use crate::{
             models::player::player_id::player_id::PlayerId,
             repositories::connection_repository::ConnectionRepository,
         },
+        triggergame_simulator::models::game::game_id::game_id::GameId,
+        unit_management::repositories::unit_repository::UnitRepository,
     },
     infrastructure::dynamodb::connection_dynamodb_repository,
 };
@@ -19,6 +22,7 @@ use std::sync::Arc;
 pub struct MatchmakingApplicationService {
     matching_repository: Arc<dyn MatchingRepository>,
     connection_repository: Arc<dyn ConnectionRepository>,
+    unit_repository: Arc<dyn UnitRepository>,
     websocket_sender: Arc<dyn WebSocketSender>,
 }
 
@@ -28,17 +32,24 @@ impl MatchmakingApplicationService {
     pub fn new(
         matching_repository: Arc<dyn MatchingRepository>,
         connection_repository: Arc<dyn ConnectionRepository>,
+        unit_repository: Arc<dyn UnitRepository>,
         websocket_sender: Arc<dyn WebSocketSender>,
     ) -> Self {
         Self {
             matching_repository,
             connection_repository,
+            unit_repository,
             websocket_sender,
         }
     }
 
     /// マッチメイキング処理を実行するメソッド
-    pub async fn execute(&self, player_id: &str, connection_id: &str) -> Result<(), String> {
+    pub async fn execute(
+        &self,
+        player_id: &str,
+        connection_id: &str,
+        units: Vec<CreateUnitDto>,
+    ) -> Result<(), String> {
         println!("Executing matchmaking for player_id: {}", player_id);
         // 待機中のマッチングを取得
         let waiting_matching = self
@@ -85,6 +96,14 @@ impl MatchmakingApplicationService {
                     return Err(result.err().unwrap());
                 }
                 println!("Matching updated successfully for player_id: {}", player_id);
+                // ユニット情報を保存
+                // GameId をMatchingから生成する
+                self.insert_units(
+                    &GameId::new(matching.matching_id().value().to_string()),
+                    &PlayerId::new(player_id.to_string()),
+                    units,
+                )
+                .await?;
                 // マッチング完了を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
@@ -127,6 +146,24 @@ impl MatchmakingApplicationService {
                     .await?;
             }
         };
+        Ok(())
+    }
+
+    /// ユニット情報を保存するメソッド
+    async fn insert_units(
+        &self,
+        game_id: &GameId,
+        player_id: &PlayerId,
+        units: Vec<CreateUnitDto>,
+    ) -> Result<(), String> {
+        for unit in units {
+            // ここでユニットの保存処理を実装
+            let unit_entity = unit.to_unit(game_id.clone(), player_id.clone());
+            let result = self.unit_repository.save(&unit_entity).await;
+            if result.is_err() {
+                return Err(result.err().unwrap());
+            }
+        }
         Ok(())
     }
 }

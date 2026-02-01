@@ -1,3 +1,4 @@
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
@@ -5,7 +6,6 @@ use super::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerId
 use super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
 use super::is_bailout::is_bailout::IsBailout;
 use super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
-use super::owner_player_id::owner_player_id::OwnerPlayerId;
 use super::position::position::Position;
 use super::sight_range::sight_range::SightRange;
 use super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
@@ -23,7 +23,7 @@ pub struct Unit {
     unit_id: UnitId,
     unit_type_id: UnitTypeId,
     game_id: GameId,
-    owner_player_id: OwnerPlayerId,
+    owner_player_id: PlayerId,
     current_action_points: CurrentActionPoints,
     wait_time: WaitTime,
     position: Position,
@@ -44,7 +44,7 @@ impl Unit {
         unit_id: UnitId,
         unit_type_id: UnitTypeId,
         game_id: GameId,
-        owner_player_id: OwnerPlayerId,
+        owner_player_id: PlayerId,
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
@@ -80,7 +80,7 @@ impl Unit {
     pub fn create(
         unit_type_id: UnitTypeId,
         game_id: GameId,
-        owner_player_id: OwnerPlayerId,
+        owner_player_id: PlayerId,
         position: Position,
         having_main_trigger_ids: HavingMainTriggerIds,
         having_sub_trigger_ids: HavingSubTriggerIds,
@@ -122,7 +122,7 @@ impl Unit {
         unit_id: UnitId,
         unit_type_id: UnitTypeId,
         game_id: GameId,
-        owner_player_id: OwnerPlayerId,
+        owner_player_id: PlayerId,
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
@@ -308,7 +308,7 @@ impl Unit {
         &self.game_id
     }
 
-    pub fn owner_player_id(&self) -> &OwnerPlayerId {
+    pub fn owner_player_id(&self) -> &PlayerId {
         &self.owner_player_id
     }
 

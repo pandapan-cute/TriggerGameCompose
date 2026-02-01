@@ -7,13 +7,11 @@ use crate::domain::matching_management::models::matching::{
 use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
-use crate::domain::triggergame_simulator::models::game::match_id::match_id::MatchId;
 use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use crate::domain::unit_management::models::unit::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
 use crate::domain::unit_management::models::unit::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
 use crate::domain::unit_management::models::unit::is_bailout::is_bailout::IsBailout;
 use crate::domain::unit_management::models::unit::main_trigger_hp::main_trigger_hp::MainTriggerHP;
-use crate::domain::unit_management::models::unit::owner_player_id::owner_player_id::OwnerPlayerId;
 use crate::domain::unit_management::models::unit::position::position::Position;
 use crate::domain::unit_management::models::unit::sight_range::sight_range::SightRange;
 use crate::domain::unit_management::models::unit::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
@@ -164,7 +162,7 @@ impl DynamoDbUnitRepository {
                 .to_string(),
         );
 
-        let owner_player_id = OwnerPlayerId::new(
+        let owner_player_id = PlayerId::new(
             item.get("owner_player_id")
                 .and_then(|v| v.as_s().ok())
                 .ok_or("owner_player_id not found or invalid")?
@@ -379,7 +377,7 @@ impl UnitRepository for DynamoDbUnitRepository {
     async fn get_game_units(&self, game_id: GameId) -> Result<Vec<Unit>, String> {
         println!("Querying for latest waiting matching...");
         // Unitアイテムを取得
-        // GSIを使用してmatch_idを指定したデータを取得
+        // GSIを使用してgame_idを指定したデータを取得
         let result = self
             .client
             .query()

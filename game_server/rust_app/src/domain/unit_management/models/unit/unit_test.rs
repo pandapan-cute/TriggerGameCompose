@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 
     use super::super::current_action_points::current_action_points::CurrentActionPoints;
@@ -7,7 +8,6 @@ mod tests {
     use super::super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
     use super::super::is_bailout::is_bailout::IsBailout;
     use super::super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
-    use super::super::owner_player_id::owner_player_id::OwnerPlayerId;
     use super::super::position::position::Position;
     use super::super::sight_range::sight_range::SightRange;
     use super::super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
@@ -22,7 +22,7 @@ mod tests {
     fn create_test_unit() -> Unit {
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
+        let owner_player_id = PlayerId::new(Uuid::new_v4().to_string());
         let position = Position::new(0, 0);
         let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
         let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
@@ -241,7 +241,7 @@ mod tests {
         let unit_id = UnitId::new(Uuid::new_v4().to_string());
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
+        let owner_player_id = PlayerId::new(Uuid::new_v4().to_string());
         let current_action_points = CurrentActionPoints::new(15);
         let wait_time = WaitTime::new(50);
         let position = Position::new(10, 20);
@@ -290,7 +290,7 @@ mod tests {
         let unit_id = UnitId::new(Uuid::new_v4().to_string());
         let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let owner_player_id = OwnerPlayerId::new(Uuid::new_v4().to_string());
+        let owner_player_id = PlayerId::new(Uuid::new_v4().to_string());
         let current_action_points = CurrentActionPoints::new(10);
         let wait_time = WaitTime::new(0);
         let position = Position::new(0, 0);

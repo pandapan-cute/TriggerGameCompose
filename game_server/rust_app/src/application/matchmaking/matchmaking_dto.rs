@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::unit_management::models::unit::{
-    using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId,
-    using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId,
+use crate::domain::{
+    player_management::models::player::player_id::player_id::PlayerId,
+    triggergame_simulator::models::game::game_id::game_id::GameId,
+    unit_management::models::unit::{
+        using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId,
+        using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId, Unit,
+    },
 };
 
 /// マッチメイキングリクエストで受け取るユニット情報
@@ -23,11 +27,7 @@ pub struct CreateUnitDto {
 
 impl CreateUnitDto {
     /// DTOをドメインエンティティに変換（ファクトリーメソッド）
-    pub fn to_unit(
-        &self,
-        game_id: crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId,
-        owner_player_id: crate::domain::player_management::models::player::player_id::player_id::PlayerId,
-    ) -> crate::domain::unit_management::models::unit::Unit {
+    pub fn to_unit(&self, game_id: GameId, owner_player_id: PlayerId) -> Unit {
         use crate::domain::unit_management::models::unit::{
             having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds,
             having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds,
@@ -48,5 +48,17 @@ impl CreateUnitDto {
             8,   // TODO: 開始地点の高さから取得予定
             13,  // TODO: マスターデータから取得予定
         )
+    }
+
+    /// 複数ユニットを DTO 配列に変換
+    pub fn to_units(
+        units: &[CreateUnitDto],
+        game_id: &GameId,
+        owner_player_id: &PlayerId,
+    ) -> Vec<Unit> {
+        units
+            .iter()
+            .map(|dto| dto.to_unit(game_id.clone(), owner_player_id.clone()))
+            .collect()
     }
 }

@@ -14,6 +14,7 @@ use super::unit_type_id::unit_type_id::UnitTypeId;
 use super::using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId;
 use super::using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId;
 use super::wait_time::wait_time::WaitTime;
+use serde::Serialize;
 use uuid::Uuid;
 
 /// Unit集約

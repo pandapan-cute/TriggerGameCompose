@@ -109,6 +109,34 @@ func createTables(ctx context.Context, client *dynamodb.Client) error {
 	} else {
 		log.Println("✅ Connections table created")
 	}
+
+	// Unitsテーブル
+	_, errUnits := client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String("Units"),
+		AttributeDefinitions: []types.AttributeDefinition{
+			{AttributeName: aws.String("unit_id"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("game_id"), AttributeType: types.ScalarAttributeTypeS},
+		},
+		KeySchema: []types.KeySchemaElement{
+			{AttributeName: aws.String("unit_id"), KeyType: types.KeyTypeHash},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("GameIdIndex"),
+				KeySchema: []types.KeySchemaElement{
+					{AttributeName: aws.String("game_id"), KeyType: types.KeyTypeHash},
+				},
+				Projection: &types.Projection{ProjectionType: types.ProjectionTypeAll},
+			},
+		},
+		BillingMode: types.BillingModePayPerRequest,
+	})
+
+	if errUnits != nil {
+		log.Printf("⚠️  Units table: %v", errUnits)
+	} else {
+		log.Println("✅ Units table created")
+	}
 	return nil
 }
 

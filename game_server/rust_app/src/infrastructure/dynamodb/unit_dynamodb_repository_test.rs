@@ -198,7 +198,7 @@ mod tests {
         let client = setup_mock_client(query_rule);
         let repo = DynamoDbUnitRepository::new(client);
 
-        let result = repo.get_game_units(game_id).await;
+        let result = repo.get_game_units(&game_id).await;
         assert!(result.is_ok(), "Failed to get units: {:?}", result.err());
 
         let units = result.unwrap();
@@ -218,7 +218,7 @@ mod tests {
         let client = setup_mock_client(query_rule);
         let repo = DynamoDbUnitRepository::new(client);
 
-        let result = repo.get_game_units(game_id).await;
+        let result = repo.get_game_units(&game_id).await;
         assert!(result.is_ok());
 
         let units = result.unwrap();
@@ -359,7 +359,7 @@ mod tests {
         let client = setup_mock_client(query_rule);
         let repo = DynamoDbUnitRepository::new(client);
 
-        let result = repo.get_game_units(game_id).await;
+        let result = repo.get_game_units(&game_id).await;
         assert!(result.is_ok(), "Failed to get units: {:?}", result.err());
 
         let units = result.unwrap();

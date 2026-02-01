@@ -356,8 +356,8 @@ impl UnitRepository for DynamoDbUnitRepository {
     }
 
     /// 対戦のユニットを一覧取得
-    async fn get_game_units(&self, game_id: GameId) -> Result<Vec<Unit>, String> {
-        println!("Querying for latest waiting matching...");
+    async fn get_game_units(&self, game_id: &GameId) -> Result<Vec<Unit>, String> {
+        println!("Querying for game units with game_id: {}", game_id.value());
         // Unitアイテムを取得
         // GSIを使用してgame_idを指定したデータを取得
         let result = self
@@ -369,7 +369,7 @@ impl UnitRepository for DynamoDbUnitRepository {
             .expression_attribute_values(":game_id", AttributeValue::S(game_id.value().to_string()))
             .send()
             .await
-            .map_err(|e| format!("Failed to query matching: {}", e))?;
+            .map_err(|e| format!("Failed to query get_game_units: {}", e))?;
         println!("Query result: {:?}", result);
 
         let items = result.items();

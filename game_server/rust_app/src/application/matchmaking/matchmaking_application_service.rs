@@ -1,5 +1,6 @@
 use crate::{
     application::{
+        game::{enemy_unit_dto::EnemyUnitDto, friend_unit_dto::FriendUnitDto},
         matchmaking::matchmaking_dto::CreateUnitDto,
         websocket::{websocket_response::WebSocketResponse, websocket_sender::WebSocketSender},
     },
@@ -13,7 +14,10 @@ use crate::{
             repositories::connection_repository::ConnectionRepository,
         },
         triggergame_simulator::models::game::game_id::game_id::GameId,
-        unit_management::repositories::unit_repository::UnitRepository,
+        unit_management::{
+            models::unit::{self, Unit},
+            repositories::unit_repository::UnitRepository,
+        },
     },
     infrastructure::dynamodb::connection_dynamodb_repository,
 };
@@ -70,6 +74,8 @@ impl MatchmakingApplicationService {
                     // 自分自身のマッチングには参加できない
                     let response = WebSocketResponse::MatchmakingResult {
                         status: MatchingStatusValue::InProgress,
+                        enemy_units: vec![],
+                        friend_units: vec![],
                     };
                     // WebSocket で通知を送信
                     self.websocket_sender
@@ -95,18 +101,26 @@ impl MatchmakingApplicationService {
                     // 更新失敗時のエラーハンドリング
                     return Err(result.err().unwrap());
                 }
+                // TODO: ゲーム情報を登録
                 println!("Matching updated successfully for player_id: {}", player_id);
-                // ユニット情報を保存
-                // GameId をMatchingから生成する
-                self.insert_units(
-                    &GameId::new(matching.matching_id().value().to_string()),
+                // ユニット情報をエンティティに変換
+                let unit_entities: Vec<Unit> = CreateUnitDto::to_units(
+                    &units,
+                    &GameId::new(matching.matching_id().value().to_string()), // GameId をMatchingから生成する
                     &PlayerId::new(player_id.to_string()),
-                    units,
-                )
-                .await?;
+                );
+                // すでに登録済みの敵ユニット情報を取得
+                let enemy_units = self
+                    .unit_repository
+                    .get_game_units(&GameId::new(matching.matching_id().value().to_string()))
+                    .await?;
+                // ユニット情報を保存
+                self.insert_units(&unit_entities).await?;
                 // マッチング完了を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
+                    enemy_units: EnemyUnitDto::from_units(&enemy_units),
+                    friend_units: FriendUnitDto::from_units(&unit_entities),
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender
@@ -122,6 +136,8 @@ impl MatchmakingApplicationService {
                 // 対戦相手にマッチング完了を通知
                 let opponent_response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
+                    enemy_units: EnemyUnitDto::from_units(&unit_entities),
+                    friend_units: FriendUnitDto::from_units(&enemy_units),
                 };
                 self.websocket_sender
                     .send_message(&opponent_connection_id, &opponent_response)
@@ -136,9 +152,19 @@ impl MatchmakingApplicationService {
                     // 保存失敗時のエラーハンドリング
                     return Err(result.err().unwrap());
                 }
+                // ユニット情報をエンティティに変換
+                let unit_entities: Vec<Unit> = CreateUnitDto::to_units(
+                    &units,
+                    &GameId::new(new_matching.matching_id().value().to_string()), // GameId をMatchingから生成する
+                    &PlayerId::new(player_id.to_string()),
+                );
+                // ユニット情報を保存
+                self.insert_units(&unit_entities).await?;
                 // マッチング待機中を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::InProgress,
+                    enemy_units: vec![],
+                    friend_units: vec![],
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender
@@ -150,16 +176,10 @@ impl MatchmakingApplicationService {
     }
 
     /// ユニット情報を保存するメソッド
-    async fn insert_units(
-        &self,
-        game_id: &GameId,
-        player_id: &PlayerId,
-        units: Vec<CreateUnitDto>,
-    ) -> Result<(), String> {
+    async fn insert_units(&self, units: &Vec<Unit>) -> Result<(), String> {
         for unit in units {
             // ここでユニットの保存処理を実装
-            let unit_entity = unit.to_unit(game_id.clone(), player_id.clone());
-            let result = self.unit_repository.save(&unit_entity).await;
+            let result = self.unit_repository.save(&unit).await;
             if result.is_err() {
                 return Err(result.err().unwrap());
             }

@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::domain::matching_management::models::matching::MatchingStatusValue;
+use crate::{
+    application::game::{enemy_unit_dto::EnemyUnitDto, friend_unit_dto::FriendUnitDto},
+    domain::matching_management::models::matching::MatchingStatusValue,
+};
 
 /// WebSocketレスポンスの種類
 #[derive(Debug, Serialize)]
@@ -11,7 +14,14 @@ use crate::domain::matching_management::models::matching::MatchingStatusValue;
 )]
 pub enum WebSocketResponse {
     /// マッチメイキング結果
-    MatchmakingResult { status: MatchingStatusValue },
+    MatchmakingResult {
+        /// マッチングステータス
+        status: MatchingStatusValue,
+        /// 敵ユニット情報
+        enemy_units: Vec<EnemyUnitDto>,
+        /// 味方ユニット情報
+        friend_units: Vec<FriendUnitDto>,
+    },
 
     /// エラーレスポンス
     Error { message: String },

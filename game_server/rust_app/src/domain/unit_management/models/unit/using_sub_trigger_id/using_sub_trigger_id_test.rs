@@ -2,10 +2,20 @@
 mod tests {
     use super::super::using_sub_trigger_id::UsingSubTriggerId;
 
+    /// バグワーム判定のテスト
+    #[test]
+    fn test_is_bagworm() {
+        let id = UsingSubTriggerId::new("BAGWORM".to_string());
+        assert!(id.is_bagworm());
+
+        let id = UsingSubTriggerId::new("SHIELD".to_string());
+        assert!(!id.is_bagworm());
+    }
+
     #[test]
     fn test_valid_id() {
-        let id = UsingSubTriggerId::new("shield".to_string());
-        assert_eq!(id.value(), "shield");
+        let id = UsingSubTriggerId::new("SHIELD".to_string());
+        assert_eq!(id.value(), "SHIELD");
     }
 
     #[test]
@@ -16,8 +26,8 @@ mod tests {
 
     #[test]
     fn test_equality() {
-        let id1 = UsingSubTriggerId::new("bagworm".to_string());
-        let id2 = UsingSubTriggerId::new("bagworm".to_string());
+        let id1 = UsingSubTriggerId::new("BAGWORM".to_string());
+        let id2 = UsingSubTriggerId::new("BAGWORM".to_string());
         assert_eq!(id1, id2);
     }
 }

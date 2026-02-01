@@ -3,6 +3,16 @@ mod tests {
     use super::super::using_main_trigger_id::UsingMainTriggerId;
 
     #[test]
+    /// バグワーム判定のテスト
+    fn test_is_bagworm() {
+        let id = UsingMainTriggerId::new("bagworm".to_string());
+        assert!(id.is_bagworm());
+
+        let id = UsingMainTriggerId::new("scorpion".to_string());
+        assert!(!id.is_bagworm());
+    }
+
+    #[test]
     fn test_valid_id() {
         let id = UsingMainTriggerId::new("scorpion".to_string());
         assert_eq!(id.value(), "scorpion");

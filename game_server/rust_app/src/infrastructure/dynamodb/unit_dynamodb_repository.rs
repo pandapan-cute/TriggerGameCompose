@@ -80,23 +80,14 @@ impl DynamoDbUnitRepository {
             AttributeValue::N(unit.position().y().to_string()),
         );
         item.insert("position".to_string(), AttributeValue::M(position_map));
-
-        // using_main_trigger_idはOption型なので、存在する場合のみ保存
-        if let Some(main_trigger_id) = unit.using_main_trigger_id() {
-            item.insert(
-                "using_main_trigger_id".to_string(),
-                AttributeValue::S(main_trigger_id.value().to_string()),
-            );
-        }
-
-        // using_sub_trigger_idはOption型なので、存在する場合のみ保存
-        if let Some(sub_trigger_id) = unit.using_sub_trigger_id() {
-            item.insert(
-                "using_sub_trigger_id".to_string(),
-                AttributeValue::S(sub_trigger_id.value().to_string()),
-            );
-        }
-
+        item.insert(
+            "using_main_trigger_id".to_string(),
+            AttributeValue::S(unit.using_main_trigger_id().value().to_string()),
+        );
+        item.insert(
+            "using_sub_trigger_id".to_string(),
+            AttributeValue::S(unit.using_sub_trigger_id().value().to_string()),
+        );
         item.insert(
             "having_main_trigger_ids".to_string(),
             AttributeValue::L(
@@ -199,15 +190,19 @@ impl DynamoDbUnitRepository {
             .ok_or("position.y not found or invalid")?;
         let position = Position::new(x, y);
 
-        let using_main_trigger_id = item
-            .get("using_main_trigger_id")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| UsingMainTriggerId::new(s.to_string()));
+        let using_main_trigger_id = UsingMainTriggerId::new(
+            item.get("using_main_trigger_id")
+                .and_then(|v| v.as_s().ok())
+                .ok_or("using_main_trigger_id not found or invalid")?
+                .to_string(),
+        );
 
-        let using_sub_trigger_id = item
-            .get("using_sub_trigger_id")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| UsingSubTriggerId::new(s.to_string()));
+        let using_sub_trigger_id = UsingSubTriggerId::new(
+            item.get("using_sub_trigger_id")
+                .and_then(|v| v.as_s().ok())
+                .ok_or("using_sub_trigger_id not found or invalid")?
+                .to_string(),
+        );
 
         let having_main_trigger_ids = HavingMainTriggerIds::new(
             item.get("having_main_trigger_ids")
@@ -298,20 +293,14 @@ impl UnitRepository for DynamoDbUnitRepository {
         // または update_item を使用して部分更新
 
         // UPDATE式を動的に構築
-        let mut update_parts = vec![
+        let update_parts = vec![
+            "using_main_trigger_id = :using_main_trigger_id",
+            "using_sub_trigger_id = :using_sub_trigger_id",
             "current_action_points = :current_action_points",
             "position = :position",
             "sight_range = :sight_range",
             "is_bailout = :is_bailout",
         ];
-
-        if unit.using_main_trigger_id().is_some() {
-            update_parts.push("using_main_trigger_id = :using_main_trigger_id");
-        }
-
-        if unit.using_sub_trigger_id().is_some() {
-            update_parts.push("using_sub_trigger_id = :using_sub_trigger_id");
-        }
 
         let update_expression = format!("SET {}", update_parts.join(", "));
 
@@ -326,7 +315,7 @@ impl UnitRepository for DynamoDbUnitRepository {
             AttributeValue::N(unit.position().y().to_string()),
         );
 
-        let mut request = self
+        let request = self
             .client
             .update_item()
             .table_name(self.units_table)
@@ -344,22 +333,15 @@ impl UnitRepository for DynamoDbUnitRepository {
                 ":sight_range",
                 AttributeValue::N(unit.sight_range().value().to_string()),
             )
-            .expression_attribute_values(":is_bailout", AttributeValue::Bool(unit.is_bailed_out()));
-
-        // Option型のフィールドを条件付きで追加
-        if let Some(using_main_trigger_id) = unit.using_main_trigger_id() {
-            request = request.expression_attribute_values(
+            .expression_attribute_values(":is_bailout", AttributeValue::Bool(unit.is_bailed_out()))
+            .expression_attribute_values(
                 ":using_main_trigger_id",
-                AttributeValue::S(using_main_trigger_id.value().to_string()),
-            );
-        }
-
-        if let Some(using_sub_trigger_id) = unit.using_sub_trigger_id() {
-            request = request.expression_attribute_values(
+                AttributeValue::S(unit.using_main_trigger_id().value().to_string()),
+            )
+            .expression_attribute_values(
                 ":using_sub_trigger_id",
-                AttributeValue::S(using_sub_trigger_id.value().to_string()),
+                AttributeValue::S(unit.using_sub_trigger_id().value().to_string()),
             );
-        }
 
         let _ = request.send().await.map_err(|e| {
             println!("Failed to update matching: {}", e);

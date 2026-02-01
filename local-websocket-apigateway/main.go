@@ -23,6 +23,7 @@ var (
 type Message struct {
 	Action   string `json:"action"`   // matchmaking など
 	PlayerId string `json:"playerId"` // プレイヤーID
+	Units    any    `json:"units"`    // ユニットの初期配置情報
 	// Characters []string `json:"characters"` // キャラクターのリスト
 }
 

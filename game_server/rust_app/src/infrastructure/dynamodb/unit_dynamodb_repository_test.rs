@@ -59,6 +59,8 @@ mod tests {
             GameId::new(game_id.to_string()),
             PlayerId::new(player_uuid.to_string()),
             Position::new(5, 10),
+            UsingMainTriggerId::new("main_trigger_001".to_string()),
+            UsingSubTriggerId::new("sub_trigger_001".to_string()),
             HavingMainTriggerIds::new(vec![
                 "main_trigger_001".to_string(),
                 "main_trigger_002".to_string(),
@@ -148,17 +150,26 @@ mod tests {
         item.insert("position".to_string(), AttributeValue::M(position_map));
 
         item.insert(
+            "using_main_trigger_id".to_string(),
+            AttributeValue::S("KOGETSU".to_string()),
+        );
+        item.insert(
+            "using_sub_trigger_id".to_string(),
+            AttributeValue::S("SHIELD".to_string()),
+        );
+
+        item.insert(
             "having_main_trigger_ids".to_string(),
             AttributeValue::L(vec![
-                AttributeValue::S("main_trigger_001".to_string()),
-                AttributeValue::S("main_trigger_002".to_string()),
+                AttributeValue::S("KOGETSU".to_string()),
+                AttributeValue::S("ASTEROID".to_string()),
             ]),
         );
         item.insert(
             "having_sub_trigger_ids".to_string(),
             AttributeValue::L(vec![
-                AttributeValue::S("sub_trigger_001".to_string()),
-                AttributeValue::S("sub_trigger_002".to_string()),
+                AttributeValue::S("SHIELD".to_string()),
+                AttributeValue::S("BAGWORM".to_string()),
             ]),
         );
         item.insert(
@@ -250,12 +261,20 @@ mod tests {
         position_map1.insert("y".to_string(), AttributeValue::N("10".to_string()));
         item1.insert("position".to_string(), AttributeValue::M(position_map1));
         item1.insert(
+            "using_main_trigger_id".to_string(),
+            AttributeValue::S("KOGETSU".to_string()),
+        );
+        item1.insert(
+            "using_sub_trigger_id".to_string(),
+            AttributeValue::S("SHIELD".to_string()),
+        );
+        item1.insert(
             "having_main_trigger_ids".to_string(),
-            AttributeValue::L(vec![AttributeValue::S("main_trigger_001".to_string())]),
+            AttributeValue::L(vec![AttributeValue::S("KOGETSU".to_string())]),
         );
         item1.insert(
             "having_sub_trigger_ids".to_string(),
-            AttributeValue::L(vec![AttributeValue::S("sub_trigger_001".to_string())]),
+            AttributeValue::L(vec![AttributeValue::S("SHIELD".to_string())]),
         );
         item1.insert(
             "main_trigger_hp".to_string(),
@@ -299,12 +318,20 @@ mod tests {
         position_map2.insert("y".to_string(), AttributeValue::N("15".to_string()));
         item2.insert("position".to_string(), AttributeValue::M(position_map2));
         item2.insert(
+            "using_main_trigger_id".to_string(),
+            AttributeValue::S("KOGETSU".to_string()),
+        );
+        item2.insert(
+            "using_sub_trigger_id".to_string(),
+            AttributeValue::S("SHIELD".to_string()),
+        );
+        item2.insert(
             "having_main_trigger_ids".to_string(),
-            AttributeValue::L(vec![AttributeValue::S("main_trigger_002".to_string())]),
+            AttributeValue::L(vec![AttributeValue::S("KOGETSU".to_string())]),
         );
         item2.insert(
             "having_sub_trigger_ids".to_string(),
-            AttributeValue::L(vec![AttributeValue::S("sub_trigger_002".to_string())]),
+            AttributeValue::L(vec![AttributeValue::S("SHIELD".to_string())]),
         );
         item2.insert(
             "main_trigger_hp".to_string(),

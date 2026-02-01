@@ -72,6 +72,44 @@ export const useManageMatching = () => {
       sendMessage({
         action: "matchmaking",
         playerId: playerId || "",
+        units: [
+          {
+            unitTypeId: "MIKUMO_OSAMU",
+            initialX: 4,
+            initialY: 34,
+            usingMainTriggerId: "RAYGUST",
+            usingSubTriggerId: "ASTEROID",
+            mainTriggerIds: ["RAYGUST", "THRUSTER", "SHIELD", "BAGWORM"],
+            subTriggerIds: ["ASTEROID", "SHIELD", "SPIDER"],
+          },
+          {
+            unitTypeId: "KUGA_YUMA",
+            initialX: 12,
+            initialY: 34,
+            usingMainTriggerId: "SCOPION",
+            usingSubTriggerId: "SHIELD",
+            mainTriggerIds: ["SCOPION", "SHIELD", "GRASSHOPPER"],
+            subTriggerIds: ["SCOPION", "SHIELD", "GRASSHOPPER", "BAGWORM"],
+          },
+          {
+            unitTypeId: "AMATORI_CHIKA",
+            initialX: 20,
+            initialY: 34,
+            usingMainTriggerId: "IBIS",
+            usingSubTriggerId: "BAGWORM",
+            mainTriggerIds: ["IBIS", "LIGHTNING", "HOUND", "SHIELD"],
+            subTriggerIds: ["REDBULLET", "SHIELD", "BAGWORM"],
+          },
+          {
+            unitTypeId: "HYUSE_KURONIN",
+            initialX: 28,
+            initialY: 34,
+            usingMainTriggerId: "KOGETSU",
+            usingSubTriggerId: "SHIELD",
+            mainTriggerIds: ["KOGETSU", "SENKU", "SHIELD",],
+            subTriggerIds: ["VIPER", "ESCUDE", "SHIELD", "BAGWORM"],
+          }
+        ],
       });
       console.log("マッチング開始メッセージを送信しました");
     } else {

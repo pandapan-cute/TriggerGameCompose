@@ -32,6 +32,8 @@ mod tests {
             game_id,
             owner_player_id,
             position,
+            UsingMainTriggerId::new("KOGETSU".to_string()),
+            UsingSubTriggerId::new("SHIELD".to_string()),
             having_main_trigger_ids,
             having_sub_trigger_ids,
             100, // initial_main_hp
@@ -52,8 +54,6 @@ mod tests {
         assert_eq!(unit.wait_time().value(), 0);
         assert!(unit.is_active());
         assert!(!unit.is_bailed_out());
-        assert!(!unit.has_main_trigger_equipped());
-        assert!(!unit.has_sub_trigger_equipped());
     }
 
     #[test]
@@ -171,56 +171,6 @@ mod tests {
     }
 
     #[test]
-    fn test_equip_main_trigger() {
-        let mut unit = create_test_unit();
-        let trigger_id = UsingMainTriggerId::new(Uuid::new_v4().to_string());
-
-        assert!(!unit.has_main_trigger_equipped());
-
-        unit.equip_main_trigger(trigger_id.clone());
-        assert!(unit.has_main_trigger_equipped());
-        assert_eq!(unit.using_main_trigger_id(), Some(&trigger_id));
-    }
-
-    #[test]
-    fn test_unequip_main_trigger() {
-        let mut unit = create_test_unit();
-        let trigger_id = UsingMainTriggerId::new(Uuid::new_v4().to_string());
-
-        unit.equip_main_trigger(trigger_id);
-        assert!(unit.has_main_trigger_equipped());
-
-        unit.unequip_main_trigger();
-        assert!(!unit.has_main_trigger_equipped());
-        assert_eq!(unit.using_main_trigger_id(), None);
-    }
-
-    #[test]
-    fn test_equip_sub_trigger() {
-        let mut unit = create_test_unit();
-        let trigger_id = UsingSubTriggerId::new(Uuid::new_v4().to_string());
-
-        assert!(!unit.has_sub_trigger_equipped());
-
-        unit.equip_sub_trigger(trigger_id.clone());
-        assert!(unit.has_sub_trigger_equipped());
-        assert_eq!(unit.using_sub_trigger_id(), Some(&trigger_id));
-    }
-
-    #[test]
-    fn test_unequip_sub_trigger() {
-        let mut unit = create_test_unit();
-        let trigger_id = UsingSubTriggerId::new(Uuid::new_v4().to_string());
-
-        unit.equip_sub_trigger(trigger_id);
-        assert!(unit.has_sub_trigger_equipped());
-
-        unit.unequip_sub_trigger();
-        assert!(!unit.has_sub_trigger_equipped());
-        assert_eq!(unit.using_sub_trigger_id(), None);
-    }
-
-    #[test]
     fn test_bailout_and_revive() {
         let mut unit = create_test_unit();
 
@@ -245,8 +195,8 @@ mod tests {
         let current_action_points = CurrentActionPoints::new(15);
         let wait_time = WaitTime::new(50);
         let position = Position::new(10, 20);
-        let using_main_trigger_id = Some(UsingMainTriggerId::new(Uuid::new_v4().to_string()));
-        let using_sub_trigger_id = Some(UsingSubTriggerId::new(Uuid::new_v4().to_string()));
+        let using_main_trigger_id = UsingMainTriggerId::new(Uuid::new_v4().to_string());
+        let using_sub_trigger_id = UsingSubTriggerId::new(Uuid::new_v4().to_string());
         let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
         let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
         let main_trigger_hp = MainTriggerHP::new(80);
@@ -278,8 +228,8 @@ mod tests {
         assert_eq!(unit.current_action_points(), &current_action_points);
         assert_eq!(unit.wait_time(), &wait_time);
         assert_eq!(unit.position(), &position);
-        assert_eq!(unit.using_main_trigger_id(), using_main_trigger_id.as_ref());
-        assert_eq!(unit.using_sub_trigger_id(), using_sub_trigger_id.as_ref());
+        assert_eq!(unit.using_main_trigger_id(), &using_main_trigger_id);
+        assert_eq!(unit.using_sub_trigger_id(), &using_sub_trigger_id);
         assert_eq!(unit.main_trigger_hp(), &main_trigger_hp);
         assert_eq!(unit.sub_trigger_hp(), &sub_trigger_hp);
         assert_eq!(unit.sight_range(), &sight_range);
@@ -294,6 +244,8 @@ mod tests {
         let current_action_points = CurrentActionPoints::new(10);
         let wait_time = WaitTime::new(0);
         let position = Position::new(0, 0);
+        let using_main_trigger_id = UsingMainTriggerId::new("KOGETSU".to_string());
+        let using_sub_trigger_id = UsingSubTriggerId::new("SHIELD".to_string());
         let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
         let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
         let main_trigger_hp = MainTriggerHP::new(100);
@@ -309,8 +261,8 @@ mod tests {
             current_action_points.clone(),
             wait_time.clone(),
             position.clone(),
-            None,
-            None,
+            using_main_trigger_id.clone(),
+            using_sub_trigger_id.clone(),
             having_main_trigger_ids.clone(),
             having_sub_trigger_ids.clone(),
             main_trigger_hp.clone(),
@@ -327,8 +279,8 @@ mod tests {
             current_action_points,
             wait_time,
             position,
-            None,
-            None,
+            using_main_trigger_id.clone(),
+            using_sub_trigger_id.clone(),
             having_main_trigger_ids,
             having_sub_trigger_ids,
             main_trigger_hp,

@@ -27,8 +27,8 @@ pub struct Unit {
     current_action_points: CurrentActionPoints,
     wait_time: WaitTime,
     position: Position,
-    using_main_trigger_id: Option<UsingMainTriggerId>,
-    using_sub_trigger_id: Option<UsingSubTriggerId>,
+    using_main_trigger_id: UsingMainTriggerId,
+    using_sub_trigger_id: UsingSubTriggerId,
     having_main_trigger_ids: HavingMainTriggerIds,
     having_sub_trigger_ids: HavingSubTriggerIds,
     main_trigger_hp: MainTriggerHP,
@@ -48,8 +48,8 @@ impl Unit {
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
-        using_main_trigger_id: Option<UsingMainTriggerId>,
-        using_sub_trigger_id: Option<UsingSubTriggerId>,
+        using_main_trigger_id: UsingMainTriggerId,
+        using_sub_trigger_id: UsingSubTriggerId,
         having_main_trigger_ids: HavingMainTriggerIds,
         having_sub_trigger_ids: HavingSubTriggerIds,
         main_trigger_hp: MainTriggerHP,
@@ -82,6 +82,8 @@ impl Unit {
         game_id: GameId,
         owner_player_id: PlayerId,
         position: Position,
+        using_main_trigger_id: UsingMainTriggerId,
+        using_sub_trigger_id: UsingSubTriggerId,
         having_main_trigger_ids: HavingMainTriggerIds,
         having_sub_trigger_ids: HavingSubTriggerIds,
         initial_main_hp: i32,
@@ -105,8 +107,8 @@ impl Unit {
             current_action_points,
             wait_time,
             position,
-            None,
-            None,
+            using_main_trigger_id,
+            using_sub_trigger_id,
             having_main_trigger_ids,
             having_sub_trigger_ids,
             main_trigger_hp,
@@ -126,8 +128,8 @@ impl Unit {
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
-        using_main_trigger_id: Option<UsingMainTriggerId>,
-        using_sub_trigger_id: Option<UsingSubTriggerId>,
+        using_main_trigger_id: UsingMainTriggerId,
+        using_sub_trigger_id: UsingSubTriggerId,
         having_main_trigger_ids: HavingMainTriggerIds,
         having_sub_trigger_ids: HavingSubTriggerIds,
         main_trigger_hp: MainTriggerHP,
@@ -247,22 +249,12 @@ impl Unit {
 
     /// メイントリガーを装備
     pub fn equip_main_trigger(&mut self, trigger_id: UsingMainTriggerId) {
-        self.using_main_trigger_id = Some(trigger_id);
-    }
-
-    /// メイントリガーを解除
-    pub fn unequip_main_trigger(&mut self) {
-        self.using_main_trigger_id = None;
+        self.using_main_trigger_id = trigger_id;
     }
 
     /// サブトリガーを装備
     pub fn equip_sub_trigger(&mut self, trigger_id: UsingSubTriggerId) {
-        self.using_sub_trigger_id = Some(trigger_id);
-    }
-
-    /// サブトリガーを解除
-    pub fn unequip_sub_trigger(&mut self) {
-        self.using_sub_trigger_id = None;
+        self.using_sub_trigger_id = trigger_id;
     }
 
     /// ベイルアウト
@@ -283,16 +275,6 @@ impl Unit {
     /// ユニットがベイルアウト済みかどうか
     pub fn is_bailed_out(&self) -> bool {
         self.is_bailout.is_bailout()
-    }
-
-    /// メイントリガーが装備されているかどうか
-    pub fn has_main_trigger_equipped(&self) -> bool {
-        self.using_main_trigger_id.is_some()
-    }
-
-    /// サブトリガーが装備されているかどうか
-    pub fn has_sub_trigger_equipped(&self) -> bool {
-        self.using_sub_trigger_id.is_some()
     }
 
     // ゲッター
@@ -324,12 +306,12 @@ impl Unit {
         &self.position
     }
 
-    pub fn using_main_trigger_id(&self) -> Option<&UsingMainTriggerId> {
-        self.using_main_trigger_id.as_ref()
+    pub fn using_main_trigger_id(&self) -> &UsingMainTriggerId {
+        &self.using_main_trigger_id
     }
 
-    pub fn using_sub_trigger_id(&self) -> Option<&UsingSubTriggerId> {
-        self.using_sub_trigger_id.as_ref()
+    pub fn using_sub_trigger_id(&self) -> &UsingSubTriggerId {
+        &self.using_sub_trigger_id
     }
 
     pub fn having_main_trigger_ids(&self) -> &HavingMainTriggerIds {

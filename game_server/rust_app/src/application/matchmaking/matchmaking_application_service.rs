@@ -83,6 +83,7 @@ impl MatchmakingApplicationService {
                     // 自分自身のマッチングには参加できない
                     let response = WebSocketResponse::MatchmakingResult {
                         status: MatchingStatusValue::InProgress,
+                        game_id: None,
                         enemy_units: vec![],
                         friend_units: vec![],
                     };
@@ -135,6 +136,7 @@ impl MatchmakingApplicationService {
                 // マッチング完了を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
+                    game_id: Some(game_id.value().to_string()),
                     enemy_units: EnemyUnitDto::from_units(&enemy_units),
                     friend_units: FriendUnitDto::from_units(&unit_entities),
                 };
@@ -152,6 +154,7 @@ impl MatchmakingApplicationService {
                 // 対戦相手にマッチング完了を通知
                 let opponent_response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
+                    game_id: Some(game_id.value().to_string()),
                     enemy_units: EnemyUnitDto::from_units(&unit_entities),
                     friend_units: FriendUnitDto::from_units(&enemy_units),
                 };
@@ -179,6 +182,7 @@ impl MatchmakingApplicationService {
                 // マッチング待機中を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::InProgress,
+                    game_id: None,
                     enemy_units: vec![],
                     friend_units: vec![],
                 };

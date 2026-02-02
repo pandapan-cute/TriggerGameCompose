@@ -15,6 +15,7 @@ export const useManageMatching = () => {
   const {
     isConnected,
     playerId,
+    setGameId,
     sendMessage,
     addMessageListener,
     removeMessageListener,
@@ -27,6 +28,9 @@ export const useManageMatching = () => {
     const handleMatchingResult = (data: WebSocketResponseType) => {
       if (data.action === "matchmakingResult" && data.status === "Completed") {
         setMatchingStatus("Completed");
+        if (data.gameId) {
+          setGameId(data.gameId);
+        }
         // if (
         //   data.result &&
         //   typeof data.result === "object" &&

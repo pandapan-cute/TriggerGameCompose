@@ -16,8 +16,14 @@ import { WebSocketResponseType } from "./types/WebSocketResponses";
 interface WebSocketContextType {
   /** 接続状態 */
   isConnected: boolean;
+  /** ゲームID */
+  gameId?: string | null;
+  /** ゲームIDの設定 */
+  setGameId: (gameId: string | null) => void;
   /** プレイヤーID */
   playerId?: string | null;
+  /** フィールドの状態 */
+  fieldView: boolean[][] | null;
   // メッセージ送信
   sendMessage: (message: WebSocketRequestType) => void;
   // メッセージリスナー
@@ -48,6 +54,10 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
   const [isConnected, setIsConnected] = useState<boolean>(false);
   // プレイヤーID管理
   const [playerId, setPlayerId] = useState<string | null>(null);
+  // ゲームID管理
+  const [gameId, setGameId] = useState<string | null>(null);
+  // フィールドビュー情報
+  const [fieldView, setFieldView] = useState<boolean[][] | null>(null);
 
   // メッセージリスナーを管理
   const messageListeners = useRef<
@@ -223,7 +233,10 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
 
   const contextValue: WebSocketContextType = {
     isConnected,
+    gameId,
+    setGameId,
     playerId,
+    fieldView,
     sendMessage,
     addMessageListener,
     removeMessageListener,

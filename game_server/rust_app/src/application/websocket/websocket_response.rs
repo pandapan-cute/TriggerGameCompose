@@ -17,6 +17,8 @@ pub enum WebSocketResponse {
     MatchmakingResult {
         /// マッチングステータス
         status: MatchingStatusValue,
+        /// ゲームID
+        game_id: Option<String>,
         /// 敵ユニット情報
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報

@@ -1,9 +1,5 @@
-// infrastructure/dynamodb/player_dynamodb_repository.rs
+// infrastructure/dynamodb/game_dynamodb_repository.rs
 
-use crate::domain::matching_management::models::matching::{
-    Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
-    MatchingStatusValue,
-};
 use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::current_turn_number::current_turn_number::CurrentTurnNumber;
@@ -40,6 +36,14 @@ impl DynamoDbGameRepository {
         item.insert(
             "current_turn_number".to_string(),
             AttributeValue::N(game.current_turn_number().value().to_string()),
+        );
+        item.insert(
+            "player1_id".to_string(),
+            AttributeValue::S(game.player1_id().value().to_string()),
+        );
+        item.insert(
+            "player2_id".to_string(),
+            AttributeValue::S(game.player2_id().value().to_string()),
         );
         item
     }
@@ -81,6 +85,14 @@ impl GameRepository for DynamoDbGameRepository {
             .expression_attribute_values(
                 ":current_turn_number",
                 AttributeValue::N(game.current_turn_number().value().to_string()),
+            )
+            .expression_attribute_values(
+                ":player1_id",
+                AttributeValue::S(game.player1_id().value().to_string()),
+            )
+            .expression_attribute_values(
+                ":player2_id",
+                AttributeValue::S(game.player2_id().value().to_string()),
             );
 
         let _ = request.send().await.map_err(|e| {
@@ -128,14 +140,24 @@ impl GameRepository for DynamoDbGameRepository {
             .get("current_turn_number")
             .and_then(|v| v.as_n().ok())
             .ok_or("current_turn_number not found")?;
+        let player1_id_str = game_item
+            .get("player1_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("player1_id not found")?;
+        let player2_id_str = game_item
+            .get("player2_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("player2_id not found")?;
 
-        Ok(Game::new(
+        Ok(Game::reconstruct(
             GameId::new(game_id_str.to_string()),
             CurrentTurnNumber::new(
                 current_turn_number_str
                     .parse::<i32>()
                     .map_err(|e| format!("Failed to parse current_turn_number: {}", e))?,
             ),
+            PlayerId::new(player1_id_str.to_string()),
+            PlayerId::new(player2_id_str.to_string()),
         ))
     }
 }

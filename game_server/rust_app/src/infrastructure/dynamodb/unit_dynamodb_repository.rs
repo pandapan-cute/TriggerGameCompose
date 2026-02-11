@@ -8,17 +8,15 @@ use crate::domain::matching_management::repositories::matching_repository::Match
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
-use crate::domain::unit_management::models::unit::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
-use crate::domain::unit_management::models::unit::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
+use crate::domain::unit_management::models::unit::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
 use crate::domain::unit_management::models::unit::is_bailout::is_bailout::IsBailout;
 use crate::domain::unit_management::models::unit::main_trigger_hp::main_trigger_hp::MainTriggerHP;
 use crate::domain::unit_management::models::unit::position::position::Position;
 use crate::domain::unit_management::models::unit::sight_range::sight_range::SightRange;
 use crate::domain::unit_management::models::unit::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
+use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::UnitTypeId;
-use crate::domain::unit_management::models::unit::using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId;
-use crate::domain::unit_management::models::unit::using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId;
 use crate::domain::unit_management::models::unit::wait_time::wait_time::WaitTime;
 use crate::domain::unit_management::models::unit::Unit;
 use crate::domain::unit_management::repositories::unit_repository::UnitRepository;
@@ -43,7 +41,7 @@ impl DynamoDbUnitRepository {
     }
 
     // ヘルパーメソッド：Playerを属性値マップに変換
-    fn unit_to_item(&self, unit: &Unit) -> HashMap<String, AttributeValue> {
+    pub fn unit_to_item(&self, unit: &Unit) -> HashMap<String, AttributeValue> {
         let mut item = HashMap::new();
         item.insert(
             "unit_id".to_string(),
@@ -72,12 +70,12 @@ impl DynamoDbUnitRepository {
         // ポジションのオブジェクトを作る
         let mut position_map = HashMap::new();
         position_map.insert(
-            "x".to_string(),
-            AttributeValue::N(unit.position().x().to_string()),
+            "col".to_string(),
+            AttributeValue::N(unit.position().col().to_string()),
         );
         position_map.insert(
-            "y".to_string(),
-            AttributeValue::N(unit.position().y().to_string()),
+            "row".to_string(),
+            AttributeValue::N(unit.position().row().to_string()),
         );
         item.insert("position".to_string(), AttributeValue::M(position_map));
         item.insert(
@@ -94,7 +92,7 @@ impl DynamoDbUnitRepository {
                 unit.having_main_trigger_ids()
                     .value()
                     .iter()
-                    .map(|id| AttributeValue::S(id.to_string()))
+                    .map(|id| AttributeValue::S(id.value().to_string()))
                     .collect(),
             ),
         );
@@ -104,7 +102,7 @@ impl DynamoDbUnitRepository {
                 unit.having_sub_trigger_ids()
                     .value()
                     .iter()
-                    .map(|id| AttributeValue::S(id.to_string()))
+                    .map(|id| AttributeValue::S(id.value().to_string()))
                     .collect(),
             ),
         );
@@ -122,13 +120,13 @@ impl DynamoDbUnitRepository {
         );
         item.insert(
             "is_bailout".to_string(),
-            AttributeValue::Bool(unit.is_bailed_out()),
+            AttributeValue::Bool(unit.is_bailout_value().value()),
         );
         item
     }
 
     /// ヘルパーメソッド：DynamoDBから取得したデータをUnitエンティティに変換
-    fn from_dynamo_db_to_unit(
+    pub fn from_dynamo_db_to_unit(
         &self,
         item: &HashMap<String, AttributeValue>,
     ) -> Result<Unit, String> {
@@ -178,49 +176,49 @@ impl DynamoDbUnitRepository {
             .get("position")
             .and_then(|v| v.as_m().ok())
             .ok_or("position not found or invalid")?;
-        let x = position_map
-            .get("x")
+        let col = position_map
+            .get("col")
             .and_then(|v| v.as_n().ok())
             .and_then(|n| n.parse::<i32>().ok())
-            .ok_or("position.x not found or invalid")?;
-        let y = position_map
-            .get("y")
+            .ok_or("position.col not found or invalid")?;
+        let row = position_map
+            .get("row")
             .and_then(|v| v.as_n().ok())
             .and_then(|n| n.parse::<i32>().ok())
-            .ok_or("position.y not found or invalid")?;
-        let position = Position::new(x, y);
+            .ok_or("position.row not found or invalid")?;
+        let position = Position::new(col, row);
 
-        let using_main_trigger_id = UsingMainTriggerId::new(
+        let using_main_trigger_id = TriggerId::new(
             item.get("using_main_trigger_id")
                 .and_then(|v| v.as_s().ok())
                 .ok_or("using_main_trigger_id not found or invalid")?
                 .to_string(),
         );
 
-        let using_sub_trigger_id = UsingSubTriggerId::new(
+        let using_sub_trigger_id = TriggerId::new(
             item.get("using_sub_trigger_id")
                 .and_then(|v| v.as_s().ok())
                 .ok_or("using_sub_trigger_id not found or invalid")?
                 .to_string(),
         );
 
-        let having_main_trigger_ids = HavingMainTriggerIds::new(
+        let having_main_trigger_ids = HavingTriggerIds::new(
             item.get("having_main_trigger_ids")
                 .and_then(|v| v.as_l().ok())
                 .ok_or("having_main_trigger_ids not found or invalid")?
                 .iter()
                 .filter_map(|v| v.as_s().ok())
-                .map(|s| s.to_string())
+                .map(|s| TriggerId::new(s.to_string()))
                 .collect(),
         );
 
-        let having_sub_trigger_ids = HavingSubTriggerIds::new(
+        let having_sub_trigger_ids = HavingTriggerIds::new(
             item.get("having_sub_trigger_ids")
                 .and_then(|v| v.as_l().ok())
                 .ok_or("having_sub_trigger_ids not found or invalid")?
                 .iter()
                 .filter_map(|v| v.as_s().ok())
-                .map(|s| s.to_string())
+                .map(|s| TriggerId::new(s.to_string()))
                 .collect(),
         );
 
@@ -307,12 +305,12 @@ impl UnitRepository for DynamoDbUnitRepository {
         // ポジションのオブジェクトを作る
         let mut position_map = HashMap::new();
         position_map.insert(
-            "x".to_string(),
-            AttributeValue::N(unit.position().x().to_string()),
+            "col".to_string(),
+            AttributeValue::N(unit.position().col().to_string()),
         );
         position_map.insert(
-            "y".to_string(),
-            AttributeValue::N(unit.position().y().to_string()),
+            "row".to_string(),
+            AttributeValue::N(unit.position().row().to_string()),
         );
 
         let request = self

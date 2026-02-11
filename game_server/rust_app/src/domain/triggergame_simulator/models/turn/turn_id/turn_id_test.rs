@@ -14,10 +14,4 @@ mod tests {
     fn test_empty_string_panic() {
         TurnId::new("".to_string());
     }
-
-    #[test]
-    #[should_panic(expected = "TurnIdがUUID形式ではありません")]
-    fn test_invalid_uuid_format_panic() {
-        TurnId::new("invalid-uuid".to_string());
-    }
 }

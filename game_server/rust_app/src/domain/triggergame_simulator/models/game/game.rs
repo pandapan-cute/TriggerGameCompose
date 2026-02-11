@@ -1,3 +1,5 @@
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+
 use super::current_turn_number::current_turn_number::CurrentTurnNumber;
 use super::game_id::game_id::GameId;
 use super::unit_id::unit_id::UnitId;
@@ -9,29 +11,48 @@ use uuid::Uuid;
 pub struct Game {
     game_id: GameId,
     current_turn_number: CurrentTurnNumber,
+    player1_id: PlayerId,
+    player2_id: PlayerId,
 }
 
 impl Game {
     const MAX_TURNS: i32 = 6;
 
     // privateなコンストラクタ
-    pub fn new(game_id: GameId, current_turn_number: CurrentTurnNumber) -> Self {
+    pub fn new(
+        game_id: GameId,
+        current_turn_number: CurrentTurnNumber,
+        player1_id: PlayerId,
+        player2_id: PlayerId,
+    ) -> Self {
         Self {
             game_id,
             current_turn_number,
+            player1_id,
+            player2_id,
         }
     }
 
     /// 新規ゲームの生成
-    pub fn create(game_id: GameId) -> Self {
+    pub fn create(game_id: GameId, player1_id: &PlayerId, player2_id: &PlayerId) -> Self {
         let current_turn_number = CurrentTurnNumber::initial();
 
-        Self::new(game_id, current_turn_number)
+        Self::new(
+            game_id,
+            current_turn_number,
+            player1_id.clone(),
+            player2_id.clone(),
+        )
     }
 
     /// ゲームの再構築（リポジトリから取得時に使用）
-    pub fn reconstruct(game_id: GameId, current_turn_number: CurrentTurnNumber) -> Self {
-        Self::new(game_id, current_turn_number)
+    pub fn reconstruct(
+        game_id: GameId,
+        current_turn_number: CurrentTurnNumber,
+        player1_id: PlayerId,
+        player2_id: PlayerId,
+    ) -> Self {
+        Self::new(game_id, current_turn_number, player1_id, player2_id)
     }
 
     /// 次のターンへ進める
@@ -57,6 +78,25 @@ impl Game {
 
     pub fn current_turn_number(&self) -> &CurrentTurnNumber {
         &self.current_turn_number
+    }
+
+    pub fn player1_id(&self) -> &PlayerId {
+        &self.player1_id
+    }
+
+    pub fn player2_id(&self) -> &PlayerId {
+        &self.player2_id
+    }
+
+    /// 指定されたプレイヤーIDに対応する対戦相手のプレイヤーIDを取得
+    pub fn get_opponent_player_id(&self, player_id: &PlayerId) -> Result<PlayerId, String> {
+        if player_id == self.player1_id() {
+            Ok(self.player2_id().clone())
+        } else if player_id == self.player2_id() {
+            Ok(self.player1_id().clone())
+        } else {
+            Err("指定されたプレイヤーIDはこのゲームの参加者ではありません".to_string())
+        }
     }
 }
 

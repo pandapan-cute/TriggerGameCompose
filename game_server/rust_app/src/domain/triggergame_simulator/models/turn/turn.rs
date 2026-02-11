@@ -1,3 +1,8 @@
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::triggergame_simulator::models::step::step::Step;
+use crate::domain::unit_management::models::unit::Unit;
+
 use super::turn_end_datetime::turn_end_datetime::TurnEndDatetime;
 use super::turn_id::turn_id::TurnId;
 use super::turn_number::turn_number::TurnNumber;
@@ -11,64 +16,112 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Turn {
     turn_id: TurnId,
+    game_id: GameId,
+    player_id: PlayerId,
     turn_number: TurnNumber,
     turn_start_datetime: TurnStartDatetime,
-    turn_end_datetime: Option<TurnEndDatetime>,
     turn_status: TurnStatus,
+    steps: Vec<Step>,
 }
 
 impl Turn {
     // privateなコンストラクタ
-    fn new(
+    pub fn new(
         turn_id: TurnId,
+        game_id: GameId,
+        player_id: PlayerId,
         turn_number: TurnNumber,
         turn_start_datetime: TurnStartDatetime,
-        turn_end_datetime: Option<TurnEndDatetime>,
         turn_status: TurnStatus,
+        steps: Vec<Step>,
     ) -> Self {
         Self {
             turn_id,
+            game_id,
+            player_id,
             turn_number,
             turn_start_datetime,
-            turn_end_datetime,
             turn_status,
+            steps,
         }
     }
 
     /// 新規ターンの生成
-    pub fn create(turn_number: TurnNumber, start_datetime: DateTime<Utc>) -> Self {
+    pub fn create(
+        game_id: GameId,
+        player_id: PlayerId,
+        turn_number: TurnNumber,
+        start_datetime: DateTime<Utc>,
+    ) -> Self {
         let turn_id = TurnId::new(Uuid::new_v4().to_string());
         let turn_start_datetime = TurnStartDatetime::new(start_datetime);
         let turn_status = TurnStatus::new(TurnStatusValue::StepSetting);
 
         Self::new(
             turn_id,
+            game_id,
+            player_id,
             turn_number,
             turn_start_datetime,
-            None,
             turn_status,
+            Vec::new(),
         )
     }
 
     /// ターンの再構築（リポジトリから取得時に使用）
     pub fn reconstruct(
         turn_id: TurnId,
+        game_id: GameId,
+        player_id: PlayerId,
         turn_number: TurnNumber,
         turn_start_datetime: TurnStartDatetime,
-        turn_end_datetime: Option<TurnEndDatetime>,
         turn_status: TurnStatus,
+        steps: Vec<Step>,
     ) -> Self {
         Self::new(
             turn_id,
+            game_id,
+            player_id,
             turn_number,
             turn_start_datetime,
-            turn_end_datetime,
             turn_status,
+            steps,
         )
     }
 
+    /// 別のターンと結合
+    pub fn merge(&mut self, other: &Turn) -> Result<(), String> {
+        // ステップを結合
+        let mut combined_steps = self.steps.clone();
+        combined_steps.extend(other.steps.clone());
+        self.steps = combined_steps;
+
+        Ok(())
+    }
+
+    /// ターンの戦闘処理を開始
+    pub fn turn_start(&mut self, units: Vec<Unit>) -> Result<(), String> {
+        if !self.turn_status.is_step_setting() {
+            return Err("行動設定中のステータスでないとターンを開始できません".to_string());
+        }
+        // ユニット行動モードに移行
+        self.start_unit_stepping()?;
+
+        // ユニットIDをキーとしたHashMapに変換
+        let mut units_map = units
+            .into_iter()
+            .map(|u| (u.unit_id().clone(), u))
+            .collect::<std::collections::HashMap<_, _>>();
+
+        for step in &mut self.steps {
+            step.step_start(&mut units_map)?;
+        }
+
+        Ok(())
+    }
+
     /// ターンをユニット行動中ステータスに変更
-    pub fn start_unit_stepping(&mut self) -> Result<(), String> {
+    fn start_unit_stepping(&mut self) -> Result<(), String> {
         if !self.turn_status.is_step_setting() {
             return Err("行動設定中のステータスでないとユニット行動を開始できません".to_string());
         }
@@ -81,7 +134,6 @@ impl Turn {
         if self.turn_status.is_completed() {
             return Err("既にターンは完了しています".to_string());
         }
-        self.turn_end_datetime = Some(TurnEndDatetime::new(end_datetime));
         self.turn_status = TurnStatus::new(TurnStatusValue::Completed);
         Ok(())
     }
@@ -106,6 +158,14 @@ impl Turn {
         &self.turn_id
     }
 
+    pub fn game_id(&self) -> &GameId {
+        &self.game_id
+    }
+
+    pub fn player_id(&self) -> &PlayerId {
+        &self.player_id
+    }
+
     pub fn turn_number(&self) -> &TurnNumber {
         &self.turn_number
     }
@@ -114,12 +174,12 @@ impl Turn {
         &self.turn_start_datetime
     }
 
-    pub fn turn_end_datetime(&self) -> Option<&TurnEndDatetime> {
-        self.turn_end_datetime.as_ref()
-    }
-
     pub fn turn_status(&self) -> &TurnStatus {
         &self.turn_status
+    }
+
+    pub fn steps(&self) -> &Vec<Step> {
+        &self.steps
     }
 }
 

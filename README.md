@@ -11,8 +11,11 @@ npm install -g wscat
 # WebSocketサーバーに接続
 wscat -c ws://localhost:8080
 
+# クラウド
+wscat -c wss://y0kc9gtshi.execute-api.ap-northeast-1.amazonaws.com/Prod/
+
 # 接続後、対話的にメッセージを送信
-{"action": "matchmaking", "player_id": "212df6af-6345-46a3-b7fe-d1d892ae0f2b"}
+{"action": "matchmaking", "player_id": "212df6af-6345-46a3-b7fe-d1d892ae0f2d"}
 {"type": "ping"}
 ```
 
@@ -50,5 +53,5 @@ docker compose down
       -> ほんとはゲーム画面のURLパスでゲームIDを取得してwsのメッセージで情報取得が一番いいと思うけど。。
          現時点では保留。後で実装。
 - [x] フロント側のキャラクター操作->サーバーへのリクエストまでの実装
-- [ ] サーバー側でのターン処理シーケンスの実装
-  - [ ] ターン内の操作をリクエストしたあとのシーケンスを作成
+- [x] サーバー側でのターン処理シーケンスの実装
+  - [x] ターン内の操作をリクエストしたあとのシーケンスを作成

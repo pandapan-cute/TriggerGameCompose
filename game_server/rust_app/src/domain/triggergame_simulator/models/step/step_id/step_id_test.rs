@@ -20,4 +20,12 @@ mod tests {
     fn test_invalid_uuid_format_panic() {
         StepId::new("invalid-uuid".to_string());
     }
+
+    #[test]
+    fn test_equality() {
+        let uuid = "123e4567-e89b-12d3-a456-426614174000";
+        let step_id1 = StepId::new(uuid.to_string());
+        let step_id2 = StepId::new(uuid.to_string());
+        assert_eq!(step_id1, step_id2);
+    }
 }

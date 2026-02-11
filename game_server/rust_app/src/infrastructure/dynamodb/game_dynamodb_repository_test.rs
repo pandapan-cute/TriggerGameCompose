@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::domain::triggergame_simulator::models::game::game::Game;
+    use crate::domain::{player_management::models::player::player_id::player_id::PlayerId, triggergame_simulator::models::game::game::Game};
 	use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 	use crate::domain::triggergame_simulator::models::game::current_turn_number::current_turn_number::CurrentTurnNumber;
     use crate::domain::triggergame_simulator::repositories::game_repository::GameRepository;
@@ -39,6 +39,8 @@ mod tests {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
             CurrentTurnNumber::new(1),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
         );
 
         let put_item_rule = mock!(Client::put_item)
@@ -57,6 +59,8 @@ mod tests {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
             CurrentTurnNumber::new(2),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
         );
 
         let update_item_rule = mock!(Client::update_item)
@@ -83,7 +87,14 @@ mod tests {
             "current_turn_number".to_string(),
             AttributeValue::N("3".to_string()),
         );
-
+        item.insert(
+            "player1_id".to_string(),
+            AttributeValue::S(Uuid::new_v4().to_string()),
+        );
+        item.insert(
+            "player2_id".to_string(),
+            AttributeValue::S(Uuid::new_v4().to_string()),
+        );
         let query_rule = mock!(Client::query)
             .match_requests(|_: &QueryInput| true)
             .then_output(move || {

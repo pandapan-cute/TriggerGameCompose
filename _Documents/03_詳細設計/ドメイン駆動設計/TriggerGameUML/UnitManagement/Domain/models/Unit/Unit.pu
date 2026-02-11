@@ -11,10 +11,10 @@ package "ユニット集約(UnitAggregation)" {
         CurrentActionPoints: CurrentActionPoints
         WaitTime: WaitTime
         Position: Position
-        UsingMainTriggerId: UsingMainTriggerId
-        UsingSubTriggerId: UsingSubTriggerId
-        HavingMainTriggerIds: HavingMainTriggerIds
-        HavingSubTriggerIds: HavingSubTriggerIds
+        TriggerId: TriggerId
+        TriggerId: TriggerId
+        HavingMainTriggerIds: List<TriggerId>
+        HavingSubTriggerIds: List<TriggerId>
         MainTriggerHP: MainTriggerHP
         SubTriggerHP: SubTriggerHP
         SightRange: SightRange
@@ -46,20 +46,20 @@ package "ユニット集約(UnitAggregation)" {
         + value: { x: int, y: int }
     }
 
-    class "UsingMainTriggerId(使用中メイントリガーID)" as UsingMainTriggerId {
-        + value: string
+    class "TriggerId(使用中メイントリガーID)" as TriggerId {
+        + value: TriggerId
     }
 
-    class "UsingSubTriggerId(使用中サブトリガーID)" as UsingSubTriggerId {
-        + value: string
+    class "TriggerId(使用中サブトリガーID)" as TriggerId {
+        + value: TriggerId
     }
 
-    class "HavingMainTriggerIds(所持メイントリガーID)" as HavingMainTriggerIds {
-        + value: List<string>
+    class "HavingMainTriggerIds(所持メイントリガーID)" as List<TriggerId> {
+        + value: List<TriggerId>
     }
 
-    class "HavingSubTriggerIds(所持サブトリガーID)" as HavingSubTriggerIds {
-        + value: List<string>
+    class "HavingSubTriggerIds(所持サブトリガーID)" as List<TriggerId> {
+        + value: List<TriggerId>
     }
 
     class "MainTriggerHP(メイントリガー体力)" as MainTriggerHP {
@@ -104,11 +104,11 @@ package "ユニット集約(UnitAggregation)" {
         - y: MIN = 0, MAX = マップ高さ-1
     end note
 
-    note bottom of UsingMainTriggerId
+    note bottom of TriggerId
         - 一文字以上の文字列
     end note
 
-    note bottom of UsingSubTriggerId
+    note bottom of TriggerId
         - 一文字以上の文字列
     end note
 
@@ -144,10 +144,10 @@ package "ユニット集約(UnitAggregation)" {
     Unit *-down- CurrentActionPoints
     Unit *-down- WaitTime
     Unit *-down- Position
-    Unit *-down- UsingMainTriggerId
-    Unit *-down- UsingSubTriggerId
-    Unit *-down- HavingMainTriggerIds
-    Unit *-down- HavingSubTriggerIds
+    Unit *-down- TriggerId
+    Unit *-down- TriggerId
+    Unit *-down- List<TriggerId>
+    Unit *-down- List<TriggerId>
     Unit *-down- MainTriggerHP
     Unit *-down- SubTriggerHP
     Unit *-down- SightRange

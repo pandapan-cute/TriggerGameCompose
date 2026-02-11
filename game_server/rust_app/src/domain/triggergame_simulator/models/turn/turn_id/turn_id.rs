@@ -19,9 +19,6 @@ impl TurnId {
         if value.is_empty() {
             panic!("TurnIdが空文字です");
         }
-        if Uuid::parse_str(value).is_err() {
-            panic!("TurnIdがUUID形式ではありません");
-        }
     }
 }
 

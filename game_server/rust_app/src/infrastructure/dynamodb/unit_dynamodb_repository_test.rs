@@ -1,23 +1,24 @@
 #[cfg(test)]
 mod tests {
-    use crate::domain::{
-        player_management::models::player::player_id::player_id::PlayerId,
-        triggergame_simulator::models::game::game_id::game_id::GameId,
-        unit_management::{
-            models::unit::{
-                current_action_points::current_action_points::CurrentActionPoints,
-                having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds,
-                having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds,
-                is_bailout::is_bailout::IsBailout, main_trigger_hp::main_trigger_hp::MainTriggerHP,
-                position::position::Position, sight_range::sight_range::SightRange,
-                sub_trigger_hp::sub_trigger_hp::SubTriggerHP, unit_id::unit_id::UnitId,
-                unit_type_id::unit_type_id::UnitTypeId,
-                using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId,
-                using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId,
-                wait_time::wait_time::WaitTime, Unit,
+    use crate::{
+        domain::{
+            player_management::models::player::player_id::player_id::PlayerId,
+            triggergame_simulator::models::game::game_id::game_id::GameId,
+            unit_management::{
+                models::unit::{
+                    current_action_points::current_action_points::CurrentActionPoints,
+                    having_trigger_ids::having_trigger_ids::HavingTriggerIds,
+                    is_bailout::is_bailout::IsBailout,
+                    main_trigger_hp::main_trigger_hp::MainTriggerHP, position::position::Position,
+                    sight_range::sight_range::SightRange,
+                    sub_trigger_hp::sub_trigger_hp::SubTriggerHP,
+                    trigger_id::trigger_id::TriggerId, unit_id::unit_id::UnitId,
+                    unit_type_id::unit_type_id::UnitTypeId, wait_time::wait_time::WaitTime, Unit,
+                },
+                repositories::unit_repository::UnitRepository,
             },
-            repositories::unit_repository::UnitRepository,
         },
+        infrastructure::dynamodb::test_utils::create_test_unit,
     };
 
     use super::super::unit_dynamodb_repository::DynamoDbUnitRepository;
@@ -50,32 +51,6 @@ mod tests {
         Client::from_conf(config)
     }
 
-    /// テスト用のUnitを作成
-    fn create_test_unit() -> Unit {
-        let game_id = "550e8400-e29b-41d4-a716-446655440000";
-        let player_uuid = "550e8400-e29b-41d4-a716-446655440001";
-        Unit::create(
-            UnitTypeId::new("unit_type_001".to_string()),
-            GameId::new(game_id.to_string()),
-            PlayerId::new(player_uuid.to_string()),
-            Position::new(5, 10),
-            UsingMainTriggerId::new("main_trigger_001".to_string()),
-            UsingSubTriggerId::new("sub_trigger_001".to_string()),
-            HavingMainTriggerIds::new(vec![
-                "main_trigger_001".to_string(),
-                "main_trigger_002".to_string(),
-            ]),
-            HavingSubTriggerIds::new(vec![
-                "sub_trigger_001".to_string(),
-                "sub_trigger_002".to_string(),
-            ]),
-            100,
-            100,
-            8,
-            13,
-        )
-    }
-
     #[tokio::test]
     async fn test_save_unit() {
         let unit = create_test_unit();
@@ -98,7 +73,7 @@ mod tests {
         let mut unit = create_test_unit();
 
         // ユニットの状態を更新
-        unit.move_to(Position::new(7, 12), 4).unwrap();
+        unit.move_to(Position::new(7, 12));
         unit.consume_action_points(1).unwrap();
 
         // UpdateItemの成功レスポンスをモック
@@ -145,8 +120,8 @@ mod tests {
 
         // Positionオブジェクト
         let mut position_map = HashMap::new();
-        position_map.insert("x".to_string(), AttributeValue::N("5".to_string()));
-        position_map.insert("y".to_string(), AttributeValue::N("10".to_string()));
+        position_map.insert("col".to_string(), AttributeValue::N("5".to_string()));
+        position_map.insert("row".to_string(), AttributeValue::N("10".to_string()));
         item.insert("position".to_string(), AttributeValue::M(position_map));
 
         item.insert(
@@ -257,8 +232,8 @@ mod tests {
         );
         item1.insert("wait_time".to_string(), AttributeValue::N("0".to_string()));
         let mut position_map1 = HashMap::new();
-        position_map1.insert("x".to_string(), AttributeValue::N("5".to_string()));
-        position_map1.insert("y".to_string(), AttributeValue::N("10".to_string()));
+        position_map1.insert("col".to_string(), AttributeValue::N("5".to_string()));
+        position_map1.insert("row".to_string(), AttributeValue::N("10".to_string()));
         item1.insert("position".to_string(), AttributeValue::M(position_map1));
         item1.insert(
             "using_main_trigger_id".to_string(),
@@ -314,8 +289,8 @@ mod tests {
         );
         item2.insert("wait_time".to_string(), AttributeValue::N("0".to_string()));
         let mut position_map2 = HashMap::new();
-        position_map2.insert("x".to_string(), AttributeValue::N("8".to_string()));
-        position_map2.insert("y".to_string(), AttributeValue::N("15".to_string()));
+        position_map2.insert("col".to_string(), AttributeValue::N("8".to_string()));
+        position_map2.insert("row".to_string(), AttributeValue::N("15".to_string()));
         item2.insert("position".to_string(), AttributeValue::M(position_map2));
         item2.insert(
             "using_main_trigger_id".to_string(),

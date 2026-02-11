@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::unit_management::models::unit::{
-    position::position::Position, using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId,
-    using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId, Unit,
+    position::position::Position, trigger_id::trigger_id::TriggerId, Unit,
 };
 
 /// マッチメイキングリクエストで受け取るユニット情報

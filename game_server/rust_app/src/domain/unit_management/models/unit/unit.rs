@@ -2,17 +2,15 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
-use super::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
-use super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
+use super::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
 use super::is_bailout::is_bailout::IsBailout;
 use super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
 use super::position::position::Position;
 use super::sight_range::sight_range::SightRange;
 use super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
+use super::trigger_id::trigger_id::TriggerId;
 use super::unit_id::unit_id::UnitId;
 use super::unit_type_id::unit_type_id::UnitTypeId;
-use super::using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId;
-use super::using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId;
 use super::wait_time::wait_time::WaitTime;
 use serde::Serialize;
 use uuid::Uuid;
@@ -28,10 +26,10 @@ pub struct Unit {
     current_action_points: CurrentActionPoints,
     wait_time: WaitTime,
     position: Position,
-    using_main_trigger_id: UsingMainTriggerId,
-    using_sub_trigger_id: UsingSubTriggerId,
-    having_main_trigger_ids: HavingMainTriggerIds,
-    having_sub_trigger_ids: HavingSubTriggerIds,
+    using_main_trigger_id: TriggerId,
+    using_sub_trigger_id: TriggerId,
+    having_main_trigger_ids: HavingTriggerIds,
+    having_sub_trigger_ids: HavingTriggerIds,
     main_trigger_hp: MainTriggerHP,
     sub_trigger_hp: SubTriggerHP,
     sight_range: SightRange,
@@ -49,10 +47,10 @@ impl Unit {
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
-        using_main_trigger_id: UsingMainTriggerId,
-        using_sub_trigger_id: UsingSubTriggerId,
-        having_main_trigger_ids: HavingMainTriggerIds,
-        having_sub_trigger_ids: HavingSubTriggerIds,
+        using_main_trigger_id: TriggerId,
+        using_sub_trigger_id: TriggerId,
+        having_main_trigger_ids: HavingTriggerIds,
+        having_sub_trigger_ids: HavingTriggerIds,
         main_trigger_hp: MainTriggerHP,
         sub_trigger_hp: SubTriggerHP,
         sight_range: SightRange,
@@ -83,10 +81,10 @@ impl Unit {
         game_id: GameId,
         owner_player_id: PlayerId,
         position: Position,
-        using_main_trigger_id: UsingMainTriggerId,
-        using_sub_trigger_id: UsingSubTriggerId,
-        having_main_trigger_ids: HavingMainTriggerIds,
-        having_sub_trigger_ids: HavingSubTriggerIds,
+        using_main_trigger_id: TriggerId,
+        using_sub_trigger_id: TriggerId,
+        having_main_trigger_ids: HavingTriggerIds,
+        having_sub_trigger_ids: HavingTriggerIds,
         initial_main_hp: i32,
         initial_sub_hp: i32,
         initial_sight_range: i32,
@@ -129,10 +127,10 @@ impl Unit {
         current_action_points: CurrentActionPoints,
         wait_time: WaitTime,
         position: Position,
-        using_main_trigger_id: UsingMainTriggerId,
-        using_sub_trigger_id: UsingSubTriggerId,
-        having_main_trigger_ids: HavingMainTriggerIds,
-        having_sub_trigger_ids: HavingSubTriggerIds,
+        using_main_trigger_id: TriggerId,
+        using_sub_trigger_id: TriggerId,
+        having_main_trigger_ids: HavingTriggerIds,
+        having_sub_trigger_ids: HavingTriggerIds,
         main_trigger_hp: MainTriggerHP,
         sub_trigger_hp: SubTriggerHP,
         sight_range: SightRange,
@@ -158,20 +156,57 @@ impl Unit {
     }
 
     /// ユニットを移動
-    pub fn move_to(
-        &mut self,
-        new_position: Position,
-        action_point_cost: i32,
-    ) -> Result<(), String> {
+    ///
+    /// ひとまず同じマスにキャラがいるかはチェックしない
+    ///
+    /// 現在位置と同じ -> 移動しない  
+    ///
+    /// 現在位置と異なる -> 移動し、行動ポイントを1消費  
+    ///
+    /// ベイルアウト済みのユニットは移動できない  
+    ///
+    /// 行動ポイントが不足している場合は移動できない  
+    pub fn move_to(&mut self, new_position: Position) -> bool {
         if self.is_bailout.is_bailout() {
-            return Err("ベイルアウト済みのユニットは移動できません".to_string());
+            return false;
         }
-        if self.current_action_points.value() < action_point_cost {
-            return Err("行動ポイントが不足しています".to_string());
+        // 現在位置と同じなら移動しない
+        if self.position == new_position {
+            return false;
+        }
+
+        const ACTION_POINT_COST_PER_MOVE: i32 = 1; // 移動はアクションポイントを1消費する
+        if self.current_action_points.value() < ACTION_POINT_COST_PER_MOVE {
+            return false;
         }
         self.position = new_position;
-        self.current_action_points =
-            CurrentActionPoints::new(self.current_action_points.value() - action_point_cost);
+        self.current_action_points = CurrentActionPoints::new(
+            self.current_action_points.value() - ACTION_POINT_COST_PER_MOVE,
+        );
+        true
+    }
+
+    /// 使用するトリガーを設定
+    ///
+    /// アクションポイントが足りない場合は更新しないでスルー
+    /// (トリガーが更新されてしまうと、行動できないのにトリガーだけ変更されてトリガーのHPの考えが面倒になるため)
+    ///
+    /// 所持トリガー外のトリガーIDが指定された場合はエラーを返す
+    pub fn set_using_triggers(
+        &mut self,
+        main_trigger_id: &TriggerId,
+        sub_trigger_id: &TriggerId,
+    ) -> Result<(), String> {
+        if !self.having_main_trigger_ids.contains(main_trigger_id) {
+            return Err("指定されたメイントリガーIDは所持していません".to_string());
+        }
+        if !self.having_sub_trigger_ids.contains(sub_trigger_id) {
+            return Err("指定されたサブトリガーIDは所持していません".to_string());
+        }
+        if self.current_action_points.value() > 0 {
+            self.using_main_trigger_id = main_trigger_id.clone();
+            self.using_sub_trigger_id = sub_trigger_id.clone();
+        }
         Ok(())
     }
 
@@ -249,12 +284,12 @@ impl Unit {
     }
 
     /// メイントリガーを装備
-    pub fn equip_main_trigger(&mut self, trigger_id: UsingMainTriggerId) {
+    pub fn equip_main_trigger(&mut self, trigger_id: TriggerId) {
         self.using_main_trigger_id = trigger_id;
     }
 
     /// サブトリガーを装備
-    pub fn equip_sub_trigger(&mut self, trigger_id: UsingSubTriggerId) {
+    pub fn equip_sub_trigger(&mut self, trigger_id: TriggerId) {
         self.using_sub_trigger_id = trigger_id;
     }
 
@@ -307,19 +342,19 @@ impl Unit {
         &self.position
     }
 
-    pub fn using_main_trigger_id(&self) -> &UsingMainTriggerId {
+    pub fn using_main_trigger_id(&self) -> &TriggerId {
         &self.using_main_trigger_id
     }
 
-    pub fn using_sub_trigger_id(&self) -> &UsingSubTriggerId {
+    pub fn using_sub_trigger_id(&self) -> &TriggerId {
         &self.using_sub_trigger_id
     }
 
-    pub fn having_main_trigger_ids(&self) -> &HavingMainTriggerIds {
+    pub fn having_main_trigger_ids(&self) -> &HavingTriggerIds {
         &self.having_main_trigger_ids
     }
 
-    pub fn having_sub_trigger_ids(&self) -> &HavingSubTriggerIds {
+    pub fn having_sub_trigger_ids(&self) -> &HavingTriggerIds {
         &self.having_sub_trigger_ids
     }
 

@@ -113,7 +113,12 @@ impl MatchmakingApplicationService {
                 }
                 // ゲーム情報を登録
                 let game_id = GameId::new(matching.matching_id().value().to_string());
-                let game = Game::new(game_id.clone(), CurrentTurnNumber::new(1));
+                let game = Game::new(
+                    game_id.clone(),
+                    CurrentTurnNumber::new(1),
+                    matching.player1_id().clone(),
+                    PlayerId::new(player_id.to_string()),
+                );
                 let result = self.game_repository.save(&game).await;
                 if result.is_err() {
                     return Err(result.err().unwrap());

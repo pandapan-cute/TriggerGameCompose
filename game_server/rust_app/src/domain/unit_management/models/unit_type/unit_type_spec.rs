@@ -3,12 +3,11 @@ use std::collections::HashMap;
 /// ユニットタイプのマスターデータ（値オブジェクト）
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnitTypeSpec {
+    /// ユニットタイプID
     unit_type_id: String,
-    base_hp: i32,
     base_attack: i32,
     base_defense: i32,
-    move_range: i32,
-    sight_range: i32,
+    base_avoid: i32,
     action_points: i32,
 }
 
@@ -20,11 +19,9 @@ impl UnitTypeSpec {
                 "MIKUMO_OSAMU",
                 UnitTypeSpec {
                     unit_type_id: "MIKUMO_OSAMU".to_string(),
-                    base_hp: 100,
                     base_attack: 30,
                     base_defense: 10,
-                    move_range: 4,
-                    sight_range: 8,
+                    base_avoid: 5,
                     action_points: 2,
                 },
             ),
@@ -32,11 +29,9 @@ impl UnitTypeSpec {
                 "KUGA_YUMA",
                 UnitTypeSpec {
                     unit_type_id: "KUGA_YUMA".to_string(),
-                    base_hp: 80,
                     base_attack: 50,
                     base_defense: 5,
-                    move_range: 3,
-                    sight_range: 13,
+                    base_avoid: 10,
                     action_points: 2,
                 },
             ),
@@ -44,11 +39,9 @@ impl UnitTypeSpec {
                 "AMATORI_CHIKA",
                 UnitTypeSpec {
                     unit_type_id: "AMATORI_CHIKA".to_string(),
-                    base_hp: 120,
                     base_attack: 25,
                     base_defense: 15,
-                    move_range: 2,
-                    sight_range: 10,
+                    base_avoid: 5,
                     action_points: 2,
                 },
             ),
@@ -56,11 +49,9 @@ impl UnitTypeSpec {
                 "HYUSE_KURONIN",
                 UnitTypeSpec {
                     unit_type_id: "HYUSE_KURONIN".to_string(),
-                    base_hp: 120,
                     base_attack: 25,
                     base_defense: 15,
-                    move_range: 2,
-                    sight_range: 10,
+                    base_avoid: 5,
                     action_points: 2,
                 },
             ),
@@ -73,13 +64,15 @@ impl UnitTypeSpec {
     }
 
     // ゲッター
-    pub fn base_hp(&self) -> i32 {
-        self.base_hp
+    pub fn base_attack(&self) -> i32 {
+        self.base_attack
     }
-    pub fn sight_range(&self) -> i32 {
-        self.sight_range
+
+    pub fn base_defense(&self) -> i32 {
+        self.base_defense
     }
-    pub fn action_points(&self) -> i32 {
-        self.action_points
+
+    pub fn base_avoid(&self) -> i32 {
+        self.base_avoid
     }
 }

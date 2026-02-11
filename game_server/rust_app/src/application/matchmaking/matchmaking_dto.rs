@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::domain::{
     player_management::models::player::player_id::player_id::PlayerId,
     triggergame_simulator::models::game::game_id::game_id::GameId,
-    unit_management::models::unit::{
-        using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId,
-        using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId, Unit,
-    },
+    unit_management::models::unit::{trigger_id::trigger_id::TriggerId, Unit},
 };
 
 /// マッチメイキングリクエストで受け取るユニット情報
@@ -29,9 +26,8 @@ impl CreateUnitDto {
     /// DTOをドメインエンティティに変換（ファクトリーメソッド）
     pub fn to_unit(&self, game_id: GameId, owner_player_id: PlayerId) -> Unit {
         use crate::domain::unit_management::models::unit::{
-            having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds,
-            having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds,
-            position::position::Position, unit_type_id::unit_type_id::UnitTypeId, Unit,
+            having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
+            unit_type_id::unit_type_id::UnitTypeId, Unit,
         };
 
         Unit::create(
@@ -39,10 +35,10 @@ impl CreateUnitDto {
             game_id,
             owner_player_id,
             Position::new(self.initial_x, self.initial_y),
-            UsingMainTriggerId::new(self.using_main_trigger_id.clone()),
-            UsingSubTriggerId::new(self.using_sub_trigger_id.clone()),
-            HavingMainTriggerIds::new(self.main_trigger_ids.clone()),
-            HavingSubTriggerIds::new(self.sub_trigger_ids.clone()),
+            TriggerId::new(self.using_main_trigger_id.clone()),
+            TriggerId::new(self.using_sub_trigger_id.clone()),
+            HavingTriggerIds::new(vec![TriggerId::new(self.using_main_trigger_id.clone())]),
+            HavingTriggerIds::new(vec![TriggerId::new(self.using_sub_trigger_id.clone())]),
             100, // TODO: マスターデータから取得予定
             100, // TODO: マスターデータから取得予定
             8,   // TODO: 開始地点の高さから取得予定

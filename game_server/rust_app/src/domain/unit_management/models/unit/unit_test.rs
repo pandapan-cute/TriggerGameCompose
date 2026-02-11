@@ -2,55 +2,32 @@
 mod tests {
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+    use crate::infrastructure::dynamodb::test_utils::{
+        create_test_0_action_points_unit, create_test_unit,
+    };
 
     use super::super::current_action_points::current_action_points::CurrentActionPoints;
-    use super::super::having_main_trigger_ids::having_main_trigger_ids::HavingMainTriggerIds;
-    use super::super::having_sub_trigger_ids::having_sub_trigger_ids::HavingSubTriggerIds;
+    use super::super::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
     use super::super::is_bailout::is_bailout::IsBailout;
     use super::super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
     use super::super::position::position::Position;
     use super::super::sight_range::sight_range::SightRange;
     use super::super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
+    use super::super::trigger_id::trigger_id::TriggerId;
     use super::super::unit::Unit;
     use super::super::unit_id::unit_id::UnitId;
     use super::super::unit_type_id::unit_type_id::UnitTypeId;
-    use super::super::using_main_trigger_id::using_main_trigger_id::UsingMainTriggerId;
-    use super::super::using_sub_trigger_id::using_sub_trigger_id::UsingSubTriggerId;
     use super::super::wait_time::wait_time::WaitTime;
     use uuid::Uuid;
-
-    fn create_test_unit() -> Unit {
-        let unit_type_id = UnitTypeId::new(Uuid::new_v4().to_string());
-        let game_id = GameId::new(Uuid::new_v4().to_string());
-        let owner_player_id = PlayerId::new(Uuid::new_v4().to_string());
-        let position = Position::new(0, 0);
-        let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
-        let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
-
-        Unit::create(
-            unit_type_id,
-            game_id,
-            owner_player_id,
-            position,
-            UsingMainTriggerId::new("KOGETSU".to_string()),
-            UsingSubTriggerId::new("SHIELD".to_string()),
-            having_main_trigger_ids,
-            having_sub_trigger_ids,
-            100, // initial_main_hp
-            50,  // initial_sub_hp
-            5,   // initial_sight_range
-            10,  // initial_action_points
-        )
-    }
 
     #[test]
     fn test_create_unit() {
         let unit = create_test_unit();
 
         assert_eq!(unit.main_trigger_hp().value(), 100);
-        assert_eq!(unit.sub_trigger_hp().value(), 50);
-        assert_eq!(unit.sight_range().value(), 5);
-        assert_eq!(unit.current_action_points().value(), 10);
+        assert_eq!(unit.sub_trigger_hp().value(), 100);
+        assert_eq!(unit.sight_range().value(), 8);
+        assert_eq!(unit.current_action_points().value(), 13);
         assert_eq!(unit.wait_time().value(), 0);
         assert!(unit.is_active());
         assert!(!unit.is_bailed_out());
@@ -61,21 +38,20 @@ mod tests {
         let mut unit = create_test_unit();
         let new_position = Position::new(5, 5);
 
-        unit.move_to(new_position.clone(), 3).unwrap();
+        unit.move_to(new_position.clone());
 
-        assert_eq!(unit.position().x(), 5);
-        assert_eq!(unit.position().y(), 5);
-        assert_eq!(unit.current_action_points().value(), 7);
+        assert_eq!(unit.position().col(), 5);
+        assert_eq!(unit.position().row(), 5);
+        assert_eq!(unit.current_action_points().value(), 12);
     }
 
     #[test]
     fn test_move_to_insufficient_action_points() {
-        let mut unit = create_test_unit();
+        let mut unit = create_test_0_action_points_unit();
         let new_position = Position::new(5, 5);
 
-        let result = unit.move_to(new_position, 15);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "行動ポイントが不足しています");
+        let result = unit.move_to(new_position);
+        assert!(!result);
     }
 
     #[test]
@@ -84,13 +60,9 @@ mod tests {
         unit.bailout();
 
         let new_position = Position::new(5, 5);
-        let result = unit.move_to(new_position, 3);
+        let result = unit.move_to(new_position);
 
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "ベイルアウト済みのユニットは移動できません"
-        );
+        assert!(!result);
     }
 
     #[test]
@@ -110,10 +82,10 @@ mod tests {
         let mut unit = create_test_unit();
 
         unit.take_sub_trigger_damage(20).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 30);
+        assert_eq!(unit.sub_trigger_hp().value(), 80);
 
         unit.take_sub_trigger_damage(40).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 0);
+        assert_eq!(unit.sub_trigger_hp().value(), 40);
     }
 
     #[test]
@@ -132,17 +104,17 @@ mod tests {
         let mut unit = create_test_unit();
         unit.take_sub_trigger_damage(30).unwrap();
 
-        assert_eq!(unit.sub_trigger_hp().value(), 20);
+        assert_eq!(unit.sub_trigger_hp().value(), 70);
 
         unit.heal_sub_trigger(15).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 35);
+        assert_eq!(unit.sub_trigger_hp().value(), 85);
     }
 
     #[test]
     fn test_consume_action_points() {
         let mut unit = create_test_unit();
 
-        unit.consume_action_points(5).unwrap();
+        unit.consume_action_points(8).unwrap();
         assert_eq!(unit.current_action_points().value(), 5);
 
         let result = unit.consume_action_points(10);
@@ -155,10 +127,10 @@ mod tests {
         let mut unit = create_test_unit();
         unit.consume_action_points(8).unwrap();
 
-        assert_eq!(unit.current_action_points().value(), 2);
+        assert_eq!(unit.current_action_points().value(), 5);
 
         unit.restore_action_points(5).unwrap();
-        assert_eq!(unit.current_action_points().value(), 7);
+        assert_eq!(unit.current_action_points().value(), 10);
     }
 
     #[test]
@@ -195,10 +167,10 @@ mod tests {
         let current_action_points = CurrentActionPoints::new(15);
         let wait_time = WaitTime::new(50);
         let position = Position::new(10, 20);
-        let using_main_trigger_id = UsingMainTriggerId::new(Uuid::new_v4().to_string());
-        let using_sub_trigger_id = UsingSubTriggerId::new(Uuid::new_v4().to_string());
-        let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
-        let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
+        let using_main_trigger_id = TriggerId::new(Uuid::new_v4().to_string());
+        let using_sub_trigger_id = TriggerId::new(Uuid::new_v4().to_string());
+        let having_main_trigger_ids = HavingTriggerIds::new(vec![]);
+        let having_sub_trigger_ids = HavingTriggerIds::new(vec![]);
         let main_trigger_hp = MainTriggerHP::new(80);
         let sub_trigger_hp = SubTriggerHP::new(40);
         let sight_range = SightRange::new(7);
@@ -244,10 +216,10 @@ mod tests {
         let current_action_points = CurrentActionPoints::new(10);
         let wait_time = WaitTime::new(0);
         let position = Position::new(0, 0);
-        let using_main_trigger_id = UsingMainTriggerId::new("KOGETSU".to_string());
-        let using_sub_trigger_id = UsingSubTriggerId::new("SHIELD".to_string());
-        let having_main_trigger_ids = HavingMainTriggerIds::new(vec![]);
-        let having_sub_trigger_ids = HavingSubTriggerIds::new(vec![]);
+        let using_main_trigger_id = TriggerId::new("KOGETSU".to_string());
+        let using_sub_trigger_id = TriggerId::new("SHIELD".to_string());
+        let having_main_trigger_ids = HavingTriggerIds::new(vec![]);
+        let having_sub_trigger_ids = HavingTriggerIds::new(vec![]);
         let main_trigger_hp = MainTriggerHP::new(100);
         let sub_trigger_hp = SubTriggerHP::new(50);
         let sight_range = SightRange::new(5);

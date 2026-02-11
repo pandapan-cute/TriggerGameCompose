@@ -1,9 +1,11 @@
-#[derive(Debug, Clone)]
-pub struct UsingMainTriggerId {
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TriggerId {
     value: String,
 }
 
-impl UsingMainTriggerId {
+impl TriggerId {
     pub fn new(value: String) -> Self {
         Self::validate(&value);
         Self { value }
@@ -22,16 +24,16 @@ impl UsingMainTriggerId {
     // バリデーションの実装
     fn validate(value: &str) {
         if value.is_empty() {
-            panic!("UsingMainTriggerIdは1文字以上である必要があります");
+            panic!("TriggerIdは1文字以上である必要があります");
         }
     }
 }
 
 // 等価性の比較を実装
-impl PartialEq for UsingMainTriggerId {
+impl PartialEq for TriggerId {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
 }
 
-impl Eq for UsingMainTriggerId {}
+impl Eq for TriggerId {}

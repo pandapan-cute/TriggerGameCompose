@@ -9,11 +9,12 @@ use super::turn_number::turn_number::TurnNumber;
 use super::turn_start_datetime::turn_start_datetime::TurnStartDatetime;
 use super::turn_status::turn_status::{TurnStatus, TurnStatusValue};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Turn集約
 /// ゲームの1ターンを表すエンティティ
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Turn {
     turn_id: TurnId,
     game_id: GameId,
@@ -100,7 +101,7 @@ impl Turn {
     }
 
     /// ターンの戦闘処理を開始
-    pub fn turn_start(&mut self, units: Vec<Unit>) -> Result<(), String> {
+    pub fn turn_start(&mut self, units: Vec<Unit>) -> Result<Vec<Unit>, String> {
         if !self.turn_status.is_step_setting() {
             return Err("行動設定中のステータスでないとターンを開始できません".to_string());
         }
@@ -113,11 +114,12 @@ impl Turn {
             .map(|u| (u.unit_id().clone(), u))
             .collect::<std::collections::HashMap<_, _>>();
 
+        // 各ステップの戦闘演算を開始
         for step in &mut self.steps {
             step.step_start(&mut units_map)?;
         }
 
-        Ok(())
+        Ok(units_map.into_values().collect())
     }
 
     /// ターンをユニット行動中ステータスに変更

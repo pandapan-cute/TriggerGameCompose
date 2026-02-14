@@ -1,0 +1,1838 @@
+'use client';
+import { FieldViewState } from "../../entities/FieldViewState";
+import { GameView } from "../../GameView";
+import { HexUtils } from "../../hexUtils";
+import { BackCanvasTexture } from "../textures/BackCanvasTexture";
+import { CombatStepResult, GridConfig, StepCharacterResult } from "../../types";
+import "phaser";
+import { UnitImageLoader } from "./loader/UnitImageLoader";
+import { GameAssetsLoader } from "./loader/GameAssetsLoader";
+import { GameCamera } from "../cameras/GameCamera";
+import { GameInput } from "./inputs/GameInput";
+import { GameState } from "@/game-logics/models/GameState";
+import { CharacterManager } from "@/game-logics/characterManager";
+import { executeActionsEmitter } from "@/game-logics/GameGrid";
+import { CHARACTER_STATUS, TRIGGER_STATUS } from "@/game-logics/config/status";
+import { playerCharacterKeys, playerPositions } from "@/game-logics/config/CharacterConfig";
+import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
+import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
+import { CharacterImageState } from "@/game-logics/entities/CharacterImageState";
+import { HighLightCell } from "../game-objects/graphics/HighLightCell";
+import { MovableHighlightCell } from "../game-objects/graphics/MovableHighlightCell";
+import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
+
+
+export class GridCellsScene extends Phaser.Scene {
+
+  // Phaserオブジェクト
+  private hoveredCell: { x: number; y: number; } | null = null; // マウスでホバーしているセル
+  private cellHighlight!: HighLightCell; // セルのハイライト表示用
+
+  /** キャラクター管理 */
+  private characterManager: CharacterManager = new CharacterManager();
+
+  /** フィールドビューの状態管理 */
+  private fieldViewState!: FieldViewState;
+
+  // トリガー設定フェーズ
+  private triggerSettingMode: boolean = false; // トリガー設定モード
+  private triggerSettingType: "main" | "sub" | null = null; // 設定中のトリガータイプ
+  private triggerFan: Phaser.GameObjects.Graphics | null = null; // トリガー扇形の表示
+  private triggerPoints: Phaser.GameObjects.Graphics[] | null = null;
+  private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
+  private currentTriggerAngle: number = 0; // 現在のトリガー角度
+
+  constructor() {
+    super({ key: "GridScene" });
+  }
+
+  // 行動履歴
+  private actionHistory: {
+    character: Phaser.GameObjects.Image;
+    mainAzimuth: number;
+    subAzimuth: number;
+    position: { col: number; row: number; };
+    mainTrigger: string;
+    subTrigger: string;
+    timestamp: string;
+  }[] = [];
+
+  // ユニット行動モード関連
+  private isActionMode: boolean = false;
+  private actionAnimationInProgress: boolean = false;
+  /** ユニット行動モード中のトリガー矢印の配列 */
+  private triggerArrows: Phaser.GameObjects.Graphics[] = [];
+
+  /** グリッドの設定値 */
+  private gridConfig: GridConfig = {
+    gridSize: 32,
+    gridWidth: 36,
+    gridHeight: 36,
+    hexRadius: 24,
+    hexWidth: 24 * 2,
+    hexHeight: 24 * Math.sqrt(3),
+    marginLeft: 0,
+    marginTop: 0,
+  };
+  /** グリッドフィールドの関数群 */
+  private hexUtils!: HexUtils;
+  /** ゲーム表示関連のクラス */
+  private gameView!: GameView;
+
+  // トリガー表示管理
+  private triggerDisplays: Map<
+    Phaser.GameObjects.Image,
+    {
+      mainTrigger: Phaser.GameObjects.Graphics | null;
+      subTrigger: Phaser.GameObjects.Graphics | null;
+    }
+  > = new Map();
+
+  /**
+  * Phaserのpreload段階で呼ばれる
+  * アセット（画像、音声など）の読み込みを行う
+  */
+  preload() {
+    new BackCanvasTexture(this, this.gridConfig); // 背景テクスチャの作成
+    new UnitImageLoader(this);
+    new GameAssetsLoader(this);
+  }
+
+  /**
+   * 余白を初期化する（画面サイズの半分程度）
+   */
+  private initializeMargins() {
+    // ゲームのキャンバスサイズを取得
+    const gameWidth = this.cameras.main.width;
+    const gameHeight = this.cameras.main.height;
+
+    // 画面の横幅/縦幅の半分程度の余白を設定
+    this.gridConfig = {
+      ...this.gridConfig,
+      marginLeft: gameWidth * 0.5,
+      marginTop: gameHeight * 0.5,
+    };
+  }
+
+  /**
+   * 六角形グリッドのユーティリティを初期化する
+   */
+  initializeGameConfig() {
+    this.hexUtils = new HexUtils(this.gridConfig);
+    this.gameView = new GameView(this, this.gridConfig);
+    this.fieldViewState = new FieldViewState(
+      this.hexUtils,
+      this,
+      this.gridConfig
+    );
+  }
+
+  /**
+   * Phaserのcreate段階で呼ばれる
+   * ゲームオブジェクトの初期化を行う
+   */
+  create() {
+    this.initializeMargins(); // 余白を初期化
+    new GameCamera(this, this.gridConfig); // カメラの設定を最初に行う
+    this.initializeGameConfig(); // 六角形グリッドの設定値初期化
+    // this.setupMatchmakingListeners(); // マッチ決定後のイベントリスナーを設定
+    this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
+    this.createCharacters(); // キャラクターを配置
+    this.createMouseInteraction(); // マウスイベントを設定
+    this.createKeyboardInteraction(); // キーボードイベントを設定
+    this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
+  }
+
+  /**
+   * 行動モードのイベントリスナーを設定
+   */
+  private setupActionModeListeners() {
+    const handleExecuteActions = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { turnCompleteResult, playerId, turnNumber } = customEvent.detail;
+      // すべてのキャラクターの行動力を非表示
+      this.characterManager.setAllActionPointsTextToNull();
+      this.executeAllActions(turnCompleteResult, playerId, turnNumber);
+    };
+
+    executeActionsEmitter.addEventListener(
+      "executeAllActions",
+      handleExecuteActions
+    );
+  }
+
+  /**
+   * マッチ決定後のイベントリスナーを設定
+   */
+  // private setupMatchmakingListeners() {
+  //   if (fieldView) {
+  //     this.fieldViewState.setSightAreaFieldView(fieldView!);
+  //   }
+  // }
+
+  /**
+   * マウスイベントを設定する（六角形グリッド対応）
+   */
+  private createMouseInteraction() {
+    // カメラドラッグ用の変数
+    let isDraggingCamera = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let cameraStartX = 0;
+    let cameraStartY = 0;
+    const DRAG_THRESHOLD = 10;
+
+    // ピンチジェスチャー用の変数
+    let initialDistance = 0;
+    let isPinching = false;
+    let initialZoom = 1;
+
+    // マウス移動イベント
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      // ピンチ中かつ2本指がタッチされている場合
+      if (isPinching && this.input.pointer2 && this.input.pointer2.isDown) {
+        const pointer1 = this.input.activePointer;
+        const pointer2 = this.input.pointer2;
+
+        // 現在の2本指間の距離を計算
+        const currentDistance = this.hexUtils.calculateDistance(
+          pointer1.x,
+          pointer1.y,
+          pointer2.x,
+          pointer2.y
+        );
+
+        if (initialDistance > 0) {
+          // 距離の比率でズーム倍率を計算
+          const scale = currentDistance / initialDistance;
+          const newZoom = initialZoom * scale;
+
+          // ズーム適用（範囲制限付き）
+          const clampedZoom = Phaser.Math.Clamp(newZoom, 0.25, 3.0);
+          this.cameras.main.setZoom(clampedZoom);
+        }
+        return;
+      }
+      // 一本指でのカメラドラッグ中の処理
+      if (!this.triggerFan && pointer.leftButtonDown()) {
+        const deltaX = pointer.x - dragStartX;
+        const deltaY = pointer.y - dragStartY;
+        // しきい値を超えた場合はカメラドラッグとして判定
+        if (
+          Math.abs(deltaX) > DRAG_THRESHOLD ||
+          Math.abs(deltaY) > DRAG_THRESHOLD
+        ) {
+          this.cameras.main.scrollX = cameraStartX - deltaX;
+          this.cameras.main.scrollY = cameraStartY - deltaY;
+          isDraggingCamera = true;
+        }
+        return;
+      }
+
+      // 行動モード中はカメラドラッグ以外の操作を無効化
+      if (this.isActionMode || this.actionAnimationInProgress) {
+        return;
+      }
+
+      // トリガー扇形をドラッグ中の場合
+      if (
+        this.isDraggingTrigger &&
+        this.characterManager.selectedCharacter &&
+        this.triggerFan
+      ) {
+        const centerPos = this.hexUtils.getHexPosition(
+          this.characterManager.selectedCharacter.position.col,
+          this.characterManager.selectedCharacter.position.row
+        );
+        const newAngle = this.hexUtils.calculateMouseAngle(
+          centerPos.x,
+          centerPos.y,
+          pointer.x,
+          pointer.y,
+          this.cameras.main
+        );
+        this.currentTriggerAngle = newAngle;
+        this.updateTriggerFan();
+        return;
+      }
+
+      // 通常のホバー処理（左クリック操作でない場合はスキップ）
+      if (
+        !this.triggerSettingMode &&
+        !pointer.rightButtonDown() &&
+        !pointer.middleButtonDown()
+      ) {
+        const hexCoord = this.hexUtils.pixelToHex(
+          pointer.x,
+          pointer.y,
+          this.cameras.main
+        );
+        if (
+          hexCoord.col >= 0 &&
+          hexCoord.col < this.gridConfig.gridWidth &&
+          hexCoord.row >= 0 &&
+          hexCoord.row < this.gridConfig.gridHeight
+        ) {
+          this.hoveredCell = { x: hexCoord.col, y: hexCoord.row };
+          this.updateCellHighlight();
+        } else {
+          this.hoveredCell = null;
+          this.cellHighlight.setVisible(false);
+        }
+      }
+    });
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // 2本目の指がタッチされた場合
+      if (this.input.pointer2 && this.input.pointer2.isDown) {
+        const pointer1 = this.input.activePointer;
+        const pointer2 = this.input.pointer2;
+
+        // 2本指間の初期距離を計算
+        initialDistance = this.hexUtils.calculateDistance(
+          pointer1.x,
+          pointer1.y,
+          pointer2.x,
+          pointer2.y
+        );
+        isPinching = true;
+        initialZoom = this.cameras.main.zoom;
+        return;
+      }
+      // 一本指ならカメラドラッグ開始
+      dragStartX = pointer.x;
+      dragStartY = pointer.y;
+      cameraStartX = this.cameras.main.scrollX;
+      cameraStartY = this.cameras.main.scrollY;
+
+      // トリガー設定モードの場合
+      if (
+        this.triggerSettingMode &&
+        this.triggerFan &&
+        this.characterManager.selectedCharacter
+      ) {
+        this.isDraggingTrigger = true;
+        return;
+      }
+    });
+
+    // マウスクリックイベント
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      // どちらかの指が離れたらピンチ終了
+      if (!this.input.pointer2 || !this.input.pointer2.isDown) {
+        isPinching = false;
+        initialDistance = 0;
+      }
+      // カメラドラッグ終了
+      if (isDraggingCamera) {
+        isDraggingCamera = false;
+        return;
+      }
+
+      // 行動モード中はカメラドラッグ以外の操作を無効化
+      if (this.isActionMode || this.actionAnimationInProgress) {
+        console.log("行動実行中のため操作できません");
+        return;
+      }
+
+      if (this.isDraggingTrigger && this.triggerSettingMode) {
+        this.isDraggingTrigger = false;
+        this.completeTriggerSetting(this.currentTriggerAngle);
+        return;
+      }
+
+      // マウス座標を六角形グリッド座標に変換
+      const hexCoord = this.hexUtils.pixelToHex(
+        pointer.x,
+        pointer.y,
+        this.cameras.main
+      );
+
+      // グリッド範囲内の場合
+      if (
+        hexCoord.col >= 0 &&
+        hexCoord.col < this.gridConfig.gridWidth &&
+        hexCoord.row >= 0 &&
+        hexCoord.row < this.gridConfig.gridHeight
+      ) {
+        // そのマスにキャラクターがいるかチェック
+        const characterAtPosition =
+          this.characterManager.getPlayerCharacterAt(
+            hexCoord.col,
+            hexCoord.row
+          );
+
+        if (characterAtPosition) {
+          if (
+            characterAtPosition === this.characterManager.selectedCharacter
+          ) {
+            // 移動前のポジションを保存
+            this.characterManager.beforePositionState.set(
+              this.characterManager.selectedCharacter.image,
+              this.characterManager.selectedCharacter.position
+            );
+
+            // 既に選択されているキャラクターを再度クリック：トリガー設定モードに入る
+            console.log(
+              `選択中のキャラクターをクリック: トリガー設定モードに入ります`
+            );
+            const actionPoints = characterAtPosition.actionPoints || 0;
+            // 行動力を消費
+            this.consumeActionPoint(actionPoints - 1);
+            this.startTriggerSetting();
+          } else {
+            // 他のプレイヤーキャラクターをクリックした場合：選択
+            this.selectCharacter(characterAtPosition.image);
+            console.log(
+              `キャラクターを選択: (${hexCoord.col}, ${hexCoord.row})`
+            );
+          }
+        } else if (this.characterManager.selectedCharacter) {
+          // キャラクターが選択されている状態で空のマスをクリックしたパターン
+          const actionPoints =
+            this.characterManager.playerCharacters.find(
+              (char) =>
+                char.image === this.characterManager.selectedCharacter?.image
+            )?.actionPoints || 0;
+          const adjacentHexes = this.hexUtils.getAdjacentHexes(
+            this.characterManager.selectedCharacter.position.col,
+            this.characterManager.selectedCharacter.position.row,
+            actionPoints
+          );
+
+          // クリックされた位置が移動可能マスかチェック
+          const isMovable = adjacentHexes.find(
+            (hex) => hex.col === hexCoord.col && hex.row === hexCoord.row
+          );
+
+          // 移動前のポジションを保存
+          this.characterManager.beforePositionState.set(
+            this.characterManager.selectedCharacter.image,
+            this.characterManager.selectedCharacter.position
+          );
+
+          if (isMovable && !characterAtPosition) {
+            this.moveCharacter(hexCoord.col, hexCoord.row);
+            // 移動後にトリガー設定モードに入る
+            this.startTriggerSetting();
+            console.log(
+              `キャラクターを移動: (${hexCoord.col}, ${hexCoord.row}, AP残り:${isMovable.remainActiveCount})`
+            );
+            // 行動力を消費
+            this.consumeActionPoint(isMovable.remainActiveCount);
+          } else {
+            // 移動不可能なマスをクリック：選択解除
+            this.clearSelection();
+          }
+        } else {
+          // 何も選択されていない状態でクリック
+          console.log(
+            `クリックされた六角形: (${hexCoord.col}, ${hexCoord.row})`
+          );
+        }
+      }
+    });
+    // ネイティブタッチイベントによるピンチジェスチャー強化
+    this.gameView.setupNativePinchGesture(this.cameras.main);
+  }
+
+  /**
+   * キャラクターを選択する
+   * @param character 選択されたキャラクター
+   */
+  private selectCharacter(character: Phaser.GameObjects.Image) {
+    // 行動力をチェック
+    const selectedCharacter =
+      this.characterManager.findPlayerCharacterByImage(character);
+    if (selectedCharacter && selectedCharacter.actionPoints <= 0) {
+      console.log("このキャラクターは既に行動が完了しています。");
+      return;
+    }
+
+    // 既に選択されているキャラクターをリセット
+    this.clearSelection();
+
+    // 新しいキャラクターを選択
+    this.characterManager.selectedCharacter = selectedCharacter;
+
+    if (this.characterManager.selectedCharacter) {
+      // 選択されたキャラクターを強調表示
+      character.setTint(0xffff00); // 黄色で強調
+
+      // 移動可能なマスを表示
+      this.showMovableHexes();
+
+      // React側にキャラクター選択を通知
+      // notifyCharacterSelection(
+      //   this.characterManager.selectedCharacter.id,
+      //   this.characterManager.selectedCharacter.actionPoints
+      // );
+    }
+  }
+
+  /**
+   * 移動可能な六角形マスを表示する
+   */
+  private showMovableHexes() {
+    if (!this.characterManager.selectedCharacter) {
+      console.log(
+        "キャラクターが選択されていません。",
+        this.characterManager.selectedCharacter
+      );
+      return;
+    }
+
+    // 背景に座標の高さを表示する
+    this.fieldViewState.changeTileText("buildingHeight");
+
+    // 前回の移動可能マスを削除
+    this.characterManager.movableHexes.forEach((hex) => hex.destroy());
+    this.characterManager.movableHexes = [];
+
+    const selectedCharacter =
+      this.characterManager.findPlayerCharacterByImage(
+        this.characterManager.selectedCharacter.image
+      );
+    if (!selectedCharacter) return;
+
+    // 行動力をチェック
+    const actionPoints = selectedCharacter.actionPoints || 0;
+
+    const adjacentHexes = this.hexUtils.getAdjacentHexes(
+      this.characterManager.selectedCharacter.position.col,
+      this.characterManager.selectedCharacter.position.row,
+      actionPoints
+    );
+
+    // 現在の位置をオレンジ色でハイライト（トリガー設定可能を示す）
+    const currentPos = this.hexUtils.getHexPosition(
+      selectedCharacter.position.col,
+      selectedCharacter.position.row
+    );
+    const currentHex = new MovableHighlightCell(this.hexUtils, this, currentPos, {
+      fillColor: 0xff8c00,
+      fillAlpha: 0.3,
+      lineColor: 0xff6600,
+      lineAlpha: 1.0,
+      lineWidth: 2,
+      depth: 0.8,
+    });
+    this.characterManager.movableHexes.push(currentHex);
+
+    // 隣接する6マスに緑色のハイライトを表示（行動力が残っている場合のみ）
+    if (actionPoints > 0) {
+      adjacentHexes.forEach((hex) => {
+        // そのマスに他のキャラクターがいない場合のみ移動可能
+        if (!this.characterManager.isCharacterAt(hex.col, hex.row)) {
+          const pos = this.hexUtils.getHexPosition(hex.col, hex.row);
+          const movableHex = new MovableHighlightCell(this.hexUtils, this, pos, {
+            fillColor: 0x00ff00,
+            fillAlpha: 0.4,
+            lineColor: 0x00aa00,
+            lineAlpha: 1.0,
+            lineWidth: 2,
+            depth: 0.8,
+          });
+
+          // 移動可能マスのリストに追加
+          this.characterManager.movableHexes.push(movableHex);
+        }
+      });
+    }
+  }
+
+  /**
+   * 選択状態をクリアする
+   */
+  private clearSelection() {
+    // 選択されたキャラクターの色を元に戻す
+    if (this.characterManager.selectedCharacter) {
+      // プレイヤーキャラクターか敵キャラクターかで色を分ける
+      if (
+        this.characterManager.playerCharacters.includes(
+          this.characterManager.selectedCharacter
+        )
+      ) {
+        this.characterManager.selectedCharacter.image.setTint(0xadd8e6); // 薄い青色
+      } else {
+        this.characterManager.selectedCharacter.image.setTint(0xffb6c1); // 薄い赤色
+      }
+    }
+
+    // 移動可能マスを削除
+    this.characterManager.movableHexes.forEach((hex) => hex.destroy());
+    this.characterManager.movableHexes = [];
+
+    // トリガー表示をクリア
+    this.clearAllTriggerDisplays();
+
+    // トリガー設定モードをリセット
+    this.triggerSettingMode = false;
+    this.triggerSettingType = null;
+
+    // 選択状態をリセット
+    this.characterManager.selectedCharacter = null;
+
+    // 背景を通常表示に戻す
+    this.fieldViewState.changeTileText("position");
+
+    // React側にキャラクター選択解除を通知
+    // notifyCharacterSelection(null, 0);
+  }
+
+  /**
+   * キャラクターを指定された位置に移動する
+   * @param targetCol 移動先の列
+   * @param targetRow 移動先の行
+   */
+  private moveCharacter(targetCol: number, targetRow: number) {
+    if (!this.characterManager.selectedCharacter) return;
+
+    // 移動先の位置を計算
+    const targetPosition = this.hexUtils.getHexPosition(targetCol, targetRow);
+
+    // キャラクターを移動
+    this.characterManager.selectedCharacter.image.setPosition(
+      targetPosition.x,
+      targetPosition.y
+    );
+
+    // // キャラクターの位置情報を更新（移動後の位置）
+    this.characterManager.selectedCharacter.position = {
+      col: targetCol,
+      row: targetRow,
+    };
+
+    console.log(`キャラクターが (${targetCol}, ${targetRow}) に移動しました`);
+  }
+
+  /**
+   * キャラクターのトリガー方向を表示する（ユニット行動モード専用）
+   */
+  private showTriggerDirections(character: Phaser.GameObjects.Image) {
+    // 行動モード中のみ表示
+    if (!this.isActionMode) return;
+
+    // キャラクターが削除されている場合は何もしない
+    if (!character || character.scene === null) return;
+
+    // キャラクターがマップに存在しない場合は何もしない
+    const selectedCharacterState =
+      this.characterManager.findCharacterByImage(character);
+    if (!selectedCharacterState) return;
+
+    // 既存のトリガー表示をクリア
+    this.clearTriggerDisplayForCharacter(character);
+
+    const position = selectedCharacterState.position;
+    const directions = selectedCharacterState.direction;
+    const characterId = selectedCharacterState.id;
+
+    if (!position || !directions || !characterId) return;
+
+    // キャラクターのステータスを取得
+    const characterKey = characterId as keyof typeof CHARACTER_STATUS;
+    const characterStatus = CHARACTER_STATUS[characterKey];
+    if (!characterStatus) return;
+
+    const centerPos = this.hexUtils.getHexPosition(
+      position.col,
+      position.row
+    );
+
+    // メイントリガーのステータスを取得
+    const mainTriggerKey =
+      characterStatus.main as keyof typeof TRIGGER_STATUS;
+    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
+
+    // サブトリガーのステータスを取得
+    const subTriggerKey = characterStatus.sub as keyof typeof TRIGGER_STATUS;
+    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
+
+    // 敵キャラクターかどうかを判定
+    const isEnemyCharacter = this.characterManager.enemyCharacters.some(
+      (enemy) => enemy === selectedCharacterState
+    );
+
+    // 敵の場合は角度に180度を加算
+    const mainDirection = isEnemyCharacter
+      ? directions.main + 180
+      : directions.main;
+    const subDirection = isEnemyCharacter
+      ? directions.sub + 180
+      : directions.sub;
+
+    // メイントリガーを表示（赤系クリアカラー、実際のangleとrangeを使用）
+    const mainTrigger = this.gameView.drawTriggerFanShape(
+      null,
+      centerPos.x,
+      centerPos.y,
+      mainDirection,
+      0xff4444, // 赤系
+      0.3,
+      mainTriggerStatus.angle,
+      mainTriggerStatus.range,
+      mainTriggerKey
+    );
+
+    // サブトリガーを表示（青系クリアカラー、実際のangleとrangeを使用）
+    const subTrigger = this.gameView.drawTriggerFanShape(
+      null,
+      centerPos.x,
+      centerPos.y,
+      subDirection,
+      0x4444ff, // 青系
+      0.2,
+      subTriggerStatus.angle,
+      subTriggerStatus.range,
+      subTriggerKey
+    );
+
+    // トリガー表示を保存（ラベルも含める）
+    this.triggerDisplays.set(character, {
+      mainTrigger,
+      subTrigger,
+    });
+  }
+
+  /**
+   * キャラクターの現在位置に基づいてトリガー表示を更新（アニメーション追従用）
+   */
+  private updateTriggerPositionsForCharacter(
+    character: Phaser.GameObjects.Image,
+    stepChar: StepCharacterResult,
+    playerId: string
+  ) {
+    if (!this.isActionMode) {
+      console.log(
+        "アクションモードではないため、トリガー表示を更新しません",
+        stepChar
+      );
+      return;
+    }
+    // キャラクターが削除されている場合は何もしない
+    if (!character || character.scene === null) {
+      console.log(
+        "キャラクターが削除されているため、トリガー表示を更新しません",
+        stepChar
+      );
+      return;
+    }
+    // キャラクターがマップに存在しない場合は何もしない
+    const characterState =
+      this.characterManager.findCharacterByImage(character);
+    if (!characterState) {
+      console.log(
+        "キャラクターがマップに存在しないため、トリガー表示を更新しません",
+        stepChar
+      );
+      return;
+    }
+    // キャラクターが撃墜されている場合は削除
+    if (stepChar.isDefeat) {
+      console.log(
+        "キャラクターが撃墜されているため、トリガー表示を更新しません",
+        stepChar
+      );
+      this.gameView.showBailOutAndRemoveCharacter(characterState);
+      this.characterManager.destroyCharacter(characterState);
+      this.clearTriggerDisplayForCharacter(character);
+      return;
+    }
+    const directions = characterState.direction;
+    const characterId = stepChar.characterId;
+    if (!directions || !characterId) return;
+
+    // キャラクターのステータスを取得
+    const characterStatus = stepChar.characterStatus;
+    if (!characterStatus) {
+      console.warn("キャラクターステータスが見つかりません", stepChar);
+      return;
+    }
+
+    // メイントリガーのステータスを取得
+    const mainTriggerKey =
+      characterStatus.main as keyof typeof TRIGGER_STATUS;
+    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
+
+    // サブトリガーのステータスを取得
+    const subTriggerKey = characterStatus.sub as keyof typeof TRIGGER_STATUS;
+    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
+
+    // 敵キャラクターかどうかを判定
+    const isEnemyCharacter = stepChar.playerId !== playerId;
+
+    // 敵の場合は角度に180度を加算
+    const mainDirection = isEnemyCharacter
+      ? directions.main + 180
+      : directions.main;
+    const subDirection = isEnemyCharacter
+      ? directions.sub + 180
+      : directions.sub;
+
+    const displays = this.triggerDisplays.get(character);
+    if (!displays) return;
+
+    // キャラクターの現在のピクセル位置を使用
+    const currentX = character.x;
+    const currentY = character.y;
+
+    // メイントリガーの表示を更新
+    if (displays.mainTrigger) {
+      displays.mainTrigger.getData("label").destroy(); // 古いラベルを削除
+      displays.mainTrigger.clear();
+      this.gameView.drawTriggerFanShape(
+        displays.mainTrigger,
+        currentX,
+        currentY,
+        mainDirection,
+        0xff4444,
+        0.3,
+        mainTriggerStatus.angle,
+        mainTriggerStatus.range,
+        mainTriggerKey
+      );
+    }
+
+    // サブトリガーの表示を更新
+    if (displays.subTrigger) {
+      displays.subTrigger.getData("label").destroy(); // 古いラベルを削除
+      displays.subTrigger.clear();
+      this.gameView.drawTriggerFanShape(
+        displays.subTrigger,
+        currentX,
+        currentY,
+        subDirection,
+        0x4444ff,
+        0.2,
+        subTriggerStatus.angle,
+        subTriggerStatus.range,
+        subTriggerKey
+      );
+    }
+  }
+
+  /**
+   * 攻撃を受けた際の防御・回避の表示を行う
+   * @param stepChar - キャラクターのステップ結果
+   * @param playerId - プレイヤーのID
+   */
+  private defendTriggerDisplay(
+    stepChar: StepCharacterResult,
+    playerId: string
+  ) {
+    // 敵キャラクターかどうかを判定
+    const isEnemyCharacter = stepChar.playerId !== playerId;
+    if (stepChar.guardCount > 0) {
+      // 0より大きいHPの値を取得
+      const validHpValues = [
+        stepChar.mainTriggerHP,
+        stepChar.subTriggerHP,
+      ].filter((hp) => hp > 0);
+      const minHp = Math.min(...validHpValues);
+      // 減ってるほうのシールド状態を表示
+      this.gameView.showShieldImage(
+        isEnemyCharacter
+          ? this.hexUtils.invertPosition(stepChar.position)
+          : stepChar.position,
+        minHp
+      );
+    } else if (stepChar.avoidCount > 0) {
+      // 回避状態を表示
+      this.gameView.showAvoidImage(
+        isEnemyCharacter
+          ? this.hexUtils.invertPosition(stepChar.position)
+          : stepChar.position
+      );
+    }
+  }
+  /**
+   * 全てのトリガー表示をクリア
+   */
+  private clearAllTriggerDisplays() {
+    this.triggerDisplays.forEach((displays) => {
+      if (displays.mainTrigger) {
+        // ラベルも削除
+        const mainLabel = displays.mainTrigger.getData("label");
+        if (mainLabel) mainLabel.destroy();
+        displays.mainTrigger.destroy();
+      }
+      if (displays.subTrigger) {
+        // ラベルも削除
+        const subLabel = displays.subTrigger.getData("label");
+        if (subLabel) subLabel.destroy();
+        displays.subTrigger.destroy();
+      }
+    });
+    this.triggerDisplays.clear();
+  }
+
+  /**
+   * 特定のキャラクターのトリガー表示をクリア
+   */
+  private clearTriggerDisplayForCharacter(
+    character: Phaser.GameObjects.Image
+  ) {
+    const displays = this.triggerDisplays.get(character);
+    if (displays) {
+      if (displays.mainTrigger) {
+        // ラベルも削除
+        const mainLabel = displays.mainTrigger.getData("label");
+        if (mainLabel) mainLabel.destroy();
+        displays.mainTrigger.destroy();
+      }
+      if (displays.subTrigger) {
+        // ラベルも削除
+        const subLabel = displays.subTrigger.getData("label");
+        if (subLabel) subLabel.destroy();
+        displays.subTrigger.destroy();
+      }
+      this.triggerDisplays.delete(character);
+    }
+  }
+  private updateCellHighlight() {
+    if (!this.hoveredCell) return;
+
+    // 前のハイライトをクリア
+    this.cellHighlight.clear();
+
+    // 六角形の位置を計算
+    const pos = this.hexUtils.getHexPosition(
+      this.hoveredCell.x,
+      this.hoveredCell.y
+    );
+
+    // 薄い青色で六角形をハイライト
+    this.cellHighlight.fillStyle(0x87ceeb, 0.5); // 色と透明度
+
+    const vertices = this.hexUtils.getHexVertices(pos.x, pos.y);
+    this.cellHighlight.beginPath();
+    this.cellHighlight.moveTo(vertices[0], vertices[1]);
+    for (let i = 2; i < vertices.length; i += 2) {
+      this.cellHighlight.lineTo(vertices[i], vertices[i + 1]);
+    }
+    this.cellHighlight.closePath();
+    this.cellHighlight.fillPath();
+
+    // ハイライトを表示
+    this.cellHighlight.setVisible(true);
+  }
+
+  /**
+   * キャラクターを六角形グリッドに配置する
+   */
+  private createCharacters() {
+    // 自分のキャラクターを配置
+    playerPositions.forEach((pos, index) => {
+      const characterId = Object.keys(CHARACTER_STATUS)[index]; // キャラクターID: "MIKUMO_OSAMU", "KUGA_YUMA", "AMATORI_CHIKA", "HYUSE_KURONIN"
+      const position = this.hexUtils.getHexPosition(pos.col, pos.row);
+      const character = this.add.image(
+        position.x,
+        position.y,
+        playerCharacterKeys[index]
+      );
+      character.setOrigin(0.5, 0.5);
+      character.setDisplaySize(
+        this.gridConfig.hexRadius * 1.2,
+        this.gridConfig.hexRadius * 1.2
+      ); // 六角形に合わせたサイズ
+      character.setDepth(2); // 前面に表示
+
+      // 青い色調を追加（自分のキャラクター識別用）
+      character.setTint(0xadd8e6); // 薄い青色
+
+      // キャラクターをクリック可能にする
+      character.setInteractive();
+
+      // 初期行動力を設定
+      const characterKey = characterId as keyof typeof CHARACTER_STATUS;
+      const characterStatus = CHARACTER_STATUS[characterKey];
+      const playerCharacterState = new PlayerCharacterState(
+        character,
+        { col: pos.col, row: pos.row },
+        characterId,
+        { main: 0, sub: 0 },
+        null,
+        characterStatus.activeCount,
+        null,
+        null,
+        this.hexUtils
+      );
+
+      playerCharacterState.updateActionPointsDisplay(this);
+      this.characterManager.playerCharacters.push(playerCharacterState);
+    });
+
+    // 相手のキャラクター（上辺行）を配置
+    const enemyPositions = [
+      { col: 4, row: 34 },
+      { col: 12, row: 34 },
+      { col: 20, row: 34 },
+      { col: 28, row: 34 },
+    ];
+
+    // 相手のキャラクターを配置（逆転した座標を使用）
+    enemyPositions.forEach((pos, index) => {
+      const invertedPos = this.hexUtils.invertPosition(pos);
+      const position = this.hexUtils.getHexPosition(
+        invertedPos.col,
+        invertedPos.row
+      );
+      const characterId = Object.keys(CHARACTER_STATUS)[index]; // キャラクターID: "MIKUMO_OSAMU", "KUGA_YUMA", "AMATORI_CHIKA", "HYUSE_KURONIN"
+      const character = this.add.image(position.x, position.y, "UNKNOWN");
+      character.setOrigin(0.5, 0.5);
+      character.setDisplaySize(
+        this.gridConfig.hexRadius * 1.2,
+        this.gridConfig.hexRadius * 1.2
+      ); // 六角形に合わせたサイズ
+      character.setDepth(2); // 前面に表示
+
+      // 相手のキャラクターは上下反転
+      character.setFlipY(true);
+
+      this.characterManager.enemyCharacters.push(
+        new EnemyCharacterState(
+          character,
+          { col: invertedPos.col, row: invertedPos.row },
+          characterId,
+          { main: 180, sub: 180 },
+          null,
+          this.gridConfig
+        )
+      );
+    });
+  }
+
+  /**
+   * トリガー設定モードを開始する
+   */
+  private startTriggerSetting() {
+    if (!this.characterManager.selectedCharacter) return;
+
+    this.triggerSettingMode = true;
+    this.triggerSettingType = "main";
+
+    // キャラクターを紫色で強調表示（トリガー設定モード）
+    this.characterManager.selectedCharacter.image.setTint(0xff00ff);
+
+    // タイル上には座標を表示
+    this.fieldViewState.changeTileText("position");
+
+    // mainトリガーの設定を開始
+    this.showTriggerFan();
+  }
+
+  /**
+   * トリガー扇形を表示する
+   */
+  private showTriggerFan() {
+    if (!this.characterManager.selectedCharacter || !this.triggerSettingType)
+      return;
+
+    const characterState = this.characterManager.findCharacterByImage(
+      this.characterManager.selectedCharacter.image
+    );
+    if (!characterState) return;
+
+    // キャラクターのステータスを取得
+    const characterKey = characterState.id as keyof typeof CHARACTER_STATUS;
+    const characterStatus = CHARACTER_STATUS[characterKey];
+    if (!characterStatus) return;
+
+    // 設定中のトリガータイプに応じて装備を取得
+    const triggerName =
+      this.triggerSettingType === "main"
+        ? characterStatus.main
+        : characterStatus.sub;
+    const triggerStatus =
+      TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
+    if (!triggerStatus) return;
+
+    // キャラクター固有の角度と射程を使用
+    const angle = triggerStatus.angle;
+    const range = triggerStatus.range;
+
+    console.log(
+      `${triggerName}（${this.triggerSettingType}）トリガーの向きを設定してください（角度範囲: ${angle}度, 射程: ${range}）`
+    );
+    console.log(
+      "扇形をドラッグして角度を調整し、マウスを離すかクリックで確定してください"
+    );
+
+    // 初期角度を設定（現在の向きまたはデフォルト）
+    this.currentTriggerAngle = characterState.direction
+      ? characterState.direction[this.triggerSettingType]
+      : 0;
+
+    // subトリガーの場合は色を変える
+    const color = this.triggerSettingType === "main" ? 0xff6b6b : 0x6b6bff;
+
+    const pixelPos = this.hexUtils.getHexPosition(
+      this.characterManager.selectedCharacter.position.col,
+      this.characterManager.selectedCharacter.position.row
+    );
+
+    // 扇形を描画（移動後の位置を中心に）
+    this.triggerFan = this.gameView.drawTriggerFanShape(
+      this.triggerFan,
+      pixelPos.x,
+      pixelPos.y,
+      this.currentTriggerAngle,
+      color,
+      0.2,
+      angle,
+      range,
+      triggerName
+    );
+    // トリガー範囲ポイントも表示
+    this.triggerPoints = this.gameView.drawTriggerRangePoints(
+      this.characterManager.selectedCharacter.position.col,
+      this.characterManager.selectedCharacter.position.row,
+      this.currentTriggerAngle,
+      angle,
+      range,
+      color
+    );
+  }
+
+  /**
+   * マウスのドラッグでトリガー扇形の表示を更新する
+   */
+  private updateTriggerFan() {
+    if (
+      !this.triggerFan ||
+      !this.characterManager.selectedCharacter ||
+      !this.triggerSettingType
+    )
+      return;
+
+    const characterState = this.characterManager.findCharacterByImage(
+      this.characterManager.selectedCharacter.image
+    );
+    if (!characterState) return;
+
+    // キャラクターのステータスを取得
+    const characterKey = characterState.id as keyof typeof CHARACTER_STATUS;
+    const characterStatus = CHARACTER_STATUS[characterKey];
+    if (!characterStatus) return;
+
+    // 設定中のトリガータイプに応じて装備を取得
+    const triggerName =
+      this.triggerSettingType === "main"
+        ? characterStatus.main
+        : characterStatus.sub;
+    const triggerStatus =
+      TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
+    if (!triggerStatus) return;
+
+    // 既存の扇形を削除
+    this.triggerFan.getData("label").destroy();
+    this.triggerFan.destroy();
+    this.triggerPoints?.map((point) => point.destroy());
+
+    // 新しい扇形を描画（移動後の位置を中心に）
+    const angle = triggerStatus.angle;
+    const range = triggerStatus.range;
+
+    // subトリガーの場合は色を変える
+    const color = this.triggerSettingType === "main" ? 0xff6b6b : 0x6b6bff;
+
+    const pixelPos = this.hexUtils.getHexPosition(
+      this.characterManager.selectedCharacter.position.col,
+      this.characterManager.selectedCharacter.position.row
+    );
+
+    this.triggerFan = this.gameView.drawTriggerFanShape(
+      null, // 破棄済みなので新しいオブジェクトを作成
+      pixelPos.x,
+      pixelPos.y,
+      this.currentTriggerAngle,
+      color,
+      0.2,
+      angle,
+      range,
+      triggerName
+    );
+
+    // トリガー範囲ポイントも更新
+    this.triggerPoints = this.gameView.drawTriggerRangePoints(
+      this.characterManager.selectedCharacter.position.col,
+      this.characterManager.selectedCharacter.position.row,
+      this.currentTriggerAngle,
+      angle,
+      range,
+      color
+    );
+  }
+
+  /**
+   * トリガー設定を完了する
+   * @param direction 設定された方向
+   */
+  private completeTriggerSetting(direction: number) {
+    if (!this.characterManager.selectedCharacter || !this.triggerSettingType)
+      return;
+
+    const characterState = this.characterManager.findCharacterByImage(
+      this.characterManager.selectedCharacter.image
+    );
+    if (!characterState) return;
+
+    // 現在のキャラクターの向きを取得または初期化
+    let directions = characterState.direction;
+    if (!directions) {
+      directions = { main: 0, sub: 0 };
+      characterState.direction = directions;
+    }
+
+    // 方向を設定
+    directions[this.triggerSettingType] = direction;
+
+    console.log(
+      `${this.triggerSettingType}トリガーの向きを ${direction.toFixed(
+        1
+      )}度 に設定しました`
+    );
+
+    // 次のトリガー設定または完了
+    if (this.triggerSettingType === "main") {
+      this.triggerSettingType = "sub";
+      this.clearTriggerDisplay();
+      this.showTriggerFan();
+    } else {
+      this.finishTriggerSetting();
+    }
+  }
+
+  /**
+   * トリガー設定を終了する
+   */
+  private finishTriggerSetting() {
+    // 行動履歴を記録
+    this.recordActionHistory();
+
+    this.triggerSettingMode = false;
+    this.triggerSettingType = null;
+    this.clearTriggerDisplay();
+
+    console.log("トリガー設定が完了しました");
+
+    if (!this.characterManager.selectedCharacter) return;
+    // 行動力が残っているかチェック
+    const remainingActionPoints =
+      this.characterManager.findPlayerCharacterByImage(
+        this.characterManager.selectedCharacter?.image
+      )?.actionPoints ?? 0;
+
+    if (remainingActionPoints > 0) {
+      // 行動力が残っている場合：キャラクター選択を維持し、移動可能マスを再表示
+      console.log(
+        `行動力が${remainingActionPoints}残っています。次の行動を設定してください。`
+      );
+      this.showMovableHexes();
+
+      // React側にキャラクター選択を維持することを通知
+      // notifyCharacterSelection(
+      //   this.characterManager.selectedCharacter?.id,
+      //   remainingActionPoints
+      // );
+    } else {
+      // 行動力が0の場合：選択をクリア
+      console.log("行動力が0になりました。キャラクター選択をクリアします。");
+      // 行動力が0になった場合、「行動設定済み」テキストを表示
+      this.showActionCompletedText(
+        this.characterManager.selectedCharacter.image
+      );
+      this.clearSelection();
+    }
+
+    // 行動履歴記録後に全キャラクターの行動力をチェック
+    this.checkAllCharactersActionPointsCompleted();
+  }
+
+  /**
+   * 行動力を消費する
+   * @param remainingMoves 残りの移動回数
+   */
+  private consumeActionPoint(remainingMoves: number) {
+    if (!this.characterManager.selectedCharacter) return;
+    const currentActionPoints =
+      this.characterManager.findPlayerCharacterByImage(
+        this.characterManager.selectedCharacter?.image
+      )?.actionPoints ?? 0;
+
+    if (currentActionPoints && currentActionPoints > 0) {
+      this.characterManager.findPlayerCharacterByImage(
+        this.characterManager.selectedCharacter?.image
+      )!.actionPoints = remainingMoves;
+
+      console.log(
+        `キャラクター${this.characterManager.selectedCharacter?.id}の行動力を消費しました。残り: ${remainingMoves}`
+      );
+
+      // 行動力表示の更新
+      this.characterManager.selectedCharacter.updateActionPointsDisplay(this);
+
+      // React側に行動力の変更を通知
+      // actionPointsEmitter.dispatchEvent(
+      //   new CustomEvent("actionPointsChanged", {
+      //     detail: {
+      //       characterId: this.characterManager.selectedCharacter?.id,
+      //       remainingPoints: remainingMoves,
+      //     },
+      //   })
+      // );
+    }
+  }
+
+  /**
+   * 全キャラクターの行動力が0になったかチェック
+   */
+  private checkAllCharactersActionPointsCompleted() {
+    let allCompleted = true;
+    let totalRemainingPoints = 0;
+
+    // プレイヤーキャラクターの行動力をチェック
+    for (const character of this.characterManager.playerCharacters) {
+      const actionPoints =
+        this.characterManager.findPlayerCharacterByImage(character.image)
+          ?.actionPoints || 0;
+      totalRemainingPoints += actionPoints;
+      if (actionPoints > 0) {
+        allCompleted = false;
+      }
+    }
+
+    console.log(`残り行動力合計: ${totalRemainingPoints}`);
+
+    if (allCompleted && this.characterManager.playerCharacters.length > 0) {
+      console.log(
+        "全キャラクターの行動が完了しました！行動履歴を送信します..."
+      );
+      this.sendActionHistoryToServer();
+    }
+  }
+
+  /**
+   * 行動履歴をサーバーに送信する
+   */
+  private sendActionHistoryToServer() {
+    // 全キャラクターの行動履歴を取得
+    const allActionData = this.getActionHistory();
+
+    console.log("送信する行動履歴:", allActionData);
+
+    // React側にイベントを送信（WebSocket経由でサーバーに送信）
+    // allActionsCompletedEmitter.dispatchEvent(
+    //   new CustomEvent("allActionsCompleted", {
+    //     detail: {
+    //       actionHistory: allActionData,
+    //       timestamp: new Date().toISOString(),
+    //     },
+    //   })
+    // );
+  }
+
+  /**
+   * 行動完了テキストを表示する
+   */
+  private showActionCompletedText(character: Phaser.GameObjects.Image) {
+    const characterState =
+      this.characterManager.findPlayerCharacterByImage(character);
+    if (!characterState) return;
+
+    const pixelPos = this.hexUtils.getHexPosition(
+      characterState.position.col,
+      characterState.position.row
+    );
+
+    // 既存のテキストがあれば削除
+    const existingText = characterState.completeText;
+    if (existingText) {
+      existingText.destroy();
+    }
+
+    // 新しいテキストを作成
+    const text = new ActionCompletedText(
+      this,
+      pixelPos.x,
+      pixelPos.y - 40,
+      "行動設定済み"
+    );
+
+    characterState.completeText = text;
+  }
+
+  /**
+   * トリガー表示をクリアする
+   */
+  private clearTriggerDisplay() {
+    if (this.triggerFan) {
+      this.triggerFan.getData("label").destroy();
+      this.triggerFan.destroy();
+      this.triggerFan = null;
+      this.triggerPoints?.map((point) => point.destroy());
+      this.triggerPoints = null;
+    }
+  }
+
+  /**
+   * 行動履歴を記録する
+   */
+  private recordActionHistory() {
+    /** 行動履歴を記録する */
+    const pushActionHistory = (col: number, row: number) => {
+      if (!this.characterManager.selectedCharacter) return;
+
+      const characterState = this.characterManager.findPlayerCharacterByImage(
+        this.characterManager.selectedCharacter.image
+      );
+      if (!characterState) return;
+
+      const directions = characterState.direction;
+      const mainTrigger =
+        CHARACTER_STATUS[characterState.id as keyof typeof CHARACTER_STATUS]
+          ?.main ?? null;
+      const subTrigger =
+        CHARACTER_STATUS[characterState.id as keyof typeof CHARACTER_STATUS]
+          ?.sub ?? null;
+
+      if (!directions || !mainTrigger || !subTrigger) {
+        console.warn(
+          "行動履歴の記録に失敗",
+          directions,
+          mainTrigger,
+          subTrigger
+        );
+        return;
+      }
+
+      // 行動履歴に記録
+      const action = {
+        character: this.characterManager.selectedCharacter.image,
+        position: {
+          col: col,
+          row: row,
+        },
+        mainAzimuth: directions.main,
+        subAzimuth: directions.sub,
+        mainTrigger: mainTrigger,
+        subTrigger: subTrigger,
+        timestamp: new Date().toISOString(),
+      };
+
+      this.actionHistory.push(action);
+
+      // キャラクターIDを取得してログに出力
+      console.log(
+        `行動履歴を記録: キャラクター${characterState.id
+        }, 位置(${col}, ${row}), mainトリガー: ${directions.main.toFixed(
+          1
+        )}度, subトリガー: ${directions.sub.toFixed(1)}度`
+      );
+
+      // グローバル履歴に追加
+      // const historyEntry: Action = {
+      //   actionId: `${characterState.id}-${Date.now()}`,
+      //   unitId: characterState.id,
+      //   position: {
+      //     col: col,
+      //     row: row,
+      //   },
+      //   mainTriggerAzimuth: directions.main,
+      //   subTriggerAzimuth: directions.sub,
+      // };
+      // addToGlobalHistory(historyEntry);
+    };
+
+    if (!this.characterManager.selectedCharacter) return;
+
+    const beforePosition = this.characterManager.beforePositionState.get(
+      this.characterManager.selectedCharacter.image
+    );
+
+    if (
+      beforePosition &&
+      beforePosition !== this.characterManager.selectedCharacter.position
+    ) {
+      // 移動前の位置がある場合、その位置を記録
+      const { col, row } = beforePosition;
+
+      const movePath = this.hexUtils.findPath(
+        { col: col, row: row },
+        this.characterManager.selectedCharacter.position
+      );
+
+      for (const step of movePath) {
+        // 移動可能マスをクリック：キャラクターを移動
+        pushActionHistory(step.col, step.row);
+      }
+    } else {
+      // 移動していない場合、現在の位置を記録
+      const { col, row } = this.characterManager.selectedCharacter.position;
+      pushActionHistory(col, row);
+    }
+  }
+
+  /**
+   * 行動履歴を取得する
+   */
+  public getActionHistory() {
+    return this.actionHistory.map((action) => ({
+      characterId:
+        this.characterManager.findPlayerCharacterByImage(action.character)
+          ?.id || "unknown",
+      position: action.position,
+      mainAzimuth: action.mainAzimuth,
+      subAzimuth: action.subAzimuth,
+      mainTrigger: action.mainTrigger,
+      subTrigger: action.subTrigger,
+      timestamp: action.timestamp,
+    }));
+  }
+
+  /**
+   * 行動履歴をコンソールに出力する
+   */
+  public printActionHistory() {
+    console.log("=== 行動履歴 ===");
+    if (this.actionHistory.length === 0) {
+      console.log("履歴なし");
+      return;
+    }
+
+    this.actionHistory.forEach((action, index) => {
+      const characterId =
+        this.characterManager.findPlayerCharacterByImage(action.character)
+          ?.id || "unknown";
+      console.log(`${index + 1}. キャラクター${characterId}:`);
+      console.log(
+        `   位置: (${action.position.col}, ${action.position.row})`
+      );
+      console.log(`   mainトリガー: ${action.mainAzimuth.toFixed(1)}度`);
+      console.log(`   subトリガー: ${action.subAzimuth.toFixed(1)}度`);
+      console.log(`   時刻: ${action.timestamp}`);
+      console.log("");
+    });
+  }
+
+  /**
+   * 行動履歴をクリアする
+   */
+  public clearActionHistory() {
+    this.actionHistory = [];
+    // clearGlobalHistory();
+    console.log("行動履歴をクリアしました");
+  }
+
+  /**
+   * キーボードイベントを設定する
+   */
+  private createKeyboardInteraction() {
+    // キーボードイベントを設定
+    this.input.keyboard!.on("keydown-H", () => {
+      this.printActionHistory();
+    });
+
+    this.input.keyboard!.on("keydown-C", () => {
+      this.clearActionHistory();
+    });
+
+    // 使用方法をコンソールに出力
+    console.log("キーボードショートカット:");
+    console.log("  H: 行動履歴を表示");
+    console.log("  C: 行動履歴をクリア");
+  }
+
+  /**
+   * 全ユニットの行動を実行する
+   * @param playerActions プレイヤーの行動履歴
+   * @param enemyActions 敵の行動履歴
+   * @param turnNumber ターン番号
+   */
+  private executeAllActions(
+    turnCompleteResult: CombatStepResult[],
+    playerId: string,
+    turnNumber: number
+  ) {
+    console.log(`ターン ${turnNumber} の行動実行開始`);
+    this.isActionMode = true;
+    this.actionAnimationInProgress = true;
+
+    // 行動設定済みテキストを全てクリア
+    this.characterManager.playerCharacters.forEach((char) => {
+      if (char.completeText) {
+        char.completeText.destroy();
+        char.completeText = null;
+      }
+    });
+
+    // 全キャラクターのトリガー方向を表示（行動モード専用）
+    // 注意：キャラクターの移動に合わせてトリガーも更新される
+    [
+      ...this.characterManager.playerCharacters,
+      ...this.characterManager.enemyCharacters,
+    ].forEach((character) => {
+      this.showTriggerDirections(character.image);
+    });
+    // ステップベースの移動システムを使用
+    this.executeStepBasedActions(turnCompleteResult, playerId, turnNumber);
+  }
+
+  /**
+   * ステップベースで全キャラクターの行動を実行
+   */
+  private executeStepBasedActions(
+    combatStepResults: CombatStepResult[],
+    playerId: string,
+    turnNumber: number
+  ) {
+    let currentStepIndex = 0;
+
+    const executeNextStep = () => {
+      if (currentStepIndex < combatStepResults.length) {
+        const stepResult = combatStepResults[currentStepIndex];
+        console.log(`ステップ ${stepResult.stepNumber} を実行中...`);
+
+        this.executeActionStep(stepResult, playerId);
+        currentStepIndex++;
+
+        if (stepResult.winnerId !== null) {
+          // 勝者が決まった場合、即座に行動モードを終了
+          this.isActionMode = false;
+          alert(
+            `あなたの${stepResult.winnerId === playerId ? "勝利" : "敗北"
+            }です！\nトップ画面に戻ります`
+          );
+          window.location.href = "/";
+        } else {
+          // 次のステップを1.5秒後に実行（アニメーション完了を待つ）
+          this.time.delayedCall(1500, executeNextStep);
+        }
+      } else {
+        // 全ステップ完了
+        console.log("全ステップが完了しました");
+        this.time.delayedCall(500, () => {
+          this.completeActionPhase(turnNumber);
+        });
+      }
+    };
+
+    // 最初のステップを開始
+    executeNextStep();
+  }
+
+  /**
+   * 指定されたステップの行動を実行
+   */
+  private executeActionStep(stepResult: CombatStepResult, playerId: string) {
+    console.log(`=== ステップ ${stepResult.stepNumber} 実行開始 ===`);
+
+    const onStepComplete = () => { };
+
+    // プレイヤーキャラクターの移動
+    stepResult.stepCharacterResult
+      .filter((char) => char.playerId === playerId)
+      .forEach((playerCharacterStepAction) => {
+        const character = this.findCharacterById(
+          playerCharacterStepAction.characterId
+        );
+        if (character) {
+          this.executeCharacterSingleStep(
+            character.image,
+            playerCharacterStepAction,
+            false,
+            playerId,
+            onStepComplete
+          );
+        }
+      });
+
+    // 敵キャラクターの移動
+    stepResult.stepCharacterResult
+      .filter((char) => char.playerId !== playerId)
+      .forEach((enemyCharacterStepAction) => {
+        const character = this.findEnemyCharacterById(
+          enemyCharacterStepAction.characterId
+        );
+        if (character) {
+          this.executeCharacterSingleStep(
+            character.image,
+            enemyCharacterStepAction,
+            true,
+            playerId,
+            onStepComplete
+          );
+        }
+      });
+    // 矢印の削除
+    this.triggerArrows.forEach((arrow) => arrow.destroy());
+    this.triggerArrows = [];
+    // 視界情報の更新
+    this.fieldViewState.setSightAreaFieldView(stepResult.fieldView);
+  }
+
+  /**
+   * キャラクターの単一ステップ移動を実行
+   */
+  private executeCharacterSingleStep(
+    character: Phaser.GameObjects.Image,
+    stepChar: StepCharacterResult,
+    isEnemy: boolean,
+    playerId: string,
+    onComplete: () => void
+  ) {
+    const targetPosition = isEnemy
+      ? this.hexUtils.invertPosition(stepChar.position)
+      : stepChar.position;
+    const targetPixelPos = this.hexUtils.getHexPosition(
+      targetPosition.col,
+      targetPosition.row
+    );
+
+    // トリガー方向を設定
+    this.characterManager.findCharacterByImage(character)!.direction = {
+      main: stepChar.mainTriggerDirection,
+      sub: stepChar.subTriggerDirection,
+    };
+
+    // 1秒で移動
+    this.tweens.add({
+      targets: character,
+      x: targetPixelPos.x,
+      y: targetPixelPos.y,
+      duration: 750,
+      ease: "Power2",
+      onUpdate: () => {
+        if (this.isActionMode) {
+          this.updateTriggerPositionsForCharacter(
+            character,
+            stepChar,
+            playerId
+          );
+        }
+      },
+      onComplete: () => {
+        // 位置情報を更新
+        const foundCharacter =
+          this.characterManager.findCharacterByImage(character);
+        if (foundCharacter) {
+          foundCharacter.position = targetPosition;
+        }
+
+        if (foundCharacter instanceof EnemyCharacterState) {
+          // 敵キャラクターの視認状態を更新
+          foundCharacter.setSeenByEnemy(stepChar.isSeenByEnemy);
+        }
+
+        // トリガー表示を更新
+        if (this.isActionMode) {
+          this.showTriggerDirections(character);
+        }
+
+        if (foundCharacter) {
+          // 攻撃元キャラクターから矢印を表示
+          for (const attackCharId of stepChar.attackerCharacterIds) {
+            // 攻撃元は敵味方を反転させてキャラクターIDから取得
+            const enemyCharacterState = isEnemy
+              ? this.findCharacterById(attackCharId)
+              : this.findEnemyCharacterById(attackCharId);
+            if (enemyCharacterState) {
+              const arrowGraphic =
+                this.gameView.drawAnimatedArrowBetweenCharacters(
+                  enemyCharacterState.image,
+                  foundCharacter!.image
+                );
+              this.triggerArrows.push(arrowGraphic);
+            }
+          }
+        }
+
+        // 防御トリガー表示
+        this.defendTriggerDisplay(stepChar, playerId);
+
+        onComplete();
+      },
+    });
+  }
+
+  /**
+   * IDでキャラクターを検索
+   */
+  private findCharacterById(characterId: string): CharacterImageState | null {
+    for (const character of this.characterManager.playerCharacters) {
+      if (character.id === characterId) {
+        return character;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * IDで敵キャラクターを検索
+   */
+  private findEnemyCharacterById(
+    characterId: string
+  ): CharacterImageState | null {
+    for (const character of this.characterManager.enemyCharacters) {
+      if (character.id === characterId) {
+        return character;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 行動フェーズを完了して設定モードに戻る
+   */
+  private completeActionPhase(turnNumber: number) {
+    console.log("行動フェーズ完了 - 設定モードに戻ります");
+    this.isActionMode = false;
+    this.actionAnimationInProgress = false;
+
+    // 全キャラクターのトリガー表示をクリア
+    this.clearAllTriggerDisplays();
+
+    // 全キャラクターの行動力をリセット
+    this.resetAllActionPoints();
+
+    // 行動履歴をクリア
+    this.clearActionHistory();
+
+    // キャラクターの行動力を表示
+    this.characterManager.setAllActionPointsText(this);
+
+    // React側に行動完了を通知
+    // actionExecutionCompletedEmitter.dispatchEvent(
+    //   new CustomEvent("actionExecutionCompleted", {
+    //     detail: {
+    //       message: "行動フェーズが完了しました。新しいターンを開始します。",
+    //       turnNumber: turnNumber,
+    //     },
+    //   })
+    // );
+  }
+
+  /**
+   * 全キャラクターの行動力をリセット
+   */
+  private resetAllActionPoints() {
+    this.characterManager.playerCharacters.forEach((character) => {
+      const characterId = character.id;
+      if (characterId) {
+        const characterKey = characterId as keyof typeof CHARACTER_STATUS;
+        const characterStatus = CHARACTER_STATUS[characterKey];
+        if (characterStatus) {
+          // 行動完了テキストを削除
+          character.completeText?.destroy();
+          // 行動力を最大値にリセット
+          this.characterManager.findPlayerCharacterByImage(
+            character.image
+          )!.actionPoints = characterStatus.activeCount;
+        }
+      }
+    });
+  }
+
+  // ...existing code...
+};

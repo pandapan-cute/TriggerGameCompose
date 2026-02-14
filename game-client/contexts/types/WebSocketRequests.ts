@@ -1,4 +1,5 @@
-import { ActionHistory } from "@/game-logics/entities/ActionHistoryEntity";
+import { Step } from "@/game-logics/models/Step";
+
 
 /**
  * マッチメイキングリクエストの型定義
@@ -20,12 +21,10 @@ interface MatchMakingRequest {
 
 /** ターンの行動決定時に送信するリクエストの型定義 */
 interface TurnActionsRequest {
-  action: "turnActions";
-  turnNumber: number;
+  action: "turnExecution";
   playerId: string;
   gameId: string;
-  actionHistory: ActionHistory[];
-  timestamp: string;
+  steps: Step[];
 };
 
 /** ゲームのキャンセル時に送信するリクエストの型定義 */

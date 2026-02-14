@@ -1,11 +1,13 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TurnStatusValue {
     StepSetting,  // 行動設定中
     UnitStepping, // ユニット行動中
     Completed,    // ターン完了
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TurnStatus {
     value: TurnStatusValue,
 }

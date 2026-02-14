@@ -353,6 +353,14 @@ impl UnitRepository for DynamoDbUnitRepository {
         Ok(())
     }
 
+    /// 複数のユニット情報を更新
+    async fn update_units(&self, units: &Vec<Unit>) -> Result<(), String> {
+        for unit in units {
+            self.update(unit).await?;
+        }
+        Ok(())
+    }
+
     /// 対戦のユニットを一覧取得
     async fn get_game_units(&self, game_id: &GameId) -> Result<Vec<Unit>, String> {
         println!("Querying for game units with game_id: {}", game_id.value());

@@ -16,7 +16,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
 uuid = { version = "1.6", features = ["v4"] }
 thiserror = "1.0"
-chrono = "0.4.42"
+chrono = { version = "0.4.42", features = ["serde"] }
 aws-sdk-dynamodb = "1.101.0"
 async-trait = "0.1.89"
 aws-smithy-mocks = "0.2.2"

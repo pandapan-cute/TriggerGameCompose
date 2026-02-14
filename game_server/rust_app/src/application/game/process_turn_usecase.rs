@@ -1,9 +1,15 @@
 use std::sync::Arc;
 
 use crate::{
-    application::game::turn_action_dto::TurnActionDto,
+    application::{
+        game,
+        websocket::{websocket_response::WebSocketResponse, websocket_sender::WebSocketSender},
+    },
     domain::{
-        player_management::models::player::player_id::player_id::PlayerId,
+        player_management::{
+            models::player::player_id::player_id::PlayerId,
+            repositories::connection_repository::{self, ConnectionRepository},
+        },
         triggergame_simulator::{
             models::{
                 game::{game::Game, game_id::game_id::GameId},
@@ -18,31 +24,43 @@ use crate::{
             },
             repositories::{game_repository::GameRepository, turn_repository::TurnRepository},
         },
+        unit_management::repositories::unit_repository::UnitRepository,
     },
 };
 
 pub struct ProcessTurnUseCase {
+    connection_repository: Arc<dyn ConnectionRepository>,
     game_repository: Arc<dyn GameRepository>,
     turn_repository: Arc<dyn TurnRepository>,
+    unit_repository: Arc<dyn UnitRepository>,
+    websocket_sender: Arc<dyn WebSocketSender>,
 }
 
 impl ProcessTurnUseCase {
     pub fn new(
+        connection_repository: Arc<dyn ConnectionRepository>,
         game_repository: Arc<dyn GameRepository>,
         turn_repository: Arc<dyn TurnRepository>,
+        unit_repository: Arc<dyn UnitRepository>,
+        websocket_sender: Arc<dyn WebSocketSender>,
     ) -> Self {
         Self {
+            connection_repository,
             game_repository,
             turn_repository,
+            unit_repository,
+            websocket_sender,
         }
     }
 
     pub async fn execute(
         &self,
-        game_id: GameId,
-        player_id: PlayerId,
+        game_id: String,
+        player_id: String,
         steps: Vec<Step>,
     ) -> Result<(), String> {
+        let game_id = GameId::new(game_id);
+        let player_id = PlayerId::new(player_id);
         // ゲーム情報の取得
         let game = self
             .game_repository
@@ -104,7 +122,45 @@ impl ProcessTurnUseCase {
         // プレイヤー1とプレイヤー2のターン情報の結合
         turn.merge(&opponent_turn_data.unwrap())?;
 
+        // ユニット情報の取得
+        let units = self
+            .unit_repository
+            .get_game_units(&game_id)
+            .await
+            .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))?;
+
         // ターンエンティティの演算処理開始
+        let result_units = turn.turn_start(units)?;
+
+        // ユニット情報の更新
+        self.unit_repository
+            .update_units(&result_units)
+            .await
+            .map_err(|e| format!("ユニット情報の更新に失敗しました: {}", e))?;
+
+        // ターンの完了
+        let response = WebSocketResponse::TurnExecutionResult { turn };
+        // コネクションの取得
+        let player1_connection_id = self
+            .connection_repository
+            .get_connection_id(game.player1_id().value())
+            .await
+            .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
+
+        // WebSocket で通知を送信
+        self.websocket_sender
+            .send_message(&player1_connection_id, &response)
+            .await?;
+
+        let player2_connection_id = self
+            .connection_repository
+            .get_connection_id(game.player2_id().value())
+            .await
+            .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
+
+        self.websocket_sender
+            .send_message(&player2_connection_id, &response)
+            .await?;
 
         // println!("Processing turn for game_id: {}", game_id);
         Ok(())

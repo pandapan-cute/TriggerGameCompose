@@ -42,6 +42,7 @@ Resources:
               - !GetAtt UnitsTable.Arn
               - !Sub '${UnitsTable.Arn}/index/*'
               - !GetAtt GamesTable.Arn
+              - !GetAtt TurnsTable.Arn
 
   # WebSocket API
   TriggerGameWebSocketApi:
@@ -251,6 +252,19 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: game_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # Turns用DynamoDBテーブル
+  TurnsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Turns
+      AttributeDefinitions:
+        - AttributeName: turn_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: turn_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 

@@ -10,6 +10,7 @@ use infrastructure::aws::{
 
 use crate::{
     application::{
+        game::process_turn_usecase::ProcessTurnUseCase,
         matchmaking::matchmaking_application_service::MatchmakingApplicationService,
         websocket::{
             websocket_request::WebSocketRequest, websocket_response::WebSocketResponse,
@@ -23,6 +24,7 @@ use crate::{
             connection_dynamodb_repository::DynamoDbConnectionRepository,
             game_dynamodb_repository::DynamoDbGameRepository,
             matching_dynamodb_repository::DynamoDbMatchingRepository,
+            turn_dynamodb_repository::DynamoDbTurnRepository,
             unit_dynamodb_repository::DynamoDbUnitRepository,
         },
     },
@@ -118,6 +120,8 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                 let unit_repository = DynamoDbUnitRepository::new(dynamo_client.clone());
                 // ゲーム情報を保存するリポジトリ
                 let game_repository = DynamoDbGameRepository::new(dynamo_client.clone());
+                // ターン情報を保存するリポジトリ
+                let turn_repository = DynamoDbTurnRepository::new(dynamo_client.clone());
 
                 // アクションごとの処理
                 match message {
@@ -143,6 +147,21 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                         service
                             .execute(&player_id, &event.request_context.connection_id, units)
                             .await?;
+                    }
+
+                    WebSocketRequest::TurnExecution {
+                        game_id,
+                        player_id,
+                        steps,
+                    } => {
+                        let service = ProcessTurnUseCase::new(
+                            Arc::new(connection_repository),
+                            Arc::new(game_repository),
+                            Arc::new(turn_repository),
+                            Arc::new(unit_repository),
+                            Arc::new(websocket_sender),
+                        );
+                        service.execute(game_id, player_id, steps).await?;
                     }
 
                     WebSocketRequest::Ping => {

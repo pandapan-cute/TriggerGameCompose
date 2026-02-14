@@ -79,12 +79,6 @@ export interface SelectionState {
   movableHexes: Phaser.GameObjects.Graphics[];
 }
 
-export interface GameState {
-  isActionMode: boolean;
-  actionAnimationInProgress: boolean;
-  hoveredCell: { x: number; y: number; } | null;
-}
-
 // 戦闘関連の型定義
 export interface CombatStats {
   hp: number;

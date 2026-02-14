@@ -2,14 +2,16 @@
 import { HexUtils } from "../hexUtils";
 import { GridConfig } from "../types";
 import { FIELD_STEPS } from "../config/FieldData";
+import { HexagonCell } from "../phaser/game-objects/graphics/HexagonCell";
+import { OnGridCellText } from "../phaser/game-objects/texts/OnGridCellText";
 
 interface FieldViewCell {
   /** 可視性の色付けグラフィック */
-  backGroundGraphic: Phaser.GameObjects.Graphics | null;
+  backGroundGraphic: HexagonCell | null;
   /** そのセルが視認可能かどうか */
   canSight: boolean;
   /** タイル状の座標テキスト */
-  tilePositionText: Phaser.GameObjects.Text | null;
+  tilePositionText: OnGridCellText | null;
 }
 
 /**
@@ -32,7 +34,6 @@ export class FieldViewState {
     this.createBackground();
     // 背景タイルの作成
     this.createBackgroundTiles();
-    // 
   }
 
   /**
@@ -60,25 +61,12 @@ export class FieldViewState {
       for (let row = 0; row < this.gridConfig.gridHeight; row++) {
         const pos = this.hexUtils.getHexPosition(col, row);
 
-        // 六角形を描画
-        const hexagon = this.scene.add.graphics();
-        hexagon.fillStyle(0xB0BEC5, 1); // グレーの塗りつぶし
-        hexagon.lineStyle(1, 0x000000, 0.3); // 黒色の境界線（線幅、色、透明度）
-
-        const vertices = this.hexUtils.getHexVertices(pos.x, pos.y);
-        hexagon.beginPath();
-        hexagon.moveTo(vertices[0], vertices[1]);
-        for (let i = 2; i < vertices.length; i += 2) {
-          hexagon.lineTo(vertices[i], vertices[i + 1]);
-        }
-        hexagon.closePath();
-        hexagon.fillPath();
-        hexagon.strokePath();
-
-        hexagon.setDepth(0); // 背景レイヤー
+        // ★ 作成したHexagonCellを保存
+        const hexagon = new HexagonCell(this.hexUtils, this.scene, pos);
+        this.fieldView[col][row].backGroundGraphic = hexagon;
 
         // 六角形の位置情報を書き込む
-        this.writeTilePositionDirect(col, row);
+        this.fieldView[col][row].tilePositionText = new OnGridCellText(this.scene, this.hexUtils, { col, row });
       }
     }
   }
@@ -88,67 +76,15 @@ export class FieldViewState {
    * @param {"position" | "buildingHeight"} tileType - 表示するテキストの種類
    */
   changeTileText = (tileType: "position" | "buildingHeight") => {
-    // 既存のテキストを削除
-    this.fieldView.forEach((filedRow) => {
-      filedRow.forEach((info) => {
-        info.tilePositionText?.destroy();
-        info.tilePositionText = null;
-      });
-    });
     // 新しいテキストを作成
     for (let col = 0; col < this.gridConfig.gridWidth; col++) {
       for (let row = 0; row < this.gridConfig.gridHeight; row++) {
         if (tileType === "position") {
-          this.writeTilePositionDirect(col, row);
+          this.fieldView[col][row].tilePositionText?.switchToTilePosition();
         } else if (tileType === "buildingHeight") {
-          this.writeTileBuildingHeight(col, row);
+          this.fieldView[col][row].tilePositionText?.switchToBuildingHeight();
         }
       }
-    }
-  };
-  /**
-   * 六角形のタイルごとに位置情報を書き込む
-   * @param col - タイルの列番号
-   * @param row - タイルの行番号 
-   * @todo: ある程度開発が進んだら不要になるかも
-   */
-  private writeTilePositionDirect = (col: number, row: number) => {
-    const pos = this.hexUtils.getHexPosition(col, row);
-    const coordText = `${col},${row}`;
-
-    const positionText = this.scene.add.text(pos.x, pos.y, coordText, {
-      fontSize: "9px",
-      color: "#000",
-      fontFamily: "monospace",
-      backgroundColor: "rgba(255, 255, 255, 0.7)",
-      padding: { x: 2, y: 1 },
-    });
-
-    positionText.setOrigin(0.5, 0.5);
-    positionText.setDepth(0.1);
-    this.fieldView[col][row].tilePositionText = positionText;
-  };
-
-  /**
-   * 六角形のタイルごとに建物の高さを書き込む
-   * @param col - タイルの列番号
-   * @param row - タイルの行番号
-   */
-  private writeTileBuildingHeight = (col: number, row: number) => {
-    const pos = this.hexUtils.getHexPosition(col, row);
-    const buildingHeight = FIELD_STEPS[row][col];
-    if (buildingHeight !== 0) {
-      // 建物の高さが0でない場合のみ表示
-      const positionText = this.scene.add.text(pos.x, pos.y, buildingHeight.toString(), {
-        fontSize: "9px",
-        color: "#000",
-        fontFamily: "monospace",
-        padding: { x: 2, y: 1 },
-      });
-
-      positionText.setOrigin(0.5, 0.5);
-      positionText.setDepth(2);
-      this.fieldView[col][row].tilePositionText = positionText;
     }
   };
 
@@ -175,27 +111,17 @@ export class FieldViewState {
           // 視認可能エリアで、まだ背景グラフィックがない場合、新規作成
           const pos = this.hexUtils.getHexPosition(colIndex, rowIndex);
 
-          // 六角形を描画
-          const hexagon = this.scene.add.graphics();
-          hexagon.fillStyle(0xffffff, 1); // 白色の塗りつぶし
-          hexagon.lineStyle(1, 0x000000, 0.3); // 黒色の境界線（線幅、色、透明度）
-
-          const vertices = this.hexUtils.getHexVertices(pos.x, pos.y);
-          hexagon.beginPath();
-          hexagon.moveTo(vertices[0], vertices[1]);
-          for (let i = 2; i < vertices.length; i += 2) {
-            hexagon.lineTo(vertices[i], vertices[i + 1]);
+          if (this.fieldView[rowIndex][colIndex]?.backGroundGraphic) {
+            // 既存の背景グラフィックがあれば削除
+            this.fieldView[rowIndex][colIndex].backGroundGraphic?.switchCanSight();
+          } else {
+            const hexagon = new HexagonCell(this.hexUtils, this.scene, pos);
+            this.fieldView[rowIndex][colIndex].backGroundGraphic = hexagon;
           }
-          hexagon.closePath();
-          hexagon.fillPath();
-          hexagon.strokePath();
-
-          hexagon.setDepth(0); // 背景レイヤー
-          this.fieldView[rowIndex][colIndex].backGroundGraphic = hexagon;
           this.fieldView[rowIndex][colIndex].canSight = true;
         } else {
           // 既存の背景グラフィックがあれば削除
-          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.destroy();
+          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.switchCannotSight();
           this.fieldView[rowIndex][colIndex].canSight = false;
         }
       }

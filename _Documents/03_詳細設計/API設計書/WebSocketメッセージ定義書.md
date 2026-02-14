@@ -9,18 +9,18 @@
 ## メッセージ一覧
 | 種別 | `action` | 方向 | 概要 |
 | --- | --- | --- | --- |
-| ターン操作送信 | `turnActions` | Client → Server | 1ターン内の操作履歴を送信する |
+| ターン操作送信 | `turnExecution` | Client → Server | 1ターン内の操作履歴を送信する |
 
 ---
 
-## turnActions
+## turnExecution
 ### 概要
 1ターン内の操作履歴を送信する。
 
 ### フィールド定義
 | フィールド | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `action` | string | 必須 | メッセージ種別。固定値: `turnActions` |
+| `action` | string | 必須 | メッセージ種別。固定値: `turnExecution` |
 | `turnNumber` | number | 必須 | ターン番号 |
 | `playerId` | string | 必須 | 操作主体のプレイヤーID |
 | `gameId` | string | 必須 | ゲームID |
@@ -47,7 +47,7 @@
 ### サンプル
 ```json
 {
-	"action": "turnActions",
+	"action": "turnExecution",
 	"turnNumber": 1,
 	"playerId": "68046fc2-f60a-49fb-a987-83e8a731c5c9",
 	"gameId": "4388a7db-fa32-4589-a289-9a92e38f67bf",

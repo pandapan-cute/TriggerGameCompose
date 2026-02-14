@@ -12,7 +12,7 @@ export interface MatchmakingResponse {
 
 /** ターンの実行結果を受信 */
 export interface TurnActionsResponse {
-  action: "turnActionsResult";
+  action: "turnExecutionResult";
   turnNumber: number;
   result: TurnCompleteResult;
 }

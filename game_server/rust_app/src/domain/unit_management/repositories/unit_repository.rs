@@ -14,6 +14,9 @@ pub trait UnitRepository: Send + Sync {
     /// ユニット情報を更新
     async fn update(&self, unit: &Unit) -> Result<(), String>;
 
+    // 複数のユニット情報を更新
+    async fn update_units(&self, units: &Vec<Unit>) -> Result<(), String>;
+
     /// 特定の対戦のユニットを取得
     async fn get_game_units(&self, game_id: &GameId) -> Result<Vec<Unit>, String>;
 }

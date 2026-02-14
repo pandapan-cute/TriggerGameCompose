@@ -2,7 +2,10 @@ use serde::Serialize;
 
 use crate::{
     application::game::{enemy_unit_dto::EnemyUnitDto, friend_unit_dto::FriendUnitDto},
-    domain::matching_management::models::matching::MatchingStatusValue,
+    domain::{
+        matching_management::models::matching::MatchingStatusValue,
+        triggergame_simulator::models::turn::Turn,
+    },
 };
 
 /// WebSocketレスポンスの種類
@@ -23,6 +26,12 @@ pub enum WebSocketResponse {
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報
         friend_units: Vec<FriendUnitDto>,
+    },
+
+    /// ターン実行結果
+    TurnExecutionResult {
+        /// ターン情報
+        turn: Turn,
     },
 
     /// エラーレスポンス

@@ -2,6 +2,8 @@
 import { Position, TriggerDirection, TriggerDisplay } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { HexUtils } from "../hexUtils";
+import { ActionCompletedText } from "../phaser/game-objects/texts/ActionCompletedText";
+import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
 
 export class PlayerCharacterState extends CharacterImageState {
   constructor(
@@ -13,9 +15,9 @@ export class PlayerCharacterState extends CharacterImageState {
     /** 残りの行動力 */
     public actionPoints: number,
     /** 残りの行動力表示 */
-    private actionPointsText: Phaser.GameObjects.Text | null,
+    private actionPointsText: ActionPointsText | null,
     /** 行動設定完了表示 */
-    public completeText: Phaser.GameObjects.Text | null,
+    public completeText: ActionCompletedText | null,
     /** 座標計算系クラス */
     public hexUtils: HexUtils
   ) {
@@ -37,6 +39,7 @@ export class PlayerCharacterState extends CharacterImageState {
       this.actionPointsText = null;
     } else {
       this.actionPoints = points;
+      this.actionPointsText?.updatePoints(points);
     }
   }
 
@@ -96,14 +99,12 @@ export class PlayerCharacterState extends CharacterImageState {
     }
 
     // 新しいテキストを作成
-    const text = scene.add.text(pixelPos.x, pixelPos.y - 40, "行動設定済み", {
-      fontSize: "12px",
-      color: "#ff0000",
-      backgroundColor: "#ffffff",
-      padding: { x: 4, y: 2 },
-    });
-    text.setOrigin(0.5, 0.5);
-    text.setDepth(3); // キャラクターより前面
+    const text = new ActionCompletedText(
+      scene,
+      pixelPos.x,
+      pixelPos.y - 40,
+      "行動設定済み"
+    );
 
     this.completeText = text;
   }
@@ -117,29 +118,19 @@ export class PlayerCharacterState extends CharacterImageState {
       this.position.row
     );
 
-    // 既存のテキストがあれば削除
     const existingText = this.actionPointsText;
     if (existingText) {
-      existingText.destroy();
+      existingText.setPosition(pixelPos.x - 12, pixelPos.y + 20);
+      existingText.updatePoints(this.actionPoints);
+      return;
     }
 
     // 新しいテキストを作成
-    const text = scene.add.text(pixelPos.x - 12, pixelPos.y + 20, `${this.actionPoints}`, {
-      fontSize: "12px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      backgroundColor: "#1e293b",
-      padding: { x: 2, y: 0 },
-      shadow: {
-        offsetX: 2,
-        offsetY: 2,
-        color: "#000000",
-        blur: 4,
-        fill: true
-      }
-    });
-    text.setOrigin(0.5, 0.5);
-    text.setDepth(3); // キャラクターより前面
-    this.actionPointsText = text;
+    this.actionPointsText = new ActionPointsText(
+      scene,
+      pixelPos.x - 12,
+      pixelPos.y + 20,
+      this.actionPoints
+    );
   }
 }

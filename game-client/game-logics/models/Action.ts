@@ -1,5 +1,5 @@
+import { UnitType } from "../config/CharacterConfig";
 import { Position } from "../types";
-import { UnitType } from "./Unit";
 
 /**
  * アクションの種類

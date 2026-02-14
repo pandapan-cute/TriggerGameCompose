@@ -28,6 +28,16 @@ pub enum WebSocketResponse {
         friend_units: Vec<FriendUnitDto>,
     },
 
+    /// ゲーム状態取得結果
+    GetGameStateResult {
+        // ゲームのターン番号
+        current_turn_number: u32,
+        /// 敵ユニット情報
+        enemy_units: Vec<EnemyUnitDto>,
+        /// 味方ユニット情報
+        friend_units: Vec<FriendUnitDto>,
+    },
+
     /// ターン実行結果
     TurnExecutionResult {
         /// ターン情報

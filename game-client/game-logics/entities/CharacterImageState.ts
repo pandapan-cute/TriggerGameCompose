@@ -7,6 +7,8 @@ import { Position, TriggerDirection, TriggerDisplay } from "../types";
 export class CharacterImageState {
 
   constructor(
+    /** ユニット種別 */
+    private unitTypeId: string,
     /** Phaserのゲームオブジェクト */
     public image: Phaser.GameObjects.Image,
     /** キャラクターの座標マス */
@@ -18,4 +20,10 @@ export class CharacterImageState {
     /** トリガーの表示オブジェクト */
     public triggerDisplay: TriggerDisplay | null
   ) { }
+
+
+  // ゲッター
+  getUnitTypeId(): string {
+    return this.unitTypeId;
+  }
 }

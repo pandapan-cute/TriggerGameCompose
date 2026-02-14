@@ -1,5 +1,8 @@
 'use client';
-import { Position, TriggerDirection, TriggerDisplay, GridConfig } from "../types";
+import { HexUtils } from "../hexUtils";
+import { EnemyUnit } from "../models/EnemyUnit";
+import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
+import { GridConfig } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 
 /**
@@ -7,56 +10,34 @@ import { CharacterImageState } from "./CharacterImageState";
  */
 export class EnemyCharacterState extends CharacterImageState {
   constructor(
-    image: Phaser.GameObjects.Image,
-    position: Position,
-    id: string,
-    direction: TriggerDirection,
-    triggerDisplay: TriggerDisplay | null,
-    private gridConfig: GridConfig,
-    /** 敵のプレイヤーに視認されているか */
-    private isSeenByEnemy: boolean = false
+    scene: Phaser.Scene,
+    enemyUnit: EnemyUnit,
+    hexUtils: HexUtils,
+    private gridConfig: GridConfig
   ) {
-    super(
-      image,
-      position,
-      id,
-      direction,
-      triggerDisplay
+    const invertedPos = hexUtils.invertPosition(enemyUnit.position);
+    const hexPosition = hexUtils.getHexPosition(
+      invertedPos.col,
+      invertedPos.row
     );
-  }
-
-  /**
-   * 敵キャラクターの視認状態を設定する
-   * @param seen 視認されている場合はtrue、されていない場合はfalse
-   */
-  setSeenByEnemy(seen: boolean) {
-    if (this.isSeenByEnemy !== seen) {
-      this.isSeenByEnemy = seen;
-      this.setCharacterSeenOrNot();
-    }
+    const image = new EnemyUnitImage(
+      scene,
+      hexPosition.x, hexPosition.y,
+      gridConfig
+    );
+    super(
+      "", // 敵のユニット種別は初期値で空文字にしておく（必要に応じて後で設定）
+      image,
+      invertedPos, // 敵の座標は自分から見た逆位置で管理
+      enemyUnit.unitTypeId,
+      { main: 0, sub: 0 }, // トリガーの向きは初期値で0にしておく
+      null
+    );
   }
 
   /**
    * 敵キャラクターの視認状態を設定し、画像を更新する
    */
-  private setCharacterSeenOrNot() {
-    if (this.isSeenByEnemy) {
-      this.image.setTexture(this.id);
-      this.image.setOrigin(0.5, 0.5);
-      this.image.setDisplaySize(
-        this.gridConfig.hexRadius * 1.2,
-        this.gridConfig.hexRadius * 1.2
-      ); // 六角形に合わせたサイズ
-      this.image.setDepth(2); // 前面に表示
-    } else {
-      // 敵キャラクターが視認されていない状態にする処理
-      this.image.setTexture('UNKNOWN');
-      this.image.setOrigin(0.5, 0.5);
-      this.image.setDisplaySize(
-        this.gridConfig.hexRadius * 1.2,
-        this.gridConfig.hexRadius * 1.2
-      ); // 六角形に合わせたサイズ
-      this.image.setDepth(2); // 前面に表示
-    }
+  private setCharacterImage() {
   }
 }

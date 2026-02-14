@@ -10,14 +10,24 @@ use infrastructure::aws::{
 
 use crate::{
     application::{
-        game::process_turn_usecase::ProcessTurnUseCase,
+        game::{
+            get_game_state_usecase::GetGameStateUseCase, process_turn_usecase::ProcessTurnUseCase,
+        },
         matchmaking::matchmaking_application_service::MatchmakingApplicationService,
         websocket::{
             websocket_request::WebSocketRequest, websocket_response::WebSocketResponse,
             websocket_sender::WebSocketSender,
         },
     },
-    domain::player_management::repositories::connection_repository::ConnectionRepository,
+    domain::{
+        player_management::{
+            models::player::player_id::player_id::PlayerId,
+            repositories::connection_repository::ConnectionRepository,
+        },
+        triggergame_simulator::{
+            models::game::game_id::game_id::GameId, repositories::game_repository::GameRepository,
+        },
+    },
     infrastructure::{
         aws::websocketapi_sender::WebSocketapiSender,
         dynamodb::{
@@ -147,6 +157,21 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                         service
                             .execute(&player_id, &event.request_context.connection_id, units)
                             .await?;
+                    }
+
+                    // ゲーム状態取得リクエストの処理
+                    WebSocketRequest::GetGameState { player_id, game_id } => {
+                        // コネクションIDとPlayerIDの紐付けを保存
+                        connection_repository
+                            .save(player_id.value(), &event.request_context.connection_id)
+                            .await?;
+                        let service = GetGameStateUseCase::new(
+                            Arc::new(connection_repository),
+                            Arc::new(game_repository),
+                            Arc::new(unit_repository),
+                            Arc::new(websocket_sender),
+                        );
+                        service.execute(game_id, player_id).await?;
                     }
 
                     WebSocketRequest::TurnExecution {

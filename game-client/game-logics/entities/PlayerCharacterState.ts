@@ -1,33 +1,51 @@
 'use client';
-import { Position, TriggerDirection, TriggerDisplay } from "../types";
+import { GridConfig, Position } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { HexUtils } from "../hexUtils";
 import { ActionCompletedText } from "../phaser/game-objects/texts/ActionCompletedText";
 import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
+import { FriendUnit } from "../models/FriendUnit";
+import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 
 export class PlayerCharacterState extends CharacterImageState {
+
+  /** 残りの行動力表示 */
+  private actionPointsText: ActionPointsText | null;
+  /** 行動設定完了表示 */
+  private completeText: ActionCompletedText | null;
+
   constructor(
-    image: Phaser.GameObjects.Image,
-    position: Position,
-    id: string,
-    direction: TriggerDirection,
-    triggerDisplay: TriggerDisplay | null,
     /** 残りの行動力 */
-    public actionPoints: number,
-    /** 残りの行動力表示 */
-    private actionPointsText: ActionPointsText | null,
-    /** 行動設定完了表示 */
-    public completeText: ActionCompletedText | null,
+    private actionPoints: number,
+    /** Phaserシーンクラス */
+    scene: Phaser.Scene,
+    /** 味方ユニット情報 */
+    friendUnit: FriendUnit,
     /** 座標計算系クラス */
-    public hexUtils: HexUtils
+    private hexUtils: HexUtils,
+    /** グリッド設定 */
+    gridConfig: GridConfig
   ) {
-    super(
-      image,
-      position,
-      id,
-      direction,
-      triggerDisplay
+    const hexPosition = hexUtils.getHexPosition(friendUnit.position.col, friendUnit.position.row);
+    const image = new FriendUnitImage(
+      scene,
+      hexPosition.x, hexPosition.y,
+      friendUnit.unitTypeId,
+      gridConfig
     );
+    super(
+      friendUnit.unitTypeId,
+      image,
+      friendUnit.position,
+      friendUnit.unitId,
+      { main: 0, sub: 0 },
+      null
+    );
+
+    this.actionPointsText = null;
+    this.completeText = null;
+
+    this.updateActionPointsDisplay(scene);
   }
 
   /** 行動力表示を更新または削除する
@@ -132,5 +150,23 @@ export class PlayerCharacterState extends CharacterImageState {
       pixelPos.y + 20,
       this.actionPoints
     );
+  }
+
+  // ゲッター
+  getActionPoints() {
+    return this.actionPoints;
+  }
+
+  getCompleteText() {
+    return this.completeText;
+  }
+
+  // セッター
+  setActionPoints(points: number) {
+    this.actionPoints = points;
+  }
+
+  setCompleteText(text: ActionCompletedText | null) {
+    this.completeText = text;
   }
 }

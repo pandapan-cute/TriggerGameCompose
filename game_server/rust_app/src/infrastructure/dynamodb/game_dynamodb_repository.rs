@@ -109,52 +109,47 @@ impl GameRepository for DynamoDbGameRepository {
 
     /// マッチング待機中の最新情報を取得
     async fn get_game_by_id(&self, game_id: &GameId) -> Result<Game, String> {
-        println!("Querying for the game {}...", game_id.value());
-        // game_idを指定して1件取得
+        println!("ゲーム {} を取得中...", game_id.value());
+        // game_idを指定して1件取得（プライマリキー検索）
         let result = self
             .client
-            .query()
+            .get_item()
             .table_name(self.games_table)
-            .index_name("GameIdIndex")
-            .key_condition_expression("game_id = :game_id")
-            .expression_attribute_values(":game_id", AttributeValue::S(game_id.value().to_string()))
+            .key("game_id", AttributeValue::S(game_id.value().to_string()))
             .send()
             .await
-            .map_err(|e| format!("Failed to query game: {}", e))?;
+            .map_err(|e| format!("ゲーム情報の取得に失敗しました: {}", e))?;
 
-        println!("Query result: {:?}", result);
+        println!("GetItem result: {:?}", result);
 
-        let items = result.items();
-        if items.is_empty() {
-            return Err("Game not found".to_string());
-        }
-
-        let game_item = &items[0];
+        let game_item = result
+            .item()
+            .ok_or("ゲームが見つかりませんでした。".to_string())?;
 
         // Gameの属性を抽出
         let game_id_str = game_item
             .get("game_id")
             .and_then(|v| v.as_s().ok())
-            .ok_or("game_id not found")?;
+            .ok_or("ゲームIDが見つかりませんでした。")?;
         let current_turn_number_str = game_item
             .get("current_turn_number")
             .and_then(|v| v.as_n().ok())
-            .ok_or("current_turn_number not found")?;
+            .ok_or("現在のターン番号が見つかりませんでした。")?;
         let player1_id_str = game_item
             .get("player1_id")
             .and_then(|v| v.as_s().ok())
-            .ok_or("player1_id not found")?;
+            .ok_or("プレイヤー1のIDが見つかりませんでした。")?;
         let player2_id_str = game_item
             .get("player2_id")
             .and_then(|v| v.as_s().ok())
-            .ok_or("player2_id not found")?;
+            .ok_or("プレイヤー2のIDが見つかりませんでした。")?;
 
         Ok(Game::reconstruct(
             GameId::new(game_id_str.to_string()),
             CurrentTurnNumber::new(
                 current_turn_number_str
                     .parse::<i32>()
-                    .map_err(|e| format!("Failed to parse current_turn_number: {}", e))?,
+                    .map_err(|e| format!("現在のターン番号の解析に失敗しました: {}", e))?,
             ),
             PlayerId::new(player1_id_str.to_string()),
             PlayerId::new(player2_id_str.to_string()),

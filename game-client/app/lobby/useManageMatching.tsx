@@ -42,7 +42,7 @@ export const useManageMatching = () => {
 
         // 3秒後にゲーム画面に遷移
         setTimeout(() => {
-          router.push("/game");
+          router.push(`/game/${data.gameId}`);
         }, 3000);
       }
     };

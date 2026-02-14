@@ -6,13 +6,19 @@ import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useRouter } from "next/navigation";
 import { Action } from "./models/Action";
 import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
+import { FriendUnit } from "./models/FriendUnit";
+import { EnemyUnit } from "./models/EnemyUnit";
 
+interface GameGridProps {
+  friendUnits: FriendUnit[];
+  enemyUnits: EnemyUnit[];
+}
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid = () => {
+const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -259,7 +265,7 @@ const GameGrid = () => {
         // GridSceneクラスを作成（Phaserオブジェクトを渡す）
         // const GridScene = createGridScene(Phaser, fieldView);
 
-        const GridScene = GridCellsScene;
+        const GridScene = new GridCellsScene(friendUnits, enemyUnits);
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
         const config: Phaser.Types.Core.GameConfig = {

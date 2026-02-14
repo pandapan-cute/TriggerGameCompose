@@ -8,20 +8,21 @@ import "phaser";
 import { UnitImageLoader } from "./loader/UnitImageLoader";
 import { GameAssetsLoader } from "./loader/GameAssetsLoader";
 import { GameCamera } from "../cameras/GameCamera";
-import { GameInput } from "./inputs/GameInput";
-import { GameState } from "@/game-logics/models/GameState";
 import { CharacterManager } from "@/game-logics/characterManager";
 import { executeActionsEmitter } from "@/game-logics/GameGrid";
 import { CHARACTER_STATUS, TRIGGER_STATUS } from "@/game-logics/config/status";
-import { playerCharacterKeys, playerPositions } from "@/game-logics/config/CharacterConfig";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { CharacterImageState } from "@/game-logics/entities/CharacterImageState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
 import { MovableHighlightCell } from "../game-objects/graphics/MovableHighlightCell";
 import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
+import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
+import { FriendUnit } from "@/game-logics/models/FriendUnit";
 
-
+/**
+ * グリッドセルを管理するPhaserのシーン
+ */
 export class GridCellsScene extends Phaser.Scene {
 
   // Phaserオブジェクト
@@ -42,7 +43,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor() {
+  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[]) {
     super({ key: "GridScene" });
   }
 
@@ -376,7 +377,7 @@ export class GridCellsScene extends Phaser.Scene {
             console.log(
               `選択中のキャラクターをクリック: トリガー設定モードに入ります`
             );
-            const actionPoints = characterAtPosition.actionPoints || 0;
+            const actionPoints = characterAtPosition.getActionPoints() || 0;
             // 行動力を消費
             this.consumeActionPoint(actionPoints - 1);
             this.startTriggerSetting();
@@ -393,7 +394,7 @@ export class GridCellsScene extends Phaser.Scene {
             this.characterManager.playerCharacters.find(
               (char) =>
                 char.image === this.characterManager.selectedCharacter?.image
-            )?.actionPoints || 0;
+            )?.getActionPoints() || 0;
           const adjacentHexes = this.hexUtils.getAdjacentHexes(
             this.characterManager.selectedCharacter.position.col,
             this.characterManager.selectedCharacter.position.row,
@@ -444,7 +445,7 @@ export class GridCellsScene extends Phaser.Scene {
     // 行動力をチェック
     const selectedCharacter =
       this.characterManager.findPlayerCharacterByImage(character);
-    if (selectedCharacter && selectedCharacter.actionPoints <= 0) {
+    if (selectedCharacter && selectedCharacter.getActionPoints() <= 0) {
       console.log("このキャラクターは既に行動が完了しています。");
       return;
     }
@@ -496,7 +497,7 @@ export class GridCellsScene extends Phaser.Scene {
     if (!selectedCharacter) return;
 
     // 行動力をチェック
-    const actionPoints = selectedCharacter.actionPoints || 0;
+    const actionPoints = selectedCharacter.getActionPoints() || 0;
 
     const adjacentHexes = this.hexUtils.getAdjacentHexes(
       this.characterManager.selectedCharacter.position.col,
@@ -923,83 +924,29 @@ export class GridCellsScene extends Phaser.Scene {
    */
   private createCharacters() {
     // 自分のキャラクターを配置
-    playerPositions.forEach((pos, index) => {
-      const characterId = Object.keys(CHARACTER_STATUS)[index]; // キャラクターID: "MIKUMO_OSAMU", "KUGA_YUMA", "AMATORI_CHIKA", "HYUSE_KURONIN"
-      const position = this.hexUtils.getHexPosition(pos.col, pos.row);
-      const character = this.add.image(
-        position.x,
-        position.y,
-        playerCharacterKeys[index]
-      );
-      character.setOrigin(0.5, 0.5);
-      character.setDisplaySize(
-        this.gridConfig.hexRadius * 1.2,
-        this.gridConfig.hexRadius * 1.2
-      ); // 六角形に合わせたサイズ
-      character.setDepth(2); // 前面に表示
-
-      // 青い色調を追加（自分のキャラクター識別用）
-      character.setTint(0xadd8e6); // 薄い青色
-
-      // キャラクターをクリック可能にする
-      character.setInteractive();
-
-      // 初期行動力を設定
-      const characterKey = characterId as keyof typeof CHARACTER_STATUS;
-      const characterStatus = CHARACTER_STATUS[characterKey];
+    this.friendUnits.forEach((unit, index) => {
+      const status = CHARACTER_STATUS[unit.unitTypeId as keyof typeof CHARACTER_STATUS];
       const playerCharacterState = new PlayerCharacterState(
-        character,
-        { col: pos.col, row: pos.row },
-        characterId,
-        { main: 0, sub: 0 },
-        null,
-        characterStatus.activeCount,
-        null,
-        null,
-        this.hexUtils
+        status.activeCount,
+        this,
+        unit,
+        this.hexUtils,
+        this.gridConfig
       );
-
-      playerCharacterState.updateActionPointsDisplay(this);
       this.characterManager.playerCharacters.push(playerCharacterState);
     });
 
-    // 相手のキャラクター（上辺行）を配置
-    const enemyPositions = [
-      { col: 4, row: 34 },
-      { col: 12, row: 34 },
-      { col: 20, row: 34 },
-      { col: 28, row: 34 },
-    ];
-
     // 相手のキャラクターを配置（逆転した座標を使用）
-    enemyPositions.forEach((pos, index) => {
-      const invertedPos = this.hexUtils.invertPosition(pos);
-      const position = this.hexUtils.getHexPosition(
-        invertedPos.col,
-        invertedPos.row
-      );
-      const characterId = Object.keys(CHARACTER_STATUS)[index]; // キャラクターID: "MIKUMO_OSAMU", "KUGA_YUMA", "AMATORI_CHIKA", "HYUSE_KURONIN"
-      const character = this.add.image(position.x, position.y, "UNKNOWN");
-      character.setOrigin(0.5, 0.5);
-      character.setDisplaySize(
-        this.gridConfig.hexRadius * 1.2,
-        this.gridConfig.hexRadius * 1.2
-      ); // 六角形に合わせたサイズ
-      character.setDepth(2); // 前面に表示
+    this.enemyUnits.forEach((unit, index) => {
 
-      // 相手のキャラクターは上下反転
-      character.setFlipY(true);
-
-      this.characterManager.enemyCharacters.push(
-        new EnemyCharacterState(
-          character,
-          { col: invertedPos.col, row: invertedPos.row },
-          characterId,
-          { main: 180, sub: 180 },
-          null,
-          this.gridConfig
-        )
+      const enemyCharacterState = new EnemyCharacterState(
+        this,
+        unit,
+        this.hexUtils,
+        this.gridConfig
       );
+
+      this.characterManager.enemyCharacters.push(enemyCharacterState);
     });
   }
 
@@ -1035,7 +982,7 @@ export class GridCellsScene extends Phaser.Scene {
     if (!characterState) return;
 
     // キャラクターのステータスを取得
-    const characterKey = characterState.id as keyof typeof CHARACTER_STATUS;
+    const characterKey = characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
     const characterStatus = CHARACTER_STATUS[characterKey];
     if (!characterStatus) return;
 
@@ -1112,7 +1059,7 @@ export class GridCellsScene extends Phaser.Scene {
     if (!characterState) return;
 
     // キャラクターのステータスを取得
-    const characterKey = characterState.id as keyof typeof CHARACTER_STATUS;
+    const characterKey = characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
     const characterStatus = CHARACTER_STATUS[characterKey];
     if (!characterStatus) return;
 
@@ -1222,7 +1169,7 @@ export class GridCellsScene extends Phaser.Scene {
     const remainingActionPoints =
       this.characterManager.findPlayerCharacterByImage(
         this.characterManager.selectedCharacter?.image
-      )?.actionPoints ?? 0;
+      )?.getActionPoints() ?? 0;
 
     if (remainingActionPoints > 0) {
       // 行動力が残っている場合：キャラクター選択を維持し、移動可能マスを再表示
@@ -1259,12 +1206,12 @@ export class GridCellsScene extends Phaser.Scene {
     const currentActionPoints =
       this.characterManager.findPlayerCharacterByImage(
         this.characterManager.selectedCharacter?.image
-      )?.actionPoints ?? 0;
+      )?.getActionPoints() ?? 0;
 
     if (currentActionPoints && currentActionPoints > 0) {
       this.characterManager.findPlayerCharacterByImage(
         this.characterManager.selectedCharacter?.image
-      )!.actionPoints = remainingMoves;
+      )!.setActionPoints(remainingMoves);
 
       console.log(
         `キャラクター${this.characterManager.selectedCharacter?.id}の行動力を消費しました。残り: ${remainingMoves}`
@@ -1296,7 +1243,7 @@ export class GridCellsScene extends Phaser.Scene {
     for (const character of this.characterManager.playerCharacters) {
       const actionPoints =
         this.characterManager.findPlayerCharacterByImage(character.image)
-          ?.actionPoints || 0;
+          ?.getActionPoints() || 0;
       totalRemainingPoints += actionPoints;
       if (actionPoints > 0) {
         allCompleted = false;
@@ -1347,7 +1294,7 @@ export class GridCellsScene extends Phaser.Scene {
     );
 
     // 既存のテキストがあれば削除
-    const existingText = characterState.completeText;
+    const existingText = characterState.getCompleteText();
     if (existingText) {
       existingText.destroy();
     }
@@ -1360,7 +1307,7 @@ export class GridCellsScene extends Phaser.Scene {
       "行動設定済み"
     );
 
-    characterState.completeText = text;
+    characterState.setCompleteText(text);
   }
 
   /**
@@ -1561,9 +1508,9 @@ export class GridCellsScene extends Phaser.Scene {
 
     // 行動設定済みテキストを全てクリア
     this.characterManager.playerCharacters.forEach((char) => {
-      if (char.completeText) {
-        char.completeText.destroy();
-        char.completeText = null;
+      if (char.getCompleteText()) {
+        char.getCompleteText()!.destroy();
+        char.setCompleteText(null);
       }
     });
 
@@ -1720,10 +1667,10 @@ export class GridCellsScene extends Phaser.Scene {
           foundCharacter.position = targetPosition;
         }
 
-        if (foundCharacter instanceof EnemyCharacterState) {
-          // 敵キャラクターの視認状態を更新
-          foundCharacter.setSeenByEnemy(stepChar.isSeenByEnemy);
-        }
+        // if (foundCharacter instanceof EnemyCharacterState) {
+        //   // 敵キャラクターの視認状態を更新
+        //   foundCharacter.setSeenByEnemy(stepChar.isSeenByEnemy);
+        // }
 
         // トリガー表示を更新
         if (this.isActionMode) {
@@ -1824,11 +1771,12 @@ export class GridCellsScene extends Phaser.Scene {
         const characterStatus = CHARACTER_STATUS[characterKey];
         if (characterStatus) {
           // 行動完了テキストを削除
-          character.completeText?.destroy();
+          character.getCompleteText()?.destroy();
+          character.setCompleteText(null);
           // 行動力を最大値にリセット
           this.characterManager.findPlayerCharacterByImage(
             character.image
-          )!.actionPoints = characterStatus.activeCount;
+          )!.setActionPoints(characterStatus.activeCount);
         }
       }
     });

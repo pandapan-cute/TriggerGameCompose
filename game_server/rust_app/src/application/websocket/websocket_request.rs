@@ -2,7 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     application::matchmaking::matchmaking_dto::CreateUnitDto,
-    domain::triggergame_simulator::models::step::step::Step,
+    domain::{
+        player_management::models::player::player_id::player_id::PlayerId,
+        triggergame_simulator::models::{
+            game::{game::Game, game_id::game_id::GameId},
+            step::step::Step,
+        },
+    },
 };
 
 /// WebSocketメッセージの種類
@@ -28,6 +34,13 @@ pub enum WebSocketRequest {
     Matchmaking {
         player_id: String,
         units: Vec<CreateUnitDto>,
+    },
+
+    /// ゲーム状態取得リクエスト
+    /// ゲーム画面に遷移したときにクライアントから送信される
+    GetGameState {
+        player_id: PlayerId,
+        game_id: GameId,
     },
 
     /// ターン設定リクエスト

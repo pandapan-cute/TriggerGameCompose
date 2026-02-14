@@ -39,7 +39,7 @@ export class CharacterManager {
     characterImage: Phaser.GameObjects.Image
   ): PlayerCharacterState | EnemyCharacterState | null {
     for (const character of [...this.playerCharacters, ...this.enemyCharacters]) {
-      if (character.image === characterImage) {
+      if (character.image == characterImage) {
         return character;
       }
     }

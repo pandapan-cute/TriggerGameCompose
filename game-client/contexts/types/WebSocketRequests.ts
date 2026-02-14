@@ -19,6 +19,15 @@ interface MatchMakingRequest {
   }>;
 }
 
+/**
+ * ゲーム情報取得リクエストの型定義
+ */
+interface GetGameStateRequest {
+  action: "getGameState";
+  playerId: string;
+  gameId: string;
+}
+
 /** ターンの行動決定時に送信するリクエストの型定義 */
 interface TurnActionsRequest {
   action: "turnExecution";
@@ -34,4 +43,4 @@ interface CancelGameRequest {
 }
 
 /** WebSocketリクエストの型 */
-export type WebSocketRequestType = MatchMakingRequest | TurnActionsRequest | CancelGameRequest;
+export type WebSocketRequestType = MatchMakingRequest | GetGameStateRequest | TurnActionsRequest | CancelGameRequest;

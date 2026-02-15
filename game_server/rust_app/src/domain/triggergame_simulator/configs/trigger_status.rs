@@ -43,9 +43,9 @@ impl TriggerStatus {
                 },
             ),
             (
-                "SCOPEON",
+                "SCORPION",
                 TriggerStatus {
-                    trigger_id: "SCOPEON".to_string(),
+                    trigger_id: "SCORPION".to_string(),
                     angle: 120,
                     range: 1,
                     attack: 8,

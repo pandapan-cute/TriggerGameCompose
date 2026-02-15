@@ -13,6 +13,7 @@ use uuid::Uuid;
 /// Step集約
 /// ユニットの1つの行動を表すエンティティ
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Step {
     step_id: StepId,
     actions: Vec<Action>,
@@ -49,10 +50,13 @@ impl Step {
             // ユニットの位置を更新
             unit.move_to(action.position().clone());
             // 使用中のメイントリガーを更新
-            unit.set_using_triggers(
+            let _ = unit.set_using_triggers(
                 &action.using_main_trigger_id(),
                 &action.using_sub_trigger_id(),
             );
+            // トリガーの向きを更新
+            unit.set_main_trigger_azimuth(action.main_trigger_azimuth().clone());
+            unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
         }
 
         // 3. トリガー範囲内に敵キャラクターがいるか確認し、combatの初期化までを行う
@@ -70,18 +74,28 @@ impl Step {
                 let defender_action = self
                     .actions
                     .iter()
-                    .find(|a| a.unit_id() == defence_unit.unit_id())
-                    .unwrap();
+                    .find(|a| a.unit_id().value() == defence_unit.unit_id().value());
+
+                if defender_action.is_none() {
+                    println!(
+                        "防御側ユニットID {:?} に対応するアクションが見つかりません, アクション一覧: {:?}",
+                        defence_unit.unit_id(),
+                        self.actions.iter().map(|a| a.unit_id()).collect::<Vec<&UnitId>>()
+                    );
+                }
                 // 射程やトリガーの有効範囲の判定は、Actionのcreate内で行う
-                if let Some(combat) = action.generate_combats(
-                    defence_unit,
-                    defender_action.main_trigger_azimuth().clone(),
-                    defender_action.sub_trigger_azimuth().clone(),
-                ) {
+                if let Some(combat) = action.generate_combats(defence_unit) {
                     combats.push(combat);
                 }
             }
         }
+        Ok(())
+    }
+
+    /// 他のステップのアクションを結合
+    pub fn merge_actions(&mut self, other: &Step) -> Result<(), String> {
+        // 他のステップのアクションを自分のアクションリストに追加
+        self.actions.extend(other.actions.clone());
         Ok(())
     }
 

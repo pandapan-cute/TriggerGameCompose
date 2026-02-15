@@ -13,6 +13,8 @@ export class PlayerCharacterState extends CharacterImageState {
   private actionPointsText: ActionPointsText | null;
   /** 行動設定完了表示 */
   private completeText: ActionCompletedText | null;
+  /** 現在のステップ番号(初期値は0) */
+  private currentStep: number = 0;
 
   constructor(
     /** 残りの行動力 */
@@ -34,6 +36,7 @@ export class PlayerCharacterState extends CharacterImageState {
       gridConfig
     );
     super(
+      friendUnit.unitId,
       friendUnit.unitTypeId,
       image,
       friendUnit.position,
@@ -44,6 +47,7 @@ export class PlayerCharacterState extends CharacterImageState {
 
     this.actionPointsText = null;
     this.completeText = null;
+    this.currentStep = 0;
 
     this.updateActionPointsDisplay(scene);
   }
@@ -152,6 +156,11 @@ export class PlayerCharacterState extends CharacterImageState {
     );
   }
 
+  /** 現在のステップ数を指定値分進める */
+  advanceStep(steps: number = 1) {
+    this.currentStep += steps;
+  }
+
   // ゲッター
   getActionPoints() {
     return this.actionPoints;
@@ -159,6 +168,10 @@ export class PlayerCharacterState extends CharacterImageState {
 
   getCompleteText() {
     return this.completeText;
+  }
+
+  getCurrentStep() {
+    return this.currentStep;
   }
 
   // セッター

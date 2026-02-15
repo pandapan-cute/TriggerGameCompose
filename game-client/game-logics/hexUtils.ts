@@ -91,7 +91,7 @@ export class HexUtils {
    * @param centerY 中心Y座標（世界座標）
    * @param mouseX マウスX座標（スクリーン座標）
    * @param mouseY マウスY座標（スクリーン座標）
-   * @returns 角度（度数）
+   * @returns 角度（度数）-> 整数で返す
    */
   calculateMouseAngle(
     centerX: number,
@@ -109,7 +109,7 @@ export class HexUtils {
     const dy = worldMouseY - centerY;
     let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
     if (angle < 0) angle += 360;
-    return angle;
+    return Math.round(angle);
   }
 
   /**

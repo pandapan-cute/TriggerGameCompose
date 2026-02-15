@@ -1,4 +1,5 @@
 'use client';
+import { UnitType } from "../config/CharacterConfig";
 import { HexUtils } from "../hexUtils";
 import { EnemyUnit } from "../models/EnemyUnit";
 import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
@@ -26,7 +27,8 @@ export class EnemyCharacterState extends CharacterImageState {
       gridConfig
     );
     super(
-      "", // 敵のユニット種別は初期値で空文字にしておく（必要に応じて後で設定）
+      enemyUnit.unitId,
+      UnitType.UNKNOWN, // 敵のユニット種別は初期値でUNKNOWNにしておく
       image,
       invertedPos, // 敵の座標は自分から見た逆位置で管理
       enemyUnit.unitTypeId,

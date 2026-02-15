@@ -19,6 +19,9 @@ import { MovableHighlightCell } from "../game-objects/graphics/MovableHighlightC
 import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
 import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
+import { Step } from "@/game-logics/models/Step";
+import { Turn } from "@/game-logics/models/Turn";
+import { Action, ActionType } from "@/game-logics/models/Action";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -43,20 +46,12 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[]) {
+  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private sendServerTurn: (steps: Step[]) => void) {
     super({ key: "GridScene" });
   }
 
-  // 行動履歴
-  private actionHistory: {
-    character: Phaser.GameObjects.Image;
-    mainAzimuth: number;
-    subAzimuth: number;
-    position: { col: number; row: number; };
-    mainTrigger: string;
-    subTrigger: string;
-    timestamp: string;
-  }[] = [];
+  /** ターンのステップ情報を格納 */
+  private turn = new Turn();
 
   // ユニット行動モード関連
   private isActionMode: boolean = false;
@@ -140,7 +135,6 @@ export class GridCellsScene extends Phaser.Scene {
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
     this.createCharacters(); // キャラクターを配置
     this.createMouseInteraction(); // マウスイベントを設定
-    this.createKeyboardInteraction(); // キーボードイベントを設定
     this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
   }
 
@@ -1256,28 +1250,8 @@ export class GridCellsScene extends Phaser.Scene {
       console.log(
         "全キャラクターの行動が完了しました！行動履歴を送信します..."
       );
-      this.sendActionHistoryToServer();
+      this.sendServerTurn(this.turn.getSteps());
     }
-  }
-
-  /**
-   * 行動履歴をサーバーに送信する
-   */
-  private sendActionHistoryToServer() {
-    // 全キャラクターの行動履歴を取得
-    const allActionData = this.getActionHistory();
-
-    console.log("送信する行動履歴:", allActionData);
-
-    // React側にイベントを送信（WebSocket経由でサーバーに送信）
-    // allActionsCompletedEmitter.dispatchEvent(
-    //   new CustomEvent("allActionsCompleted", {
-    //     detail: {
-    //       actionHistory: allActionData,
-    //       timestamp: new Date().toISOString(),
-    //     },
-    //   })
-    // );
   }
 
   /**
@@ -1338,10 +1312,10 @@ export class GridCellsScene extends Phaser.Scene {
 
       const directions = characterState.direction;
       const mainTrigger =
-        CHARACTER_STATUS[characterState.id as keyof typeof CHARACTER_STATUS]
+        CHARACTER_STATUS[characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS]
           ?.main ?? null;
       const subTrigger =
-        CHARACTER_STATUS[characterState.id as keyof typeof CHARACTER_STATUS]
+        CHARACTER_STATUS[characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS]
           ?.sub ?? null;
 
       if (!directions || !mainTrigger || !subTrigger) {
@@ -1355,24 +1329,27 @@ export class GridCellsScene extends Phaser.Scene {
       }
 
       // 行動履歴に記録
-      const action = {
-        character: this.characterManager.selectedCharacter.image,
-        position: {
+      const action: Action = new Action(
+        ActionType.Move,
+        this.characterManager.selectedCharacter.getUnitId(),
+        this.characterManager.selectedCharacter.getUnitTypeId(),
+        {
           col: col,
           row: row,
         },
-        mainAzimuth: directions.main,
-        subAzimuth: directions.sub,
-        mainTrigger: mainTrigger,
-        subTrigger: subTrigger,
-        timestamp: new Date().toISOString(),
-      };
-
-      this.actionHistory.push(action);
+        mainTrigger,
+        subTrigger,
+        directions.main,
+        directions.sub,
+      );
+      // ターンの履歴に追加
+      this.turn.addActionWithIndex(this.characterManager.selectedCharacter.getCurrentStep(), action);
+      // キャラクターのステップを進める
+      this.characterManager.selectedCharacter.advanceStep();
 
       // キャラクターIDを取得してログに出力
       console.log(
-        `行動履歴を記録: キャラクター${characterState.id
+        `行動履歴を記録: キャラクター${characterState.getUnitTypeId()
         }, 位置(${col}, ${row}), mainトリガー: ${directions.main.toFixed(
           1
         )}度, subトリガー: ${directions.sub.toFixed(1)}度`
@@ -1380,8 +1357,8 @@ export class GridCellsScene extends Phaser.Scene {
 
       // グローバル履歴に追加
       // const historyEntry: Action = {
-      //   actionId: `${characterState.id}-${Date.now()}`,
-      //   unitId: characterState.id,
+      //   actionId: `${characterState.getUnitTypeId()}-${Date.now()}`,
+      //   unitId: characterState.getUnitTypeId(),
       //   position: {
       //     col: col,
       //     row: row,
@@ -1419,76 +1396,6 @@ export class GridCellsScene extends Phaser.Scene {
       const { col, row } = this.characterManager.selectedCharacter.position;
       pushActionHistory(col, row);
     }
-  }
-
-  /**
-   * 行動履歴を取得する
-   */
-  public getActionHistory() {
-    return this.actionHistory.map((action) => ({
-      characterId:
-        this.characterManager.findPlayerCharacterByImage(action.character)
-          ?.id || "unknown",
-      position: action.position,
-      mainAzimuth: action.mainAzimuth,
-      subAzimuth: action.subAzimuth,
-      mainTrigger: action.mainTrigger,
-      subTrigger: action.subTrigger,
-      timestamp: action.timestamp,
-    }));
-  }
-
-  /**
-   * 行動履歴をコンソールに出力する
-   */
-  public printActionHistory() {
-    console.log("=== 行動履歴 ===");
-    if (this.actionHistory.length === 0) {
-      console.log("履歴なし");
-      return;
-    }
-
-    this.actionHistory.forEach((action, index) => {
-      const characterId =
-        this.characterManager.findPlayerCharacterByImage(action.character)
-          ?.id || "unknown";
-      console.log(`${index + 1}. キャラクター${characterId}:`);
-      console.log(
-        `   位置: (${action.position.col}, ${action.position.row})`
-      );
-      console.log(`   mainトリガー: ${action.mainAzimuth.toFixed(1)}度`);
-      console.log(`   subトリガー: ${action.subAzimuth.toFixed(1)}度`);
-      console.log(`   時刻: ${action.timestamp}`);
-      console.log("");
-    });
-  }
-
-  /**
-   * 行動履歴をクリアする
-   */
-  public clearActionHistory() {
-    this.actionHistory = [];
-    // clearGlobalHistory();
-    console.log("行動履歴をクリアしました");
-  }
-
-  /**
-   * キーボードイベントを設定する
-   */
-  private createKeyboardInteraction() {
-    // キーボードイベントを設定
-    this.input.keyboard!.on("keydown-H", () => {
-      this.printActionHistory();
-    });
-
-    this.input.keyboard!.on("keydown-C", () => {
-      this.clearActionHistory();
-    });
-
-    // 使用方法をコンソールに出力
-    console.log("キーボードショートカット:");
-    console.log("  H: 行動履歴を表示");
-    console.log("  C: 行動履歴をクリア");
   }
 
   /**
@@ -1744,7 +1651,7 @@ export class GridCellsScene extends Phaser.Scene {
     this.resetAllActionPoints();
 
     // 行動履歴をクリア
-    this.clearActionHistory();
+    this.turn.clearSteps();
 
     // キャラクターの行動力を表示
     this.characterManager.setAllActionPointsText(this);

@@ -10,6 +10,7 @@ pub enum ActionTypeValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ActionType {
     value: ActionTypeValue,
 }
@@ -21,11 +22,11 @@ impl ActionType {
 
     pub fn new_string(value: String) -> Self {
         let value = match value.as_str() {
-            "MOVE" => ActionTypeValue::Move,
-            "WAIT" => ActionTypeValue::Wait,
-            "GUARD" => ActionTypeValue::Guard,
-            "UNIQUECOMMAND" => ActionTypeValue::UniqueCommand,
-            "PURSUITMOVE" => ActionTypeValue::PursuitMove,
+            "Move" => ActionTypeValue::Move,
+            "Wait" => ActionTypeValue::Wait,
+            "Guard" => ActionTypeValue::Guard,
+            "UniqueCommand" => ActionTypeValue::UniqueCommand,
+            "PursuitMove" => ActionTypeValue::PursuitMove,
             _ => panic!("Invalid ActionType string"),
         };
         Self { value }
@@ -33,11 +34,11 @@ impl ActionType {
 
     pub fn fmt_value(&self) -> String {
         match self.value {
-            ActionTypeValue::Move => "MOVE".to_string(),
-            ActionTypeValue::Wait => "WAIT".to_string(),
-            ActionTypeValue::Guard => "GUARD".to_string(),
-            ActionTypeValue::UniqueCommand => "UNIQUECOMMAND".to_string(),
-            ActionTypeValue::PursuitMove => "PURSUITMOVE".to_string(),
+            ActionTypeValue::Move => "Move".to_string(),
+            ActionTypeValue::Wait => "Wait".to_string(),
+            ActionTypeValue::Guard => "Guard".to_string(),
+            ActionTypeValue::UniqueCommand => "UniqueCommand".to_string(),
+            ActionTypeValue::PursuitMove => "PursuitMove".to_string(),
         }
     }
     pub fn value(&self) -> &ActionTypeValue {

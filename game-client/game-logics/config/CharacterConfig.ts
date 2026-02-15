@@ -21,4 +21,5 @@ export enum UnitType {
   KUGA_YUMA = "KUGA_YUMA",
   AMATORI_CHIKA = "AMATORI_CHIKA",
   HYUSE_KURONIN = "HYUSE_KURONIN",
+  UNKNOWN = "UNKNOWN", // 敵のユニット種別が不明な場合のデフォルト値
 }

@@ -90,10 +90,10 @@ export const useManageMatching = () => {
             unitTypeId: "KUGA_YUMA",
             initialX: 12,
             initialY: 34,
-            usingMainTriggerId: "SCOPION",
+            usingMainTriggerId: "SCORPION",
             usingSubTriggerId: "SHIELD",
-            mainTriggerIds: ["SCOPION", "SHIELD", "GRASSHOPPER"],
-            subTriggerIds: ["SCOPION", "SHIELD", "GRASSHOPPER", "BAGWORM"],
+            mainTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER"],
+            subTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER", "BAGWORM"],
           },
           {
             unitTypeId: "AMATORI_CHIKA",

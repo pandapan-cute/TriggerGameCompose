@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { ActionHistory } from "@/game-logics/entities/ActionHistoryEntity";
-import ActionHistoryPanel from "../panels/ActionHistoryPanel";
 import "./index.css";
 
 interface NavItem {
@@ -21,35 +19,17 @@ interface GridLeftNavProps {
     playersConnected: number;
   };
   customItems?: NavItem[];
-  actionHistories?: ActionHistory[];
   onItemClick?: (itemId: string) => void;
 }
 
 export default function GridLeftNav({
   customItems,
-  actionHistories = [],
   onItemClick,
 }: GridLeftNavProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   /** ナビゲーション項目 */
   const navigationItems: NavItem[] = [
-    {
-      idx: 0,
-      id: "actionHistories",
-      icon: (
-        <img src="/icons/footprint.svg" alt="History" className="w-6 h-6" />
-      ),
-      label: "行動設定",
-      content:
-        actionHistories.length > 0 ? (
-          <ActionHistoryPanel globalActionHistory={actionHistories} />
-        ) : (
-          <div className="text-white p-2">
-            キャラクターを選択して行動を開始してください
-          </div>
-        ),
-    },
     {
       idx: 1,
       id: "help",
@@ -107,8 +87,8 @@ export default function GridLeftNav({
               onClick={() => handleItemClick(item)}
               disabled={item.disabled}
               className={`w-full flex items-center text-white transition-all duration-200 relative justify-center ${item.disabled
-                  ? "opacity-70 cursor-not-allowed"
-                  : "hover:bg-white/10 active:bg-slate-800/70"
+                ? "opacity-70 cursor-not-allowed"
+                : "hover:bg-white/10 active:bg-slate-800/70"
                 }`}
               title={selectedIndex !== item.idx ? item.label : undefined}
             >

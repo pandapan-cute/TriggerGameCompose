@@ -242,12 +242,10 @@ impl TurnRepository for DynamoDbTurnRepository {
         // game_idでクエリ
         let result = self
             .client
-            .query()
+            .get_item()
             .table_name(self.turns_table)
-            .index_name("TurnIdIndex")
-            .key_condition_expression("turn_id = :turn_id")
-            .expression_attribute_values(
-                ":turn_id",
+            .key(
+                "turn_id",
                 AttributeValue::S(
                     game_id.value().to_string()
                         + "_"
@@ -262,12 +260,12 @@ impl TurnRepository for DynamoDbTurnRepository {
 
         println!("Query result: {:?}", result);
 
-        let items = result.items();
-        if items.is_empty() {
+        let item = result.item();
+        if item.is_none() {
             return Ok(None);
         }
 
-        let turn_item = &items[0];
+        let turn_item = item.unwrap();
         // Turnの属性を抽出
         let turn_id_str = turn_item
             .get("turn_id")

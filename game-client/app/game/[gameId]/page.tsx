@@ -20,7 +20,7 @@ export interface GridConfig {
 
 export default function GamePage() {
   // WebSocketコンテキストを使用
-  const { isConnected, playerId, connect, sendMessage, addMessageListener, removeMessageListener } = useWebSocket();
+  const { isConnected, playerId, setGameId, connect, sendMessage, addMessageListener, removeMessageListener } = useWebSocket();
 
   const [friendUnits, setFriendUnits] = useState<FriendUnit[]>([]);
   const [enemyUnits, setEnemyUnits] = useState<EnemyUnit[]>([]);
@@ -56,6 +56,7 @@ export default function GamePage() {
   // 接続確立後、ゲーム状態をリクエスト
   useEffect(() => {
     if (isConnected && playerId && gameId) {
+      setGameId(gameId);
       sendMessage({
         action: "getGameState",
         playerId: playerId,

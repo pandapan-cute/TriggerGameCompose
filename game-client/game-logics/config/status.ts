@@ -14,7 +14,7 @@ export const CHARACTER_STATUS = {
     technique: 6,
   },
   KUGA_YUMA: {
-    main: "SCOPEON",
+    main: "SCORPION",
     sub: "SHIELD",
     activeCount: 16,
     trion: 7,
@@ -65,7 +65,7 @@ export const TRIGGER_STATUS = {
     defense: 10,
     trionEffect: 1,
   },
-  SCOPEON: {
+  SCORPION: {
     angle: 120,
     range: 1,
     attack: 8,
@@ -105,4 +105,4 @@ export const TRIGGER_STATUS = {
     defense: 0,
     trionEffect: 1,
   },
-}
+};

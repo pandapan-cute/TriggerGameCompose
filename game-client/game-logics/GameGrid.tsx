@@ -8,6 +8,7 @@ import { Action } from "./models/Action";
 import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
 import { FriendUnit } from "./models/FriendUnit";
 import { EnemyUnit } from "./models/EnemyUnit";
+import { Step } from "./models/Step";
 
 interface GameGridProps {
   friendUnits: FriendUnit[];
@@ -246,6 +247,21 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
     };
   }, [selectedCharacterId]);
 
+  /** ターン情報の送信 */
+  const handleTurnExecution = (steps: Step[]) => {
+    console.log("Phaserからターン情報を受け取りました:", steps, isConnected, playerId, gameId);
+    if (isConnected && playerId && gameId) {
+      const messageData = {
+        action: "turnExecution" as const,
+        playerId,
+        gameId,
+        steps,
+      };
+      // WebSocketでサーバーに送信
+      sendMessage(messageData);
+    }
+  };
+
   useEffect(() => {
     // DOM要素が存在しない場合は何もしない
     if (!containerRef.current) return;
@@ -265,7 +281,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
         // GridSceneクラスを作成（Phaserオブジェクトを渡す）
         // const GridScene = createGridScene(Phaser, fieldView);
 
-        const GridScene = new GridCellsScene(friendUnits, enemyUnits);
+        const GridScene = new GridCellsScene(friendUnits, enemyUnits, handleTurnExecution);
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
         const config: Phaser.Types.Core.GameConfig = {
@@ -309,7 +325,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
   return (
     <div className="game-container relative w-full h-screen overflow-hidden">
       {/* 左側ナビゲーション */}
-      <GridLeftNav actionHistories={globalActionHistory} />
+      <GridLeftNav />
 
       {/* ゲームモード表示 */}
       <div className="absolute top-2 right-2 bg-black bg-opacity-80 text-white p-2 rounded-lg shadow-lg text-sm z-50">

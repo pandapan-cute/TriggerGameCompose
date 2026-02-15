@@ -8,6 +8,7 @@ pub enum TurnStatusValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TurnStatus {
     value: TurnStatusValue,
 }

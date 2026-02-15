@@ -155,6 +155,24 @@ func createTables(ctx context.Context, client *dynamodb.Client) error {
 	} else {
 		log.Println("✅ Games table created")
 	}
+
+	// Turnsテーブル
+	_, errTurns := client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String("Turns"),
+		AttributeDefinitions: []types.AttributeDefinition{
+			{AttributeName: aws.String("turn_id"), AttributeType: types.ScalarAttributeTypeS},
+		},
+		KeySchema: []types.KeySchemaElement{
+			{AttributeName: aws.String("turn_id"), KeyType: types.KeyTypeHash},
+		},
+		BillingMode: types.BillingModePayPerRequest,
+	})
+
+	if errTurns != nil {
+		log.Printf("⚠️  Turns table: %v", errTurns)
+	} else {
+		log.Println("✅ Turns table created")
+	}
 	return nil
 }
 

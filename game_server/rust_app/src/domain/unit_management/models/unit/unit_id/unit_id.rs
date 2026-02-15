@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[serde(transparent)]
 pub struct UnitId {
     value: String,
 }
@@ -27,3 +28,11 @@ impl UnitId {
     }
 }
 
+// 等価性の比較を実装
+impl PartialEq for UnitId {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Eq for UnitId {}

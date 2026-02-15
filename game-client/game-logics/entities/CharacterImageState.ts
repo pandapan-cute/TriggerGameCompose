@@ -1,4 +1,5 @@
 'use client';
+import { UnitType } from "../config/CharacterConfig";
 import { Position, TriggerDirection, TriggerDisplay } from "../types";
 
 /**
@@ -7,8 +8,10 @@ import { Position, TriggerDirection, TriggerDisplay } from "../types";
 export class CharacterImageState {
 
   constructor(
+    /** ユニットID */
+    private unitId: string,
     /** ユニット種別 */
-    private unitTypeId: string,
+    private unitTypeId: UnitType,
     /** Phaserのゲームオブジェクト */
     public image: Phaser.GameObjects.Image,
     /** キャラクターの座標マス */
@@ -23,7 +26,11 @@ export class CharacterImageState {
 
 
   // ゲッター
-  getUnitTypeId(): string {
+  getUnitId(): string {
+    return this.unitId;
+  }
+
+  getUnitTypeId(): UnitType {
     return this.unitTypeId;
   }
 }

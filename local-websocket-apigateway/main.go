@@ -25,6 +25,7 @@ type Message struct {
 	PlayerId string `json:"playerId"` // プレイヤーID
 	GameId   string `json:"gameId"`   // ゲームID
 	Units    any    `json:"units"`    // ユニットの初期配置情報
+	Steps    any    `json:"steps"`    // ユニットの行動情報
 	// Characters []string `json:"characters"` // キャラクターのリスト
 }
 

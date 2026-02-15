@@ -92,19 +92,53 @@ impl Turn {
 
     /// 別のターンと結合
     pub fn merge(&mut self, other: &Turn) -> Result<(), String> {
-        // ステップを結合
-        let mut combined_steps = self.steps.clone();
-        combined_steps.extend(other.steps.clone());
-        self.steps = combined_steps;
+        // 各ステップのアクションを結合
+        for (i, other_step) in other.steps.iter().enumerate() {
+            if self.steps.len() <= i {
+                // 自分のステップ数が少ない場合は、相手のステップをそのまま追加
+                self.steps.push(other_step.clone());
+                continue;
+            }
+            self.steps[i].merge_actions(other_step)?;
+        }
 
         Ok(())
     }
 
     /// ターンの戦闘処理を開始
-    pub fn turn_start(&mut self, units: Vec<Unit>) -> Result<Vec<Unit>, String> {
+    pub fn turn_start(
+        &mut self,
+        units: Vec<Unit>,
+        opponent_turn: &Turn,
+    ) -> Result<Vec<Unit>, String> {
+        print!(
+            "ターン開始: {:?} のターン{:?}, {:?}が開始されました",
+            self.player_id,
+            self.turn_number,
+            self.turn_status()
+        );
         if !self.turn_status.is_step_setting() {
             return Err("行動設定中のステータスでないとターンを開始できません".to_string());
         }
+        if !opponent_turn.is_step_setting() {
+            return Err(
+                "対戦相手のターンが行動設定中のステータスでないとターンを開始できません"
+                    .to_string(),
+            );
+        }
+
+        println!(
+            "ターン開始: turnのデータ{:?}, 対戦相手のターン{:?}",
+            self, opponent_turn
+        );
+        // プレイヤー1とプレイヤー2のターン情報の結合
+        self.merge(opponent_turn)?;
+        println!("マージ後turnのデータ{:?}", self);
+        println!(
+            "ターン開始: turnのデータ{:?}, 対戦相手のターン{:?}",
+            self, opponent_turn
+        );
+
         // ユニット行動モードに移行
         self.start_unit_stepping()?;
 

@@ -1,4 +1,5 @@
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
@@ -32,6 +33,8 @@ pub struct Unit {
     having_sub_trigger_ids: HavingTriggerIds,
     main_trigger_hp: MainTriggerHP,
     sub_trigger_hp: SubTriggerHP,
+    main_trigger_azimuth: TriggerAzimuth,
+    sub_trigger_azimuth: TriggerAzimuth,
     sight_range: SightRange,
     is_bailout: IsBailout,
 }
@@ -53,6 +56,8 @@ impl Unit {
         having_sub_trigger_ids: HavingTriggerIds,
         main_trigger_hp: MainTriggerHP,
         sub_trigger_hp: SubTriggerHP,
+        main_trigger_azimuth: TriggerAzimuth,
+        sub_trigger_azimuth: TriggerAzimuth,
         sight_range: SightRange,
         is_bailout: IsBailout,
     ) -> Self {
@@ -70,6 +75,8 @@ impl Unit {
             having_sub_trigger_ids,
             main_trigger_hp,
             sub_trigger_hp,
+            main_trigger_azimuth,
+            sub_trigger_azimuth,
             sight_range,
             is_bailout,
         }
@@ -95,6 +102,8 @@ impl Unit {
         let wait_time = WaitTime::new(0);
         let main_trigger_hp = MainTriggerHP::new(initial_main_hp);
         let sub_trigger_hp = SubTriggerHP::new(initial_sub_hp);
+        let main_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
+        let sub_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
         let sight_range = SightRange::new(initial_sight_range);
         let is_bailout = IsBailout::new(false);
 
@@ -112,6 +121,8 @@ impl Unit {
             having_sub_trigger_ids,
             main_trigger_hp,
             sub_trigger_hp,
+            main_trigger_azimuth,
+            sub_trigger_azimuth,
             sight_range,
             is_bailout,
         )
@@ -136,6 +147,8 @@ impl Unit {
         sight_range: SightRange,
         is_bailout: IsBailout,
     ) -> Self {
+        let main_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
+        let sub_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
         Self::new(
             unit_id,
             unit_type_id,
@@ -150,6 +163,8 @@ impl Unit {
             having_sub_trigger_ids,
             main_trigger_hp,
             sub_trigger_hp,
+            main_trigger_azimuth,
+            sub_trigger_azimuth,
             sight_range,
             is_bailout,
         )
@@ -293,6 +308,14 @@ impl Unit {
         self.using_sub_trigger_id = trigger_id;
     }
 
+    pub fn set_main_trigger_azimuth(&mut self, azimuth: TriggerAzimuth) {
+        self.main_trigger_azimuth = azimuth;
+    }
+
+    pub fn set_sub_trigger_azimuth(&mut self, azimuth: TriggerAzimuth) {
+        self.sub_trigger_azimuth = azimuth;
+    }
+
     /// ベイルアウト
     pub fn bailout(&mut self) {
         self.is_bailout = IsBailout::new(true);
@@ -360,6 +383,14 @@ impl Unit {
 
     pub fn main_trigger_hp(&self) -> &MainTriggerHP {
         &self.main_trigger_hp
+    }
+
+    pub fn main_trigger_azimuth(&self) -> &TriggerAzimuth {
+        &self.main_trigger_azimuth
+    }
+
+    pub fn sub_trigger_azimuth(&self) -> &TriggerAzimuth {
+        &self.sub_trigger_azimuth
     }
 
     pub fn sub_trigger_hp(&self) -> &SubTriggerHP {

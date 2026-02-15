@@ -1,3 +1,4 @@
+import { UnitType } from "../config/CharacterConfig";
 import { Position } from "../types";
 
 /**
@@ -5,7 +6,7 @@ import { Position } from "../types";
  */
 export interface FriendUnit {
   unitId: string;
-  unitTypeId: string;
+  unitTypeId: UnitType;
   position: Position;
   usingMainTriggerId: string;
   usingSubTriggerId: string;

@@ -106,7 +106,7 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
         );
         action_map1.insert(
             "action_type".to_string(),
-            AttributeValue::S("MOVE".to_string()),
+            AttributeValue::S("Move".to_string()),
         );
         action_map1.insert(
             "unit_id".to_string(),

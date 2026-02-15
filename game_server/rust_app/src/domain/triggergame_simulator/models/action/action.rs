@@ -17,6 +17,7 @@ use uuid::Uuid;
 /// Action集約
 /// ユニットの1つの行動を表すエンティティ
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Action {
     action_id: ActionId,
     action_type: ActionType,
@@ -109,12 +110,7 @@ impl Action {
     /// ただし、combatが発生しなかった場合はNoneを返す
     /// action_player_id: actionを実行したプレイヤーID(攻撃側)
     /// unit: 防御側ユニット情報
-    pub fn generate_combats(
-        &self,
-        defence_unit: &Unit,
-        defender_main_trigger_azimuth: TriggerAzimuth,
-        defender_sub_trigger_azimuth: TriggerAzimuth,
-    ) -> Option<Combat> {
+    pub fn generate_combats(&self, defence_unit: &Unit) -> Option<Combat> {
         // ユニットのステータス取得
         let unit_status = UnitTypeSpec::get_spec(&self.unit_type_id.value()).unwrap();
         // アクションタイプに応じてcombatを生成
@@ -134,8 +130,8 @@ impl Action {
                 defence_unit.using_sub_trigger_id().clone(),
                 defence_unit.main_trigger_hp().value(),
                 defence_unit.sub_trigger_hp().value(),
-                defender_main_trigger_azimuth.clone(),
-                defender_sub_trigger_azimuth.clone(),
+                defence_unit.main_trigger_azimuth().clone(),
+                defence_unit.sub_trigger_azimuth().clone(),
                 unit_status.base_defense(),
                 unit_status.base_avoid(),
             )

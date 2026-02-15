@@ -94,7 +94,7 @@ impl ProcessTurnUseCase {
             player_id.clone(),
             TurnNumber::new(game.current_turn_number().value()),
             TurnStartDatetime::new(chrono::Utc::now()),
-            TurnStatus::new(TurnStatusValue::UnitStepping),
+            TurnStatus::new(TurnStatusValue::StepSetting),
             steps,
         );
 
@@ -117,10 +117,12 @@ impl ProcessTurnUseCase {
         // 対戦相手のターン情報が登録済みでなければ何もしないで返す
         if opponent_turn_data.is_none() {
             return Ok(());
+        } else {
+            println!(
+                "対戦相手のターン情報が登録されていることを確認: {:?}",
+                opponent_turn_data.as_ref().unwrap()
+            );
         }
-
-        // プレイヤー1とプレイヤー2のターン情報の結合
-        turn.merge(&opponent_turn_data.unwrap())?;
 
         // ユニット情報の取得
         let units = self
@@ -130,7 +132,7 @@ impl ProcessTurnUseCase {
             .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))?;
 
         // ターンエンティティの演算処理開始
-        let result_units = turn.turn_start(units)?;
+        let result_units = turn.turn_start(units, &opponent_turn_data.unwrap())?;
 
         // ユニット情報の更新
         self.unit_repository

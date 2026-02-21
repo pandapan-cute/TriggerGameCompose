@@ -90,9 +90,24 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
   useEffect(() => {
     /** ターンの実行 */
     const handleTurnResultSubmitted = (data: WebSocketResponseType) => {
-      if (data.action === "turnExecutionResult" && gridSceneRef.current) {
+      if (data.action === "turnExecutionResult") {
+        let activeScene: GridCellsScene | null = null;
+        if (gameRef.current) {
+          try {
+            activeScene = gameRef.current.scene.getScene("GridScene") as GridCellsScene;
+          } catch {
+            activeScene = null;
+          }
+        }
+
+        const targetScene = activeScene ?? gridSceneRef.current;
+        if (!targetScene) {
+          console.warn("GridSceneが未初期化のためturnExecutionResultを処理できません");
+          return;
+        }
+
         const hydratedTurn = Turn.fromJSON(data.turn);
-        gridSceneRef.current.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
+        targetScene.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
         setGameMode("action");
       }
     };

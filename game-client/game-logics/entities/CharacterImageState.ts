@@ -1,5 +1,6 @@
 'use client';
 import { UnitType } from "../config/CharacterConfig";
+import { TRIGGER_STATUS } from "../config/status";
 import { HexUtils } from "../hexUtils";
 import { Action } from "../models/Action";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
@@ -52,9 +53,9 @@ export class CharacterImageState {
       action.getPosition().col,
       action.getPosition().row
     );
-
+    console.log(`キャラクター${this.unitId}の移動先: マス(${action.getPosition().col}, ${action.getPosition().row}) -> ピクセル(${targetPixelPos.x}, ${targetPixelPos.y})`);
     this.setDirection({ main: action.getMainTriggerAzimuth(), sub: action.getSubTriggerAzimuth() });
-
+    console.log(`キャラクター${this.unitId}の向きを更新: メイン ${action.getMainTriggerAzimuth()}°, サブ ${action.getSubTriggerAzimuth()}°`);
     // 移動アニメーションを実行
     this.image.moveUnitTween(targetPixelPos.x, targetPixelPos.y, () => {
       // 移動完了後にトリガー表示を更新
@@ -69,10 +70,16 @@ export class CharacterImageState {
   updateTriggerPositionsForCharacter(
     action: Action,
   ) {
+    // メイントリガーのステータスを取得
+    const mainTriggerKey = action.getUsingMainTriggerId() as keyof typeof TRIGGER_STATUS;
+    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
+    // サブトリガーのステータスを取得
+    const subTriggerKey = action.getUsingSubTriggerId() as keyof typeof TRIGGER_STATUS;
+    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
     // メイントリガーの表示を更新
-    this.mainTriggerFan?.updateTriggerAzimuth(action.getMainTriggerAzimuth(), this.image.x, this.image.y);
+    this.mainTriggerFan?.updateTriggerAzimuth(action.getMainTriggerAzimuth(), this.image.x, this.image.y, mainTriggerStatus.angle, mainTriggerStatus.range, mainTriggerKey);
     // サブトリガーの表示を更新
-    this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y);
+    this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey);
   }
 
   /**

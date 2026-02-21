@@ -18,34 +18,10 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
     this.triggerAngle = triggerAngle;
     this.triggerRange = triggerRange;
 
-    // 扇形の設定（トリガーの実際のangleとrangeを使用）
-    // WARNING: サーバー側の処理とそろえること
-    const radius = this.gridConfig.hexHeight * (triggerRange + 0.5); // 半径はrangeに基づく
-
     // Phaserの座標系に合わせて角度を補正（-90度）
     const correctedDirection = direction - 90;
-
-    // 開始角度と終了角度を計算（度数を使用）
-    const startAngle = (correctedDirection - triggerAngle / 2) * (Math.PI / 180);
-    const endAngle = (correctedDirection + triggerAngle / 2) * (Math.PI / 180);
-
-    // 扇形を描画
-    this.fillStyle(color, 0.5);
-    this.lineStyle(2, color, 0.8);
-
-    this.beginPath();
-    this.moveTo(x, y);
-    this.arc(
-      x,
-      y,
-      radius,
-      startAngle,
-      endAngle,
-      false
-    );
-    this.closePath();
-    this.fillPath();
-    this.strokePath();
+    // 扇形の初期描画
+    this.updateTriggerShape(x, y, color, correctedDirection, triggerAngle, triggerRange);
 
     const label = new TriggerTypeText(scene, x, y, color, gridConfig, correctedDirection, triggerRange, triggerName, visible);
 
@@ -61,32 +37,27 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
    * @param direction トリガーの向き
    * @param x トリガーのX座標
    * @param y トリガーのY座標
+   * @param triggerAngle トリガーの角度
+   * @param triggerRange トリガーの範囲
+   * @param triggerName トリガーの名前
    */
-  updateTriggerAzimuth(direction: number, x: number, y: number) {
+  updateTriggerAzimuth(direction: number, x: number, y: number, triggerAngle: number, triggerRange: number, triggerName: string) {
+    this.direction = direction;
+    this.triggerAngle = triggerAngle;
+    this.triggerRange = triggerRange;
+    // 扇形の更新
+    this.updateTriggerShape(x, y, this.color, direction - 90, triggerAngle, triggerRange);
     this.setVisible(true); // 更新時に扇形を表示
-    // 角度をラジアンに変換
-    const targetRotation = (direction - 90) * (Math.PI / 180);
 
-    // 位置と回転をアニメーション
-    this.scene.tweens.add({
-      targets: this,
-      x: x,
-      y: y,
-      rotation: targetRotation,
-      duration: 750, // 0.75秒
-      ease: 'Linear'
-    });
-
-    // ラベルも一緒に移動・回転
+    const correctedDirection = direction - 90;
     const label = this.getData('label');
     if (label) {
-      this.scene.tweens.add({
-        targets: label,
-        x: x,
-        y: y,
-        duration: 750,
-        ease: 'Linear'
-      });
+      label.setText(triggerName);
+      label.setPosition(
+        x + Math.cos((correctedDirection * Math.PI) / 180) * this.gridConfig.hexRadius * triggerRange + 1.0,
+        y + Math.sin((correctedDirection * Math.PI) / 180) * this.gridConfig.hexRadius * triggerRange + 1.0,
+      );
+      label.setVisible(true);
     }
   }
 
@@ -166,5 +137,44 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
       }
     }
     return points;
+  }
+
+  /**
+   * 現在の扇形を更新して再描画するヘルパー関数
+   * @param x 
+   * @param y 
+   * @param color 
+   * @param direction 
+   * @param triggerAngle 
+   * @param triggerRange 
+   */
+  private updateTriggerShape(x: number, y: number, color: number, direction: number, triggerAngle: number, triggerRange: number) {
+    this.clear(); // 既存の描画をクリア
+
+    // 扇形の設定（トリガーの実際のangleとrangeを使用）
+    // WARNING: サーバー側の処理とそろえること
+    const radius = this.gridConfig.hexHeight * (triggerRange + 0.5); // 半径はrangeに基づく
+
+    // 開始角度と終了角度を計算（度数を使用）
+    const startAngle = (direction - triggerAngle / 2) * (Math.PI / 180);
+    const endAngle = (direction + triggerAngle / 2) * (Math.PI / 180);
+
+    // 扇形を描画
+    this.fillStyle(color, 0.5);
+    this.lineStyle(2, color, 0.8);
+
+    this.beginPath();
+    this.moveTo(x, y);
+    this.arc(
+      x,
+      y,
+      radius,
+      startAngle,
+      endAngle,
+      false
+    );
+    this.closePath();
+    this.fillPath();
+    this.strokePath();
   }
 }

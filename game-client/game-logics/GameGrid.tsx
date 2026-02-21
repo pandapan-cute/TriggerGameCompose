@@ -8,6 +8,7 @@ import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
 import { FriendUnit } from "./models/FriendUnit";
 import { EnemyUnit } from "./models/EnemyUnit";
 import { Step } from "./models/Step";
+import { Turn } from "./models/Turn";
 
 interface GameGridProps {
   friendUnits: FriendUnit[];
@@ -22,6 +23,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
+  const gridSceneRef = useRef<GridCellsScene | null>(null);
 
   // ゲームを表示するDOMコンテナのRef
   const containerRef = useRef<HTMLDivElement>(null);
@@ -29,8 +31,6 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"setup" | "action">("setup");
   const [currentTurn, setCurrentTurn] = useState<number>(1);
-
-  let gridCellsScene: GridCellsScene;
 
   // WebSocketコンテキストを使用
   const {
@@ -69,43 +69,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
     }
   }, [isConnected, connect]);
 
-  // 敵側のアクションを受信してユニット行動モードに移行
-  useEffect(() => {
-    const handleTurnResultSubmitted = (data: WebSocketResponseType) => {
-      if (data.action === "turnExecutionResult") {
-        console.log("ターン戦闘結果のアクションを受信:", data);
-        setCurrentTurn(data.turn.getTurnNumber() || 1);
-        setGameMode("action");
-      }
-    };
-
-    // WebSocketメッセージリスナーを追加
-    addMessageListener("turnExecutionResult", handleTurnResultSubmitted);
-
-    return () => {
-      removeMessageListener("turnExecutionResult", handleTurnResultSubmitted);
-    };
-  }, [addMessageListener, removeMessageListener]);
-
   const router = useRouter();
-
-  // 対戦終了関連のWebSocketメッセージ処理
-  useEffect(() => {
-    const handleCancelMatchingResult = (data: WebSocketResponseType) => {
-      if (data.action === "cancelMatchingResult") {
-        console.log("対戦終了結果を受信:", data);
-        console.log("対戦が正常に終了されました。ホーム画面に戻ります。");
-        router.push("/");
-      }
-    };
-
-    return () => {
-      removeMessageListener(
-        "cancelMatchingResult",
-        handleCancelMatchingResult
-      );
-    };
-  }, [addMessageListener, removeMessageListener, router]);
 
   /** ターン情報の送信 */
   const handleTurnExecution = (steps: Step[]) => {
@@ -121,6 +85,35 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
       sendMessage(messageData);
     }
   };
+
+  // WebSocketでターン実行結果を受信したときの処理
+  useEffect(() => {
+    /** ターンの実行 */
+    const handleTurnResultSubmitted = (data: WebSocketResponseType) => {
+      if (data.action === "turnExecutionResult" && gridSceneRef.current) {
+        const hydratedTurn = Turn.fromJSON(data.turn);
+        gridSceneRef.current.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
+        setGameMode("action");
+      }
+    };
+
+    /** 対戦終了結果の処理 */
+    const handleCancelMatchingResult = (data: WebSocketResponseType) => {
+      if (data.action === "cancelMatchingResult") {
+        console.log("対戦終了結果を受信:", data);
+        console.log("対戦が正常に終了されました。ホーム画面に戻ります。");
+        router.push("/");
+      }
+    };
+
+    addMessageListener("turnExecutionResult", handleTurnResultSubmitted);
+    addMessageListener("cancelMatchingResult", handleCancelMatchingResult);
+
+    return () => {
+      removeMessageListener("turnExecutionResult", handleTurnResultSubmitted);
+      removeMessageListener("cancelMatchingResult", handleCancelMatchingResult);
+    };
+  }, [addMessageListener, removeMessageListener, router]);
 
   useEffect(() => {
     // DOM要素が存在しない場合は何もしない
@@ -138,10 +131,8 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        // GridSceneクラスを作成（Phaserオブジェクトを渡す）
-        // const GridScene = createGridScene(Phaser, fieldView);
-
-        const GridScene = new GridCellsScene(friendUnits, enemyUnits, handleTurnExecution);
+        const gridScene = new GridCellsScene(friendUnits, enemyUnits, handleTurnExecution);
+        gridSceneRef.current = gridScene;
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
         const config: Phaser.Types.Core.GameConfig = {
@@ -150,7 +141,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
           height: window.innerHeight, // 画面高さに合わせて調整（余白を考慮）
           backgroundColor: "#ffffff", // 背景色（真っ白）
           parent: containerRef.current, // ゲームを表示するDOM要素
-          scene: GridScene, // 使用するシーン
+          scene: gridScene, // 使用するシーン
           physics: {
             default: "arcade", // 物理エンジン（今回は使用しないがデフォルト設定）
             arcade: {
@@ -179,6 +170,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
         gameRef.current.destroy(true); // Phaserゲームインスタンスを破棄
         gameRef.current = null;
       }
+      gridSceneRef.current = null;
     };
   }, []); // 空の依存配列で初回のみ実行
 

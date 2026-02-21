@@ -174,6 +174,7 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                         service.execute(game_id, player_id).await?;
                     }
 
+                    // ターン実行リクエストの処理
                     WebSocketRequest::TurnExecution {
                         game_id,
                         player_id,

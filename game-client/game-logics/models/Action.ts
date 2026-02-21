@@ -49,6 +49,10 @@ export class Action {
     this.subTriggerAzimuth = subTriggerAzimuth;
   }
 
+  static fromJSON(rawAction: unknown): Action {
+    return Object.setPrototypeOf(rawAction as object, Action.prototype) as Action;
+  }
+
   /**
    * エネミー用に座標を反転させる
    */

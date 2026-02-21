@@ -47,6 +47,7 @@ export class GridCellsScene extends Phaser.Scene {
 
   constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private sendServerTurn: (steps: Step[]) => void) {
     super({ key: "GridScene" });
+    console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
 
   /** ターンのステップ情報を格納 */
@@ -57,6 +58,8 @@ export class GridCellsScene extends Phaser.Scene {
   private actionAnimationInProgress: boolean = false;
   /** ユニット行動モード中のトリガー矢印の配列 */
   private triggerArrows: Phaser.GameObjects.Graphics[] = [];
+  /** 初期化前に受け取ったターン */
+  private pendingTurn: Turn | null = null;
 
   /** グリッドの設定値 */
   private gridConfig: GridConfig = {
@@ -125,6 +128,11 @@ export class GridCellsScene extends Phaser.Scene {
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
     this.createCharacters(); // キャラクターを配置
     this.createMouseInteraction(); // マウスイベントを設定
+    if (this.pendingTurn) {
+      const queuedTurn = this.pendingTurn;
+      this.pendingTurn = null;
+      this.executeTurn(queuedTurn);
+    }
     // this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
   }
 
@@ -599,14 +607,12 @@ export class GridCellsScene extends Phaser.Scene {
 
     // 相手のキャラクターを配置（逆転した座標を使用）
     this.enemyUnits.forEach((unit, index) => {
-
       const enemyCharacterState = new EnemyCharacterState(
         this,
         unit,
         this.hexUtils,
         this.gridConfig
       );
-
       this.characterManager.enemyCharacters.push(enemyCharacterState);
     });
   }
@@ -1015,23 +1021,22 @@ export class GridCellsScene extends Phaser.Scene {
     }
   }
 
-
   /**
    * 指定されたステップの行動を実行
    */
   executeTurn(turn: Turn) {
-    console.log(`=== ステップ ${turn.getTurnNumber()} 実行開始 ===`);
-
     const onStepComplete = () => { };
 
     // ステップの順番実行
-    for (const step of turn.getSteps()) {
+    for (const [index, step] of turn.getSteps().entries()) {
+      console.log(`=== ステップ ${index + 1} 実行開始 ===`);
 
       // ステップ内アクションの開始
-      for (const action of step.getActions()) {
+      for (const [actionIndex, action] of step.getActions().entries()) {
         // TODO: actionの内容に応じてキャラクターの移動やトリガー表示を更新する
         const character = this.characterManager.findCharacterByUnitId(action.getUnitId());
         if (character) {
+          console.log(`--- アクション ${actionIndex + 1} 開始 ---`);
           character.executeCharacterSingleStep(action, () => { });
         }
         // 矢印の削除

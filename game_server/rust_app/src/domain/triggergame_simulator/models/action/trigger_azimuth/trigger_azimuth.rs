@@ -7,7 +7,7 @@ pub struct TriggerAzimuth {
 }
 
 impl TriggerAzimuth {
-    const MAX: i32 = 359;
+    const MAX: i32 = 360;
     const MIN: i32 = 0;
 
     pub fn new(value: i32) -> Self {

@@ -15,6 +15,7 @@ use uuid::Uuid;
 /// Turn集約
 /// ゲームの1ターンを表すエンティティ
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Turn {
     turn_id: TurnId,
     game_id: GameId,

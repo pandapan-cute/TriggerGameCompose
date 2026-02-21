@@ -15,6 +15,19 @@ export class Step implements Step {
     this.actions = [];
   }
 
+  static fromJSON(rawStep: unknown): Step {
+    const step = Object.setPrototypeOf(rawStep as object, Step.prototype) as Step;
+    const actions = (rawStep as { actions?: unknown[]; }).actions;
+
+    if (Array.isArray(actions)) {
+      actions.forEach((action) => {
+        Action.fromJSON(action);
+      });
+    }
+
+    return step;
+  }
+
   addAction(action: Action) {
     this.actions.push(action);
   }

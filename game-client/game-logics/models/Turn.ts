@@ -8,9 +8,11 @@ import { Step } from "./Step";
  * (個々のユニットの一回の行動 -> Action)
  */
 export class Turn {
+  private turnNumber: number;
   private steps: Step[];
 
   constructor() {
+    this.turnNumber = 1;
     this.steps = [];
   }
 
@@ -40,5 +42,9 @@ export class Turn {
   // ゲッター
   getSteps(): Step[] {
     return this.steps;
+  }
+
+  getTurnNumber(): number {
+    return this.turnNumber;
   }
 }

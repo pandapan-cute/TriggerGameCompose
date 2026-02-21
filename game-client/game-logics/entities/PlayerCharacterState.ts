@@ -6,6 +6,8 @@ import { ActionCompletedText } from "../phaser/game-objects/texts/ActionComplete
 import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
 import { FriendUnit } from "../models/FriendUnit";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
+import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
+import { TRIGGER_STATUS } from "../config/status";
 
 export class PlayerCharacterState extends CharacterImageState {
 
@@ -24,7 +26,7 @@ export class PlayerCharacterState extends CharacterImageState {
     /** 味方ユニット情報 */
     friendUnit: FriendUnit,
     /** 座標計算系クラス */
-    private hexUtils: HexUtils,
+    hexUtils: HexUtils,
     /** グリッド設定 */
     gridConfig: GridConfig
   ) {
@@ -35,6 +37,16 @@ export class PlayerCharacterState extends CharacterImageState {
       friendUnit.unitTypeId,
       gridConfig
     );
+
+    // メイントリガーのステータスを取得
+    const mainTriggerKey =
+      friendUnit.usingMainTriggerId as keyof typeof TRIGGER_STATUS;
+    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
+
+    // サブトリガーのステータスを取得
+    const subTriggerKey = friendUnit.usingSubTriggerId as keyof typeof TRIGGER_STATUS;
+    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
+
     super(
       friendUnit.unitId,
       friendUnit.unitTypeId,
@@ -42,7 +54,9 @@ export class PlayerCharacterState extends CharacterImageState {
       friendUnit.position,
       friendUnit.unitId,
       { main: 0, sub: 0 },
-      null
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
+      hexUtils
     );
 
     this.actionPointsText = null;

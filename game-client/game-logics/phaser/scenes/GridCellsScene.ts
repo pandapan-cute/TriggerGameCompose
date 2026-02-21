@@ -3,17 +3,15 @@ import { FieldViewState } from "../../entities/FieldViewState";
 import { GameView } from "../../GameView";
 import { HexUtils } from "../../hexUtils";
 import { BackCanvasTexture } from "../textures/BackCanvasTexture";
-import { CombatStepResult, GridConfig, StepCharacterResult } from "../../types";
+import { GridConfig } from "../../types";
 import "phaser";
 import { UnitImageLoader } from "./loader/UnitImageLoader";
 import { GameAssetsLoader } from "./loader/GameAssetsLoader";
 import { GameCamera } from "../cameras/GameCamera";
 import { CharacterManager } from "@/game-logics/characterManager";
-import { executeActionsEmitter } from "@/game-logics/GameGrid";
 import { CHARACTER_STATUS, TRIGGER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
-import { CharacterImageState } from "@/game-logics/entities/CharacterImageState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
 import { MovableHighlightCell } from "../game-objects/graphics/MovableHighlightCell";
 import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
@@ -22,6 +20,7 @@ import { FriendUnit } from "@/game-logics/models/FriendUnit";
 import { Step } from "@/game-logics/models/Step";
 import { Turn } from "@/game-logics/models/Turn";
 import { Action, ActionType } from "@/game-logics/models/Action";
+import { TriggerFanShape } from "../game-objects/graphics/TriggerFanShape";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -41,7 +40,7 @@ export class GridCellsScene extends Phaser.Scene {
   // トリガー設定フェーズ
   private triggerSettingMode: boolean = false; // トリガー設定モード
   private triggerSettingType: "main" | "sub" | null = null; // 設定中のトリガータイプ
-  private triggerFan: Phaser.GameObjects.Graphics | null = null; // トリガー扇形の表示
+  private triggerFan: TriggerFanShape | null = null; // トリガー扇形の表示
   private triggerPoints: Phaser.GameObjects.Graphics[] | null = null;
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
@@ -74,15 +73,6 @@ export class GridCellsScene extends Phaser.Scene {
   private hexUtils!: HexUtils;
   /** ゲーム表示関連のクラス */
   private gameView!: GameView;
-
-  // トリガー表示管理
-  private triggerDisplays: Map<
-    Phaser.GameObjects.Image,
-    {
-      mainTrigger: Phaser.GameObjects.Graphics | null;
-      subTrigger: Phaser.GameObjects.Graphics | null;
-    }
-  > = new Map();
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -135,35 +125,8 @@ export class GridCellsScene extends Phaser.Scene {
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
     this.createCharacters(); // キャラクターを配置
     this.createMouseInteraction(); // マウスイベントを設定
-    this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
+    // this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
   }
-
-  /**
-   * 行動モードのイベントリスナーを設定
-   */
-  private setupActionModeListeners() {
-    const handleExecuteActions = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { turnCompleteResult, playerId, turnNumber } = customEvent.detail;
-      // すべてのキャラクターの行動力を非表示
-      this.characterManager.setAllActionPointsTextToNull();
-      this.executeAllActions(turnCompleteResult, playerId, turnNumber);
-    };
-
-    executeActionsEmitter.addEventListener(
-      "executeAllActions",
-      handleExecuteActions
-    );
-  }
-
-  /**
-   * マッチ決定後のイベントリスナーを設定
-   */
-  // private setupMatchmakingListeners() {
-  //   if (fieldView) {
-  //     this.fieldViewState.setSightAreaFieldView(fieldView!);
-  //   }
-  // }
 
   /**
    * マウスイベントを設定する（六角形グリッド対応）
@@ -456,12 +419,6 @@ export class GridCellsScene extends Phaser.Scene {
 
       // 移動可能なマスを表示
       this.showMovableHexes();
-
-      // React側にキャラクター選択を通知
-      // notifyCharacterSelection(
-      //   this.characterManager.selectedCharacter.id,
-      //   this.characterManager.selectedCharacter.actionPoints
-      // );
     }
   }
 
@@ -558,9 +515,6 @@ export class GridCellsScene extends Phaser.Scene {
     this.characterManager.movableHexes.forEach((hex) => hex.destroy());
     this.characterManager.movableHexes = [];
 
-    // トリガー表示をクリア
-    this.clearAllTriggerDisplays();
-
     // トリガー設定モードをリセット
     this.triggerSettingMode = false;
     this.triggerSettingType = null;
@@ -570,9 +524,6 @@ export class GridCellsScene extends Phaser.Scene {
 
     // 背景を通常表示に戻す
     this.fieldViewState.changeTileText("position");
-
-    // React側にキャラクター選択解除を通知
-    // notifyCharacterSelection(null, 0);
   }
 
   /**
@@ -601,290 +552,6 @@ export class GridCellsScene extends Phaser.Scene {
     console.log(`キャラクターが (${targetCol}, ${targetRow}) に移動しました`);
   }
 
-  /**
-   * キャラクターのトリガー方向を表示する（ユニット行動モード専用）
-   */
-  private showTriggerDirections(character: Phaser.GameObjects.Image) {
-    // 行動モード中のみ表示
-    if (!this.isActionMode) return;
-
-    // キャラクターが削除されている場合は何もしない
-    if (!character || character.scene === null) return;
-
-    // キャラクターがマップに存在しない場合は何もしない
-    const selectedCharacterState =
-      this.characterManager.findCharacterByImage(character);
-    if (!selectedCharacterState) return;
-
-    // 既存のトリガー表示をクリア
-    this.clearTriggerDisplayForCharacter(character);
-
-    const position = selectedCharacterState.position;
-    const directions = selectedCharacterState.direction;
-    const characterId = selectedCharacterState.id;
-
-    if (!position || !directions || !characterId) return;
-
-    // キャラクターのステータスを取得
-    const characterKey = characterId as keyof typeof CHARACTER_STATUS;
-    const characterStatus = CHARACTER_STATUS[characterKey];
-    if (!characterStatus) return;
-
-    const centerPos = this.hexUtils.getHexPosition(
-      position.col,
-      position.row
-    );
-
-    // メイントリガーのステータスを取得
-    const mainTriggerKey =
-      characterStatus.main as keyof typeof TRIGGER_STATUS;
-    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
-
-    // サブトリガーのステータスを取得
-    const subTriggerKey = characterStatus.sub as keyof typeof TRIGGER_STATUS;
-    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
-
-    // 敵キャラクターかどうかを判定
-    const isEnemyCharacter = this.characterManager.enemyCharacters.some(
-      (enemy) => enemy === selectedCharacterState
-    );
-
-    // 敵の場合は角度に180度を加算
-    const mainDirection = isEnemyCharacter
-      ? directions.main + 180
-      : directions.main;
-    const subDirection = isEnemyCharacter
-      ? directions.sub + 180
-      : directions.sub;
-
-    // メイントリガーを表示（赤系クリアカラー、実際のangleとrangeを使用）
-    const mainTrigger = this.gameView.drawTriggerFanShape(
-      null,
-      centerPos.x,
-      centerPos.y,
-      mainDirection,
-      0xff4444, // 赤系
-      0.3,
-      mainTriggerStatus.angle,
-      mainTriggerStatus.range,
-      mainTriggerKey
-    );
-
-    // サブトリガーを表示（青系クリアカラー、実際のangleとrangeを使用）
-    const subTrigger = this.gameView.drawTriggerFanShape(
-      null,
-      centerPos.x,
-      centerPos.y,
-      subDirection,
-      0x4444ff, // 青系
-      0.2,
-      subTriggerStatus.angle,
-      subTriggerStatus.range,
-      subTriggerKey
-    );
-
-    // トリガー表示を保存（ラベルも含める）
-    this.triggerDisplays.set(character, {
-      mainTrigger,
-      subTrigger,
-    });
-  }
-
-  /**
-   * キャラクターの現在位置に基づいてトリガー表示を更新（アニメーション追従用）
-   */
-  private updateTriggerPositionsForCharacter(
-    character: Phaser.GameObjects.Image,
-    stepChar: StepCharacterResult,
-    playerId: string
-  ) {
-    if (!this.isActionMode) {
-      console.log(
-        "アクションモードではないため、トリガー表示を更新しません",
-        stepChar
-      );
-      return;
-    }
-    // キャラクターが削除されている場合は何もしない
-    if (!character || character.scene === null) {
-      console.log(
-        "キャラクターが削除されているため、トリガー表示を更新しません",
-        stepChar
-      );
-      return;
-    }
-    // キャラクターがマップに存在しない場合は何もしない
-    const characterState =
-      this.characterManager.findCharacterByImage(character);
-    if (!characterState) {
-      console.log(
-        "キャラクターがマップに存在しないため、トリガー表示を更新しません",
-        stepChar
-      );
-      return;
-    }
-    // キャラクターが撃墜されている場合は削除
-    if (stepChar.isDefeat) {
-      console.log(
-        "キャラクターが撃墜されているため、トリガー表示を更新しません",
-        stepChar
-      );
-      this.gameView.showBailOutAndRemoveCharacter(characterState);
-      this.characterManager.destroyCharacter(characterState);
-      this.clearTriggerDisplayForCharacter(character);
-      return;
-    }
-    const directions = characterState.direction;
-    const characterId = stepChar.characterId;
-    if (!directions || !characterId) return;
-
-    // キャラクターのステータスを取得
-    const characterStatus = stepChar.characterStatus;
-    if (!characterStatus) {
-      console.warn("キャラクターステータスが見つかりません", stepChar);
-      return;
-    }
-
-    // メイントリガーのステータスを取得
-    const mainTriggerKey =
-      characterStatus.main as keyof typeof TRIGGER_STATUS;
-    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
-
-    // サブトリガーのステータスを取得
-    const subTriggerKey = characterStatus.sub as keyof typeof TRIGGER_STATUS;
-    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
-
-    // 敵キャラクターかどうかを判定
-    const isEnemyCharacter = stepChar.playerId !== playerId;
-
-    // 敵の場合は角度に180度を加算
-    const mainDirection = isEnemyCharacter
-      ? directions.main + 180
-      : directions.main;
-    const subDirection = isEnemyCharacter
-      ? directions.sub + 180
-      : directions.sub;
-
-    const displays = this.triggerDisplays.get(character);
-    if (!displays) return;
-
-    // キャラクターの現在のピクセル位置を使用
-    const currentX = character.x;
-    const currentY = character.y;
-
-    // メイントリガーの表示を更新
-    if (displays.mainTrigger) {
-      displays.mainTrigger.getData("label").destroy(); // 古いラベルを削除
-      displays.mainTrigger.clear();
-      this.gameView.drawTriggerFanShape(
-        displays.mainTrigger,
-        currentX,
-        currentY,
-        mainDirection,
-        0xff4444,
-        0.3,
-        mainTriggerStatus.angle,
-        mainTriggerStatus.range,
-        mainTriggerKey
-      );
-    }
-
-    // サブトリガーの表示を更新
-    if (displays.subTrigger) {
-      displays.subTrigger.getData("label").destroy(); // 古いラベルを削除
-      displays.subTrigger.clear();
-      this.gameView.drawTriggerFanShape(
-        displays.subTrigger,
-        currentX,
-        currentY,
-        subDirection,
-        0x4444ff,
-        0.2,
-        subTriggerStatus.angle,
-        subTriggerStatus.range,
-        subTriggerKey
-      );
-    }
-  }
-
-  /**
-   * 攻撃を受けた際の防御・回避の表示を行う
-   * @param stepChar - キャラクターのステップ結果
-   * @param playerId - プレイヤーのID
-   */
-  private defendTriggerDisplay(
-    stepChar: StepCharacterResult,
-    playerId: string
-  ) {
-    // 敵キャラクターかどうかを判定
-    const isEnemyCharacter = stepChar.playerId !== playerId;
-    if (stepChar.guardCount > 0) {
-      // 0より大きいHPの値を取得
-      const validHpValues = [
-        stepChar.mainTriggerHP,
-        stepChar.subTriggerHP,
-      ].filter((hp) => hp > 0);
-      const minHp = Math.min(...validHpValues);
-      // 減ってるほうのシールド状態を表示
-      this.gameView.showShieldImage(
-        isEnemyCharacter
-          ? this.hexUtils.invertPosition(stepChar.position)
-          : stepChar.position,
-        minHp
-      );
-    } else if (stepChar.avoidCount > 0) {
-      // 回避状態を表示
-      this.gameView.showAvoidImage(
-        isEnemyCharacter
-          ? this.hexUtils.invertPosition(stepChar.position)
-          : stepChar.position
-      );
-    }
-  }
-  /**
-   * 全てのトリガー表示をクリア
-   */
-  private clearAllTriggerDisplays() {
-    this.triggerDisplays.forEach((displays) => {
-      if (displays.mainTrigger) {
-        // ラベルも削除
-        const mainLabel = displays.mainTrigger.getData("label");
-        if (mainLabel) mainLabel.destroy();
-        displays.mainTrigger.destroy();
-      }
-      if (displays.subTrigger) {
-        // ラベルも削除
-        const subLabel = displays.subTrigger.getData("label");
-        if (subLabel) subLabel.destroy();
-        displays.subTrigger.destroy();
-      }
-    });
-    this.triggerDisplays.clear();
-  }
-
-  /**
-   * 特定のキャラクターのトリガー表示をクリア
-   */
-  private clearTriggerDisplayForCharacter(
-    character: Phaser.GameObjects.Image
-  ) {
-    const displays = this.triggerDisplays.get(character);
-    if (displays) {
-      if (displays.mainTrigger) {
-        // ラベルも削除
-        const mainLabel = displays.mainTrigger.getData("label");
-        if (mainLabel) mainLabel.destroy();
-        displays.mainTrigger.destroy();
-      }
-      if (displays.subTrigger) {
-        // ラベルも削除
-        const subLabel = displays.subTrigger.getData("label");
-        if (subLabel) subLabel.destroy();
-        displays.subTrigger.destroy();
-      }
-      this.triggerDisplays.delete(character);
-    }
-  }
   private updateCellHighlight() {
     if (!this.hoveredCell) return;
 
@@ -1014,26 +681,11 @@ export class GridCellsScene extends Phaser.Scene {
     );
 
     // 扇形を描画（移動後の位置を中心に）
-    this.triggerFan = this.gameView.drawTriggerFanShape(
-      this.triggerFan,
-      pixelPos.x,
-      pixelPos.y,
-      this.currentTriggerAngle,
-      color,
-      0.2,
-      angle,
-      range,
-      triggerName
-    );
-    // トリガー範囲ポイントも表示
-    this.triggerPoints = this.gameView.drawTriggerRangePoints(
+    this.triggerFan = new TriggerFanShape(this, pixelPos.x,
+      pixelPos.y, color, this.currentTriggerAngle, angle, range, triggerName, this.gridConfig, this.hexUtils, true);
+    this.triggerPoints = this.triggerFan.drawTriggerRangePoints(
       this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row,
-      this.currentTriggerAngle,
-      angle,
-      range,
-      color
-    );
+      this.characterManager.selectedCharacter.position.row, color);
   }
 
   /**
@@ -1083,25 +735,13 @@ export class GridCellsScene extends Phaser.Scene {
       this.characterManager.selectedCharacter.position.row
     );
 
-    this.triggerFan = this.gameView.drawTriggerFanShape(
-      null, // 破棄済みなので新しいオブジェクトを作成
-      pixelPos.x,
-      pixelPos.y,
-      this.currentTriggerAngle,
-      color,
-      0.2,
-      angle,
-      range,
-      triggerName
-    );
+    this.triggerFan = new TriggerFanShape(this, pixelPos.x,
+      pixelPos.y, color, this.currentTriggerAngle, angle, range, triggerName, this.gridConfig, this.hexUtils, true);
 
     // トリガー範囲ポイントも更新
-    this.triggerPoints = this.gameView.drawTriggerRangePoints(
+    this.triggerPoints = this.triggerFan.drawTriggerRangePoints(
       this.characterManager.selectedCharacter.position.col,
       this.characterManager.selectedCharacter.position.row,
-      this.currentTriggerAngle,
-      angle,
-      range,
       color
     );
   }
@@ -1213,16 +853,6 @@ export class GridCellsScene extends Phaser.Scene {
 
       // 行動力表示の更新
       this.characterManager.selectedCharacter.updateActionPointsDisplay(this);
-
-      // React側に行動力の変更を通知
-      // actionPointsEmitter.dispatchEvent(
-      //   new CustomEvent("actionPointsChanged", {
-      //     detail: {
-      //       characterId: this.characterManager.selectedCharacter?.id,
-      //       remainingPoints: remainingMoves,
-      //     },
-      //   })
-      // );
     }
   }
 
@@ -1354,19 +984,6 @@ export class GridCellsScene extends Phaser.Scene {
           1
         )}度, subトリガー: ${directions.sub.toFixed(1)}度`
       );
-
-      // グローバル履歴に追加
-      // const historyEntry: Action = {
-      //   actionId: `${characterState.getUnitTypeId()}-${Date.now()}`,
-      //   unitId: characterState.getUnitTypeId(),
-      //   position: {
-      //     col: col,
-      //     row: row,
-      //   },
-      //   mainTriggerAzimuth: directions.main,
-      //   subTriggerAzimuth: directions.sub,
-      // };
-      // addToGlobalHistory(historyEntry);
     };
 
     if (!this.characterManager.selectedCharacter) return;
@@ -1398,242 +1015,33 @@ export class GridCellsScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * 全ユニットの行動を実行する
-   * @param playerActions プレイヤーの行動履歴
-   * @param enemyActions 敵の行動履歴
-   * @param turnNumber ターン番号
-   */
-  private executeAllActions(
-    turnCompleteResult: CombatStepResult[],
-    playerId: string,
-    turnNumber: number
-  ) {
-    console.log(`ターン ${turnNumber} の行動実行開始`);
-    this.isActionMode = true;
-    this.actionAnimationInProgress = true;
-
-    // 行動設定済みテキストを全てクリア
-    this.characterManager.playerCharacters.forEach((char) => {
-      if (char.getCompleteText()) {
-        char.getCompleteText()!.destroy();
-        char.setCompleteText(null);
-      }
-    });
-
-    // 全キャラクターのトリガー方向を表示（行動モード専用）
-    // 注意：キャラクターの移動に合わせてトリガーも更新される
-    [
-      ...this.characterManager.playerCharacters,
-      ...this.characterManager.enemyCharacters,
-    ].forEach((character) => {
-      this.showTriggerDirections(character.image);
-    });
-    // ステップベースの移動システムを使用
-    this.executeStepBasedActions(turnCompleteResult, playerId, turnNumber);
-  }
-
-  /**
-   * ステップベースで全キャラクターの行動を実行
-   */
-  private executeStepBasedActions(
-    combatStepResults: CombatStepResult[],
-    playerId: string,
-    turnNumber: number
-  ) {
-    let currentStepIndex = 0;
-
-    const executeNextStep = () => {
-      if (currentStepIndex < combatStepResults.length) {
-        const stepResult = combatStepResults[currentStepIndex];
-        console.log(`ステップ ${stepResult.stepNumber} を実行中...`);
-
-        this.executeActionStep(stepResult, playerId);
-        currentStepIndex++;
-
-        if (stepResult.winnerId !== null) {
-          // 勝者が決まった場合、即座に行動モードを終了
-          this.isActionMode = false;
-          alert(
-            `あなたの${stepResult.winnerId === playerId ? "勝利" : "敗北"
-            }です！\nトップ画面に戻ります`
-          );
-          window.location.href = "/";
-        } else {
-          // 次のステップを1.5秒後に実行（アニメーション完了を待つ）
-          this.time.delayedCall(1500, executeNextStep);
-        }
-      } else {
-        // 全ステップ完了
-        console.log("全ステップが完了しました");
-        this.time.delayedCall(500, () => {
-          this.completeActionPhase(turnNumber);
-        });
-      }
-    };
-
-    // 最初のステップを開始
-    executeNextStep();
-  }
 
   /**
    * 指定されたステップの行動を実行
    */
-  private executeActionStep(stepResult: CombatStepResult, playerId: string) {
-    console.log(`=== ステップ ${stepResult.stepNumber} 実行開始 ===`);
+  executeTurn(turn: Turn) {
+    console.log(`=== ステップ ${turn.getTurnNumber()} 実行開始 ===`);
 
     const onStepComplete = () => { };
 
-    // プレイヤーキャラクターの移動
-    stepResult.stepCharacterResult
-      .filter((char) => char.playerId === playerId)
-      .forEach((playerCharacterStepAction) => {
-        const character = this.findCharacterById(
-          playerCharacterStepAction.characterId
-        );
+    // ステップの順番実行
+    for (const step of turn.getSteps()) {
+
+      // ステップ内アクションの開始
+      for (const action of step.getActions()) {
+        // TODO: actionの内容に応じてキャラクターの移動やトリガー表示を更新する
+        const character = this.characterManager.findCharacterByUnitId(action.getUnitId());
         if (character) {
-          this.executeCharacterSingleStep(
-            character.image,
-            playerCharacterStepAction,
-            false,
-            playerId,
-            onStepComplete
-          );
+          character.executeCharacterSingleStep(action, () => { });
         }
-      });
-
-    // 敵キャラクターの移動
-    stepResult.stepCharacterResult
-      .filter((char) => char.playerId !== playerId)
-      .forEach((enemyCharacterStepAction) => {
-        const character = this.findEnemyCharacterById(
-          enemyCharacterStepAction.characterId
-        );
-        if (character) {
-          this.executeCharacterSingleStep(
-            character.image,
-            enemyCharacterStepAction,
-            true,
-            playerId,
-            onStepComplete
-          );
-        }
-      });
-    // 矢印の削除
-    this.triggerArrows.forEach((arrow) => arrow.destroy());
-    this.triggerArrows = [];
-    // 視界情報の更新
-    this.fieldViewState.setSightAreaFieldView(stepResult.fieldView);
-  }
-
-  /**
-   * キャラクターの単一ステップ移動を実行
-   */
-  private executeCharacterSingleStep(
-    character: Phaser.GameObjects.Image,
-    stepChar: StepCharacterResult,
-    isEnemy: boolean,
-    playerId: string,
-    onComplete: () => void
-  ) {
-    const targetPosition = isEnemy
-      ? this.hexUtils.invertPosition(stepChar.position)
-      : stepChar.position;
-    const targetPixelPos = this.hexUtils.getHexPosition(
-      targetPosition.col,
-      targetPosition.row
-    );
-
-    // トリガー方向を設定
-    this.characterManager.findCharacterByImage(character)!.direction = {
-      main: stepChar.mainTriggerDirection,
-      sub: stepChar.subTriggerDirection,
-    };
-
-    // 1秒で移動
-    this.tweens.add({
-      targets: character,
-      x: targetPixelPos.x,
-      y: targetPixelPos.y,
-      duration: 750,
-      ease: "Power2",
-      onUpdate: () => {
-        if (this.isActionMode) {
-          this.updateTriggerPositionsForCharacter(
-            character,
-            stepChar,
-            playerId
-          );
-        }
-      },
-      onComplete: () => {
-        // 位置情報を更新
-        const foundCharacter =
-          this.characterManager.findCharacterByImage(character);
-        if (foundCharacter) {
-          foundCharacter.position = targetPosition;
-        }
-
-        // if (foundCharacter instanceof EnemyCharacterState) {
-        //   // 敵キャラクターの視認状態を更新
-        //   foundCharacter.setSeenByEnemy(stepChar.isSeenByEnemy);
-        // }
-
-        // トリガー表示を更新
-        if (this.isActionMode) {
-          this.showTriggerDirections(character);
-        }
-
-        if (foundCharacter) {
-          // 攻撃元キャラクターから矢印を表示
-          for (const attackCharId of stepChar.attackerCharacterIds) {
-            // 攻撃元は敵味方を反転させてキャラクターIDから取得
-            const enemyCharacterState = isEnemy
-              ? this.findCharacterById(attackCharId)
-              : this.findEnemyCharacterById(attackCharId);
-            if (enemyCharacterState) {
-              const arrowGraphic =
-                this.gameView.drawAnimatedArrowBetweenCharacters(
-                  enemyCharacterState.image,
-                  foundCharacter!.image
-                );
-              this.triggerArrows.push(arrowGraphic);
-            }
-          }
-        }
-
-        // 防御トリガー表示
-        this.defendTriggerDisplay(stepChar, playerId);
-
-        onComplete();
-      },
-    });
-  }
-
-  /**
-   * IDでキャラクターを検索
-   */
-  private findCharacterById(characterId: string): CharacterImageState | null {
-    for (const character of this.characterManager.playerCharacters) {
-      if (character.id === characterId) {
-        return character;
+        // 矢印の削除
+        this.triggerArrows.forEach((arrow) => arrow.destroy());
+        this.triggerArrows = [];
+        // 視界情報の更新
+        // this.fieldViewState.setSightAreaFieldView(turn.fieldView);
       }
-    }
-    return null;
-  }
 
-  /**
-   * IDで敵キャラクターを検索
-   */
-  private findEnemyCharacterById(
-    characterId: string
-  ): CharacterImageState | null {
-    for (const character of this.characterManager.enemyCharacters) {
-      if (character.id === characterId) {
-        return character;
-      }
     }
-    return null;
   }
 
   /**
@@ -1645,7 +1053,7 @@ export class GridCellsScene extends Phaser.Scene {
     this.actionAnimationInProgress = false;
 
     // 全キャラクターのトリガー表示をクリア
-    this.clearAllTriggerDisplays();
+    // this.clearAllTriggerDisplays();
 
     // 全キャラクターの行動力をリセット
     this.resetAllActionPoints();
@@ -1655,16 +1063,6 @@ export class GridCellsScene extends Phaser.Scene {
 
     // キャラクターの行動力を表示
     this.characterManager.setAllActionPointsText(this);
-
-    // React側に行動完了を通知
-    // actionExecutionCompletedEmitter.dispatchEvent(
-    //   new CustomEvent("actionExecutionCompleted", {
-    //     detail: {
-    //       message: "行動フェーズが完了しました。新しいターンを開始します。",
-    //       turnNumber: turnNumber,
-    //     },
-    //   })
-    // );
   }
 
   /**

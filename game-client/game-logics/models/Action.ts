@@ -1,5 +1,5 @@
 import { UnitType } from "../config/CharacterConfig";
-import { Position } from "../types";
+import { GridConfig, Position } from "../types";
 
 /**
  * アクションの種類
@@ -47,5 +47,39 @@ export class Action {
     this.usingSubTriggerId = usingSubTriggerId;
     this.mainTriggerAzimuth = mainTriggerAzimuth;
     this.subTriggerAzimuth = subTriggerAzimuth;
+  }
+
+  /**
+   * エネミー用に座標を反転させる
+   */
+  invertPositionForEnemy(gridConfig: GridConfig) {
+    const invertedCol = gridConfig.gridWidth - 1 - this.position.col;
+    const invertedRow = gridConfig.gridHeight - 1 - this.position.row;
+    this.position = { col: invertedCol, row: invertedRow };
+  }
+
+  // ゲッター
+  getUnitId(): string {
+    return this.unitId;
+  }
+
+  getPosition(): Position {
+    return this.position;
+  }
+
+  getUsingMainTriggerId(): string {
+    return this.usingMainTriggerId;
+  }
+
+  getUsingSubTriggerId(): string {
+    return this.usingSubTriggerId;
+  }
+
+  getMainTriggerAzimuth(): number {
+    return this.mainTriggerAzimuth;
+  }
+
+  getSubTriggerAzimuth(): number {
+    return this.subTriggerAzimuth;
   }
 }

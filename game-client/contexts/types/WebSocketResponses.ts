@@ -1,6 +1,6 @@
 import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
-import { TurnCompleteResult } from "@/game-logics/types";
+import { Turn } from "@/game-logics/models/Turn";
 import { MatchingStatus } from "@/types/MatchingTypes";
 
 /**
@@ -25,8 +25,7 @@ export interface GetGameStateResponse {
 /** ターンの実行結果を受信 */
 export interface TurnActionsResponse {
   action: "turnExecutionResult";
-  turnNumber: number;
-  result: TurnCompleteResult;
+  turn: Turn;
 }
 
 /** ゲームのキャンセルを受信 */

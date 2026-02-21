@@ -4,7 +4,6 @@ import GridLeftNav from "@/components/nav/GridLeftNav";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useRouter } from "next/navigation";
-import { Action } from "./models/Action";
 import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
 import { FriendUnit } from "./models/FriendUnit";
 import { EnemyUnit } from "./models/EnemyUnit";
@@ -27,14 +26,11 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
   // ゲームを表示するDOMコンテナのRef
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 選択されたキャラクターのIDを管理するステート
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
-    null
-  );
-
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"setup" | "action">("setup");
   const [currentTurn, setCurrentTurn] = useState<number>(1);
+
+  let gridCellsScene: GridCellsScene;
 
   // WebSocketコンテキストを使用
   const {
@@ -73,79 +69,13 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
     }
   }, [isConnected, connect]);
 
-  // マッチング結果をPhaser側に通知
-  // useEffect(() => {
-  //   executeActionsEmitter.dispatchEvent(
-  //     new CustomEvent("matchmaking_result", {
-  //       detail: {
-  //         fieldView: fieldView,
-  //       },
-  //     })
-  //   );
-  // }, [fieldView]);
-
-  // 全行動完了イベントを監視してWebSocketで送信
-  useEffect(() => {
-    const handleAllActionsCompleted = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { actionHistory, timestamp } = customEvent.detail;
-
-      if (isConnected && playerId && gameId) {
-        const messageData = {
-          action: "turnExecution" as const,
-          playerId: playerId,
-          gameId: gameId,
-          steps: actionHistory,
-        };
-
-        console.log("WebSocketでサーバーに行動履歴を送信:", messageData);
-        sendMessage(messageData);
-
-        // UI に送信完了を表示
-        console.log("✅ 行動履歴の送信が完了しました！");
-      } else {
-        console.error(
-          "WebSocket接続がないか、プレイヤーID/マッチIDが不足しています:",
-          {
-            isConnected,
-            playerId,
-            gameId,
-          }
-        );
-      }
-    };
-
-    allActionsCompletedEmitter.addEventListener(
-      "allActionsCompleted",
-      handleAllActionsCompleted
-    );
-
-    return () => {
-      allActionsCompletedEmitter.removeEventListener(
-        "allActionsCompleted",
-        handleAllActionsCompleted
-      );
-    };
-  }, [playerId, gameId, sendMessage, currentTurn]);
-
   // 敵側のアクションを受信してユニット行動モードに移行
   useEffect(() => {
     const handleTurnResultSubmitted = (data: WebSocketResponseType) => {
       if (data.action === "turnExecutionResult") {
         console.log("ターン戦闘結果のアクションを受信:", data);
-        setCurrentTurn(data.turnNumber || 1);
+        setCurrentTurn(data.turn.getTurnNumber() || 1);
         setGameMode("action");
-
-        // ユニット行動開始をPhaser側に通知
-        executeActionsEmitter.dispatchEvent(
-          new CustomEvent("executeAllActions", {
-            detail: {
-              turnCompleteResult: data.result,
-              playerId: playerId,
-              turnNumber: data.turnNumber,
-            },
-          })
-        );
       }
     };
 
@@ -169,83 +99,13 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
       }
     };
 
-    // const handleOpponentCancelledMatch = (data: CancelGameResponse) => {
-    //   if (data.action === "opponentCancelledMatch") {
-    //     console.log("相手が対戦を終了しました:", data);
-    //     alert(
-    //       data.message || "相手が対戦を終了しました。ホーム画面に戻ります。"
-    //     );
-    //     navigate("/", { replace: true });
-    //   }
-    // };
-
-    // WebSocketメッセージリスナーを追加
-    //   addMessageListener("cancelMatchingResult", handleCancelMatchingResult);
-    //   addMessageListener(
-    //     "opponentCancelledMatch",
-    //     handleOpponentCancelledMatch
-    //   );
-
     return () => {
       removeMessageListener(
         "cancelMatchingResult",
         handleCancelMatchingResult
       );
-      // removeMessageListener(
-      //   "opponentCancelledMatch",
-      //   handleOpponentCancelledMatch
-      // );
     };
   }, [addMessageListener, removeMessageListener, router]);
-  // 行動実行完了の処理
-  useEffect(() => {
-    const handleActionExecutionCompleted = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("行動実行完了:", customEvent.detail.message);
-
-      // 設定モードに戻る
-      setGameMode("setup");
-
-      setCurrentTurn(customEvent.detail.turnNumber + 1);
-
-      console.log(
-        "新しいターンを開始します - ターン",
-        customEvent.detail.turnNumber + 1
-      );
-    };
-
-    actionExecutionCompletedEmitter.addEventListener(
-      "actionExecutionCompleted",
-      handleActionExecutionCompleted
-    );
-
-    return () => {
-      actionExecutionCompletedEmitter.removeEventListener(
-        "actionExecutionCompleted",
-        handleActionExecutionCompleted
-      );
-    };
-  }, []);
-
-  useEffect(() => {
-    // キャラクター選択の変更を監視
-    const handleCharacterSelection = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { characterId } = customEvent.detail;
-      setSelectedCharacterId(characterId);
-    };
-
-    characterSelectionEmitter.addEventListener(
-      "characterSelected",
-      handleCharacterSelection
-    );
-    return () => {
-      characterSelectionEmitter.removeEventListener(
-        "characterSelected",
-        handleCharacterSelection
-      );
-    };
-  }, [selectedCharacterId]);
 
   /** ターン情報の送信 */
   const handleTurnExecution = (steps: Step[]) => {
@@ -356,50 +216,5 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
     </div>
   );
 };
-
-// グローバルな履歴配列
-let globalActionHistory: Action[] = [];
-
-// React側で履歴を表示するためのイベントエミッター
-const historyEventEmitter = new EventTarget();
-
-// 選択されたキャラクターをReact側に通知するためのイベントエミッター
-const characterSelectionEmitter = new EventTarget();
-
-// 行動力の変更をReact側に通知するためのイベントエミッター
-const actionPointsEmitter = new EventTarget();
-
-// 行動力チェック用のイベントエミッター
-const allActionsCompletedEmitter = new EventTarget();
-
-// 全ユニット行動実行用のイベントエミッター
-export const executeActionsEmitter = new EventTarget();
-
-// 行動完了通知用のイベントエミッター
-const actionExecutionCompletedEmitter = new EventTarget();
-
-// 履歴を追加する関数
-function addToGlobalHistory(action: Action) {
-  globalActionHistory.push(action);
-  historyEventEmitter.dispatchEvent(new CustomEvent("historyUpdated"));
-}
-
-// 履歴をクリアする関数
-function clearGlobalHistory() {
-  globalActionHistory = [];
-  historyEventEmitter.dispatchEvent(new CustomEvent("historyUpdated"));
-}
-
-// 選択されたキャラクターを通知する関数
-function notifyCharacterSelection(
-  characterId: string | null,
-  actionPoints: number = 0
-) {
-  characterSelectionEmitter.dispatchEvent(
-    new CustomEvent("characterSelected", {
-      detail: { characterId, actionPoints },
-    })
-  );
-}
 
 export default GameGrid;

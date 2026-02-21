@@ -20,17 +20,6 @@ export interface Position {
   row: number;
 }
 
-/**
- * メイントリガーとサブトリガーの表示オブジェクトを定義
- * @interface TriggerDisplay
- * @property {Phaser.GameObjects.Graphics | null} main - メイントリガー
- * @property {Phaser.GameObjects.Graphics | null} sub - サブトリガー
- */
-export interface TriggerDisplay {
-  mainTrigger: Phaser.GameObjects.Graphics | null;
-  subTrigger: Phaser.GameObjects.Graphics | null;
-}
-
 export interface PixelPosition {
   x: number;
   y: number;
@@ -109,13 +98,6 @@ export interface TriggerArea {
 /** マッチ成立後のフィールド情報型定義 */
 export interface MatchmakingResult {
   fieldView: boolean[][];
-}
-
-/** ターンごとの戦闘結果レスポンス型定義 */
-export interface TurnCompleteResult {
-  turnNumber: number;
-  result: CombatStepResult[];
-  timestamp: string; // ISO 8601
 }
 
 /** ステップごとの実行結果 */

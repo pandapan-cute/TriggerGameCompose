@@ -47,6 +47,23 @@ export class CharacterManager {
   }
 
   /**
+ * ユニットIDでキャラクターを検索
+ * @param unitId ユニットID
+ * @return 見つかったPlayerCharacterStateまたはEnemyCharacterStateオブジェクト、見つからなかった場合はnull
+ */
+  findCharacterByUnitId(
+    unitId: string
+  ): PlayerCharacterState | EnemyCharacterState | null {
+    for (const character of [...this.playerCharacters, ...this.enemyCharacters]) {
+      if (character.getUnitId() === unitId) {
+        return character;
+      }
+    }
+    return null;
+  }
+
+
+  /**
    * Phaserのキャラクターオブジェクトでプレイヤー側キャラクターを検索
    * @param characterImage Phaserのキャラクターオブジェクト
    * @return 見つかったPlayerCharacterStateオブジェクト、見つからなかった場合はnull

@@ -1,5 +1,6 @@
 'use client';
 
+import { CHARACTER_STATUS } from "./config/status";
 import { CharacterImageState } from "./entities/CharacterImageState";
 import { EnemyCharacterState } from "./entities/EnemyCharacterState";
 import { PlayerCharacterState } from "./entities/PlayerCharacterState";
@@ -164,6 +165,25 @@ export class CharacterManager {
     });
   };
 
+  /**
+   * 全キャラクターの行動力をリセット
+   */
+  resetAllActionPoints() {
+    this.playerCharacters.forEach((character) => {
+      const unitTypeId = character.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
+      const characterStatus = CHARACTER_STATUS[unitTypeId];
+      if (characterStatus) {
+        // 行動完了テキストを削除
+        character.getCompleteText()?.destroy();
+        character.setCompleteText(null);
+        // 行動力を最大値にリセット
+        character.setActionPoints(characterStatus.activeCount);
+      } else {
+        console.warn(`キャラクターのユニット種別ID ${unitTypeId} に対応するステータスが見つかりませんでした。`);
+      }
+    });
+  }
+
 
 
   /**
@@ -175,5 +195,20 @@ export class CharacterManager {
 
     this.playerCharacters = this.playerCharacters.filter(c => c !== character);
     this.enemyCharacters = this.enemyCharacters.filter(c => c !== character);
+  };
+
+
+  ///////////////////////////////////////
+  // トリガー表示関連
+  //////////////////////////////////////
+
+  /**
+   * すべてのキャラクターのトリガー表示をオフにする
+   */
+  hideAllTriggerFans = () => {
+    [...this.playerCharacters, ...this.enemyCharacters].forEach(character => {
+      character.hideMainTriggerFan();
+      character.hideSubTriggerFan();
+    });
   };
 }

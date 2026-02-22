@@ -62,7 +62,7 @@ impl ProcessTurnUseCase {
         let game_id = GameId::new(game_id);
         let player_id = PlayerId::new(player_id);
         // ゲーム情報の取得
-        let game = self
+        let mut game = self
             .game_repository
             .get_game_by_id(&game_id)
             .await
@@ -131,7 +131,7 @@ impl ProcessTurnUseCase {
             .await
             .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))?;
 
-        // ターンエンティティの演算処理開始
+        // **ターンエンティティの演算処理開始**
         let result_units = turn.turn_start(units, &opponent_turn_data.unwrap())?;
 
         // ユニット情報の更新
@@ -139,6 +139,13 @@ impl ProcessTurnUseCase {
             .update_units(&result_units)
             .await
             .map_err(|e| format!("ユニット情報の更新に失敗しました: {}", e))?;
+
+        // ゲームのターン数を更新
+        let _ = game.advance_to_next_turn();
+        self.game_repository
+            .update(&game)
+            .await
+            .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))?;
 
         // ターンの完了
         let response = WebSocketResponse::TurnExecutionResult { turn };

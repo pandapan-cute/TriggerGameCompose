@@ -35,20 +35,20 @@ export class CharacterImageState {
   ) { }
 
   /**
-   * 子クラスでオーバーライドされるキャラクターの単一ステップを実行する関数
+   * 子クラスでオーバーライドされるキャラクターの単一アクションを実行する関数
    * @param action 
    * @param onStepComplete 
    */
-  executeCharacterSingleStep(action: Action, onStepComplete: () => void) {
-    this.executeCommonSingleStep(action, onStepComplete);
+  executeCharacterSingleAction(action: Action, onStepComplete: () => void) {
+    this.executeCommonSingleAction(action, onStepComplete);
   }
 
   /**
-   * キャラクターの単一ステップを実行する
+   * キャラクターの単一アクションを実行する
    * @param action 
    * @param onStepComplete 
    */
-  protected executeCommonSingleStep(action: Action, onStepComplete: () => void) {
+  protected executeCommonSingleAction(action: Action, onStepComplete: () => void) {
     const targetPixelPos = this.hexUtils.getHexPosition(
       action.getPosition().col,
       action.getPosition().row
@@ -116,6 +116,18 @@ export class CharacterImageState {
   //     );
   //   }
   // }
+
+
+  /** メイントリガーの表示をオフにする */
+  hideMainTriggerFan() {
+    this.mainTriggerFan?.destroyTriggerFan();
+    this.mainTriggerFan = null;
+  }
+  /** サブトリガーの表示をオフにする */
+  hideSubTriggerFan() {
+    this.subTriggerFan?.destroyTriggerFan();
+    this.subTriggerFan = null;
+  }
 
   // ゲッター
   getUnitId(): string {

@@ -142,6 +142,7 @@ export class GridCellsScene extends Phaser.Scene {
   private createMouseInteraction() {
     // カメラドラッグ用の変数
     let isDraggingCamera = false;
+    let isPointerDown = false;
     let dragStartX = 0;
     let dragStartY = 0;
     let cameraStartX = 0;
@@ -180,7 +181,7 @@ export class GridCellsScene extends Phaser.Scene {
         return;
       }
       // 一本指でのカメラドラッグ中の処理
-      if (!this.triggerFan && pointer.leftButtonDown()) {
+      if (!this.triggerFan && isPointerDown && pointer.leftButtonDown()) {
         const deltaX = pointer.x - dragStartX;
         const deltaY = pointer.y - dragStartY;
         // しきい値を超えた場合はカメラドラッグとして判定
@@ -249,6 +250,7 @@ export class GridCellsScene extends Phaser.Scene {
     });
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      isPointerDown = true;
       // 2本目の指がタッチされた場合
       if (this.input.pointer2 && this.input.pointer2.isDown) {
         const pointer1 = this.input.activePointer;
@@ -284,6 +286,7 @@ export class GridCellsScene extends Phaser.Scene {
 
     // マウスクリックイベント
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      isPointerDown = false;
       // どちらかの指が離れたらピンチ終了
       if (!this.input.pointer2 || !this.input.pointer2.isDown) {
         isPinching = false;
@@ -1025,8 +1028,6 @@ export class GridCellsScene extends Phaser.Scene {
    * 指定されたステップの行動を実行
    */
   executeTurn(turn: Turn) {
-    const onStepComplete = () => { };
-
     let currentStepIndex = 0;
     const steps = turn.getSteps();
 
@@ -1041,7 +1042,7 @@ export class GridCellsScene extends Phaser.Scene {
         const character = this.characterManager.findCharacterByUnitId(action.getUnitId());
         if (character) {
           console.log(`--- アクション ${actionIndex + 1} 開始 ---`);
-          character.executeCharacterSingleStep(action, () => { });
+          character.executeCharacterSingleAction(action, () => { });
         }
         // 矢印の削除
         this.triggerArrows.forEach((arrow) => arrow.destroy());
@@ -1055,7 +1056,7 @@ export class GridCellsScene extends Phaser.Scene {
         this.time.delayedCall(1500, () => executeNextStep(currentStepIndex));
       } else {
         // 全ステップ完了後の処理
-        onStepComplete();
+        this.completeUnitActionPhase(turn.getTurnNumber());
         console.log("=== 全ステップ実行完了 ===");
       }
     };
@@ -1063,19 +1064,17 @@ export class GridCellsScene extends Phaser.Scene {
     executeNextStep(currentStepIndex);
   }
 
-  /**
-   * 行動フェーズを完了して設定モードに戻る
-   */
-  private completeActionPhase(turnNumber: number) {
-    console.log("行動フェーズ完了 - 設定モードに戻ります");
+  /** 行動フェーズを完了して設定モードに戻る */
+  private completeUnitActionPhase(turnNumber: number) {
+    console.log(`行動フェーズ完了 - 設定モードに戻ります (ターン ${turnNumber})`);
     this.isActionMode = false;
     this.actionAnimationInProgress = false;
 
     // 全キャラクターのトリガー表示をクリア
-    // this.clearAllTriggerDisplays();
+    this.characterManager.hideAllTriggerFans();
 
     // 全キャラクターの行動力をリセット
-    this.resetAllActionPoints();
+    this.characterManager.resetAllActionPoints();
 
     // 行動履歴をクリア
     this.turn.clearSteps();
@@ -1083,28 +1082,4 @@ export class GridCellsScene extends Phaser.Scene {
     // キャラクターの行動力を表示
     this.characterManager.setAllActionPointsText(this);
   }
-
-  /**
-   * 全キャラクターの行動力をリセット
-   */
-  private resetAllActionPoints() {
-    this.characterManager.playerCharacters.forEach((character) => {
-      const characterId = character.id;
-      if (characterId) {
-        const characterKey = characterId as keyof typeof CHARACTER_STATUS;
-        const characterStatus = CHARACTER_STATUS[characterKey];
-        if (characterStatus) {
-          // 行動完了テキストを削除
-          character.getCompleteText()?.destroy();
-          character.setCompleteText(null);
-          // 行動力を最大値にリセット
-          this.characterManager.findPlayerCharacterByImage(
-            character.image
-          )!.setActionPoints(characterStatus.activeCount);
-        }
-      }
-    });
-  }
-
-  // ...existing code...
 };

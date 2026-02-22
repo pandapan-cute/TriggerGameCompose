@@ -51,8 +51,14 @@ export class EnemyCharacterState extends CharacterImageState {
     );
   }
 
-  executeCharacterSingleStep(action: Action, onStepComplete: () => void) {
+  /**
+   * 行動モードの単一アクションを実行する
+   * @param action 
+   * @param onStepComplete 
+   */
+  executeCharacterSingleAction(action: Action, onStepComplete: () => void) {
     action.invertPositionForEnemy(this.gridConfig); // エネミー用に座標を反転させる
-    this.executeCommonSingleStep(action, onStepComplete);
+    action.invertTriggerAngleForEnemy(this.gridConfig); // エネミー用にトリガー角度を反転させる
+    this.executeCommonSingleAction(action, onStepComplete);
   }
 }

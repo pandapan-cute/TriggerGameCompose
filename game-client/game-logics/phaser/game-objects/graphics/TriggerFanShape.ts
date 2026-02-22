@@ -179,13 +179,13 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
   }
 
   /**
-   * 扇形とトリガーの表示名を両方とも削除する
+   * 扇形とトリガー名ラベルの表示状態を切り替える
    */
-  destroyTriggerFan(): void {
+  setTriggerVisible(visible: boolean): void {
+    this.setVisible(visible);
     const label = this.getData('label');
     if (label) {
-      label.setVisible(false);
+      label.setVisible(visible);
     }
-    this.destroy();
   }
 }

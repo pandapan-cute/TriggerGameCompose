@@ -17,17 +17,22 @@ use uuid::Uuid;
 pub struct Step {
     step_id: StepId,
     actions: Vec<Action>,
+    combats: Vec<Combat>,
 }
 
 impl Step {
     // privateなコンストラクタ
-    pub fn new(step_id: StepId, actions: Vec<Action>) -> Self {
-        Self { step_id, actions }
+    pub fn new(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
+        Self {
+            step_id,
+            actions,
+            combats,
+        }
     }
 
     /// 新規ステップの生成
-    pub fn create(step_id: StepId, actions: Vec<Action>) -> Self {
-        Self::new(step_id, actions)
+    pub fn create(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
+        Self::new(step_id, actions, combats)
     }
 
     /// 戦闘演算の開始
@@ -49,6 +54,9 @@ impl Step {
             let unit = units.get_mut(action.unit_id()).unwrap();
             // ユニットの位置を更新
             unit.move_to(action.position().clone());
+
+            const ACTION_POINT_CAN_UPDATE_TRIGGER: i32 = 1; // 消費はしないが、トリガーの更新が可能な行動ポイントの閾値
+            if unit.current_action_points().value() >= ACTION_POINT_CAN_UPDATE_TRIGGER {
             // 使用中のメイントリガーを更新
             let _ = unit.set_using_triggers(
                 &action.using_main_trigger_id(),
@@ -57,35 +65,32 @@ impl Step {
             // トリガーの向きを更新
             unit.set_main_trigger_azimuth(action.main_trigger_azimuth().clone());
             unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
+            } else {
+                print!("トリガーの更新に必要な行動ポイントが不足しています。unit_id={:?}, current_action_points={}, required_action_points={}", unit.unit_id(), unit.current_action_points().value(), ACTION_POINT_CAN_UPDATE_TRIGGER);
+            }
         }
 
         // 3. トリガー範囲内に敵キャラクターがいるか確認し、combatの初期化までを行う
-        let mut combats = Vec::<Combat>::new();
         for action in &self.actions {
+            const ACTION_POINT_CAN_ATTACK: i32 = 1; // 攻撃で消費する行動ポイントの閾値
             let attack_unit = units.get(&action.unit_id()).unwrap();
-
+            if attack_unit.current_action_points().value() < ACTION_POINT_CAN_ATTACK {
+                // 行動ポイントが1未満のユニットは攻撃できない
+                continue;
+            }
             for defence_unit in units.values() {
                 // 自ユニットはスキップ
                 if attack_unit.owner_player_id() == defence_unit.owner_player_id() {
                     continue;
                 }
-                // 防御側ユニットに対してcombatを生成していく
-                // 防御側ユニットのアクションから、防御型ユニットのトリガーの向きを取得
-                let defender_action = self
-                    .actions
-                    .iter()
-                    .find(|a| a.unit_id().value() == defence_unit.unit_id().value());
-
-                if defender_action.is_none() {
-                    println!(
-                        "防御側ユニットID {:?} に対応するアクションが見つかりません, アクション一覧: {:?}",
-                        defence_unit.unit_id(),
-                        self.actions.iter().map(|a| a.unit_id()).collect::<Vec<&UnitId>>()
-                    );
-                }
                 // 射程やトリガーの有効範囲の判定は、Actionのcreate内で行う
                 if let Some(combat) = action.generate_combats(defence_unit) {
-                    combats.push(combat);
+                    println!(
+                        "[step_start] -> combat generated attacker={:?} defender={:?}",
+                        action.unit_id(),
+                        defence_unit.unit_id()
+                    );
+                    self.combats.push(combat);
                 }
             }
         }
@@ -96,6 +101,8 @@ impl Step {
     pub fn merge_actions(&mut self, other: &Step) -> Result<(), String> {
         // 他のステップのアクションを自分のアクションリストに追加
         self.actions.extend(other.actions.clone());
+        // 他のステップの戦闘を自分の戦闘リストに追加(多分今は必要なし。今後出てくるかも。)
+        self.combats.extend(other.combats.clone());
         Ok(())
     }
 

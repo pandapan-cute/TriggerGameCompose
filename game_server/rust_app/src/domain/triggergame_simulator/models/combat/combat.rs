@@ -8,11 +8,13 @@ use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 
 use super::combat_id::combat_id::CombatId;
 use super::is_avoided::is_avoided::IsAvoided;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Combat集約
 /// 戦闘を表すエンティティ
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Combat {
     combat_id: CombatId,
     attacking_unit_id: UnitId,

@@ -66,51 +66,6 @@ mod tests {
     }
 
     #[test]
-    fn test_take_main_trigger_damage() {
-        let mut unit = create_test_unit();
-
-        unit.take_main_trigger_damage(30).unwrap();
-        assert_eq!(unit.main_trigger_hp().value(), 70);
-
-        unit.take_main_trigger_damage(80).unwrap();
-        assert_eq!(unit.main_trigger_hp().value(), 0);
-        assert!(unit.is_bailed_out()); // HPが0になると自動ベイルアウト
-    }
-
-    #[test]
-    fn test_take_sub_trigger_damage() {
-        let mut unit = create_test_unit();
-
-        unit.take_sub_trigger_damage(20).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 80);
-
-        unit.take_sub_trigger_damage(40).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 40);
-    }
-
-    #[test]
-    fn test_heal_main_trigger() {
-        let mut unit = create_test_unit();
-        unit.take_main_trigger_damage(50).unwrap();
-
-        assert_eq!(unit.main_trigger_hp().value(), 50);
-
-        unit.heal_main_trigger(30).unwrap();
-        assert_eq!(unit.main_trigger_hp().value(), 80);
-    }
-
-    #[test]
-    fn test_heal_sub_trigger() {
-        let mut unit = create_test_unit();
-        unit.take_sub_trigger_damage(30).unwrap();
-
-        assert_eq!(unit.sub_trigger_hp().value(), 70);
-
-        unit.heal_sub_trigger(15).unwrap();
-        assert_eq!(unit.sub_trigger_hp().value(), 85);
-    }
-
-    #[test]
     fn test_consume_action_points() {
         let mut unit = create_test_unit();
 
@@ -120,26 +75,6 @@ mod tests {
         let result = unit.consume_action_points(10);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "行動ポイントが不足しています");
-    }
-
-    #[test]
-    fn test_restore_action_points() {
-        let mut unit = create_test_unit();
-        unit.consume_action_points(8).unwrap();
-
-        assert_eq!(unit.current_action_points().value(), 5);
-
-        unit.restore_action_points(5).unwrap();
-        assert_eq!(unit.current_action_points().value(), 10);
-    }
-
-    #[test]
-    fn test_set_wait_time() {
-        let mut unit = create_test_unit();
-        let wait_time = WaitTime::new(100);
-
-        unit.set_wait_time(wait_time.clone());
-        assert_eq!(unit.wait_time(), &wait_time);
     }
 
     #[test]

@@ -92,7 +92,8 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
         "$default" => {
             // メッセージ受信時の処理
             if let Some(body) = event.body {
-                println!("Received: {}", body);
+                // 受信したメッセージのログ出力
+                // println!("Received: {}", body);
 
                 // WebSocket送信の作成
                 let websocket_sender = WebSocketapiSender::new(apigateway_client);
@@ -119,7 +120,8 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                     }
                 };
 
-                println!("Parsed message: {:?}", message);
+                // パースしたメッセージのログ出力
+                // println!("Parsed message: {:?}", message);
 
                 // DynamoDBクライアントの作成
                 let dynamo_client = create_dynamodb_client().await;

@@ -1,4 +1,8 @@
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct IsAvoided {
     value: bool,
 }

@@ -127,26 +127,19 @@ impl Turn {
                     .to_string(),
             );
         }
-
-        println!(
-            "ターン開始: turnのデータ{:?}, 対戦相手のターン{:?}",
-            self, opponent_turn
-        );
         // プレイヤー1とプレイヤー2のターン情報の結合
         self.merge(opponent_turn)?;
-        println!("マージ後turnのデータ{:?}", self);
-        println!(
-            "ターン開始: turnのデータ{:?}, 対戦相手のターン{:?}",
-            self, opponent_turn
-        );
-
         // ユニット行動モードに移行
         self.start_unit_stepping()?;
 
         // ユニットIDをキーとしたHashMapに変換
         let mut units_map = units
             .into_iter()
-            .map(|u| (u.unit_id().clone(), u))
+            .map(|mut u| {
+                // ターン開始時にユニットの行動ポイントをリセットしてMapに格納
+                u.reset_action_points();
+                (u.unit_id().clone(), u)
+            })
             .collect::<std::collections::HashMap<_, _>>();
 
         // 各ステップの戦闘演算を開始

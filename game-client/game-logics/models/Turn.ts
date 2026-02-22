@@ -29,9 +29,9 @@ export class Turn {
     const steps = (rawTurn as { steps?: unknown[]; }).steps;
 
     if (Array.isArray(steps)) {
-      steps.forEach((step) => {
-        Step.fromJSON(step);
-      });
+      turn.steps = steps.map((step) => Step.fromJSON(step));
+    } else {
+      turn.steps = [];
     }
 
     return turn;

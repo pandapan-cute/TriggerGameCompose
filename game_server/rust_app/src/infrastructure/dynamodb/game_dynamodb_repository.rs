@@ -64,17 +64,10 @@ impl GameRepository for DynamoDbGameRepository {
         Ok(())
     }
 
-    async fn update(&self, game: &Game) -> Result<(), String> {
-        // DynamoDBでは put_item で上書き更新
-        // または update_item を使用して部分更新
+    async fn update_current_turn(&self, game: &Game) -> Result<(), String> {
+        let update_expression = "SET current_turn_number = :current_turn_number";
 
-        // UPDATE式を動的に構築
-        let update_parts = vec!["current_turn_number = :current_turn_number"];
-
-        let update_expression = format!("SET {}", update_parts.join(", "));
-
-        let request = self
-            .client
+        self.client
             .update_item()
             .table_name(self.games_table)
             .key(
@@ -86,23 +79,15 @@ impl GameRepository for DynamoDbGameRepository {
                 ":current_turn_number",
                 AttributeValue::N(game.current_turn_number().value().to_string()),
             )
-            .expression_attribute_values(
-                ":player1_id",
-                AttributeValue::S(game.player1_id().value().to_string()),
-            )
-            .expression_attribute_values(
-                ":player2_id",
-                AttributeValue::S(game.player2_id().value().to_string()),
-            );
-
-        let _ = request.send().await.map_err(|e| {
-            println!("Failed to update game: {}", e);
-
-            // SDK のエラー詳細も出力
-            if let Some(service_error) = e.as_service_error() {
-                eprintln!("Service Error: {:?}", service_error);
-            }
-        });
+            .send()
+            .await
+            .map_err(|e| {
+                println!("Failed to update game: {}", e);
+                if let Some(service_error) = e.as_service_error() {
+                    eprintln!("Service Error: {:?}", service_error);
+                }
+                format!("ゲーム情報の更新に失敗しました: {}", e)
+            })?;
 
         Ok(())
     }

@@ -178,6 +178,8 @@ export class CharacterManager {
         character.setCompleteText(null);
         // 行動力を最大値にリセット
         character.setActionPoints(characterStatus.activeCount);
+        // ターン切り替え時にステップ番号をリセット
+        character.resetCurrentStep();
       } else {
         console.warn(`キャラクターのユニット種別ID ${unitTypeId} に対応するステータスが見つかりませんでした。`);
       }

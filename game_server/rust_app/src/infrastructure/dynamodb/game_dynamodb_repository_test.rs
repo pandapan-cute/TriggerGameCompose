@@ -70,7 +70,7 @@ mod tests {
         let client = setup_mock_client(update_item_rule);
         let repo = DynamoDbGameRepository::new(client);
 
-        let result = repo.update(&game).await;
+        let result = repo.update_current_turn(&game).await;
         assert!(result.is_ok(), "Failed to update game: {:?}", result.err());
     }
 

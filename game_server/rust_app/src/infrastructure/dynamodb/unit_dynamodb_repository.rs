@@ -295,7 +295,7 @@ impl UnitRepository for DynamoDbUnitRepository {
             "using_main_trigger_id = :using_main_trigger_id",
             "using_sub_trigger_id = :using_sub_trigger_id",
             "current_action_points = :current_action_points",
-            "position = :position",
+            "#position = :position",
             "sight_range = :sight_range",
             "is_bailout = :is_bailout",
         ];
@@ -313,8 +313,7 @@ impl UnitRepository for DynamoDbUnitRepository {
             AttributeValue::N(unit.position().row().to_string()),
         );
 
-        let request = self
-            .client
+        self.client
             .update_item()
             .table_name(self.units_table)
             .key(
@@ -322,6 +321,7 @@ impl UnitRepository for DynamoDbUnitRepository {
                 AttributeValue::S(unit.unit_id().value().to_string()),
             )
             .update_expression(update_expression)
+            .expression_attribute_names("#position", "position")
             .expression_attribute_values(
                 ":current_action_points",
                 AttributeValue::N(unit.current_action_points().value().to_string()),
@@ -339,16 +339,17 @@ impl UnitRepository for DynamoDbUnitRepository {
             .expression_attribute_values(
                 ":using_sub_trigger_id",
                 AttributeValue::S(unit.using_sub_trigger_id().value().to_string()),
-            );
+            )
+            .send()
+            .await
+            .map_err(|e| {
+                println!("Failed to update unit: {}", e);
 
-        let _ = request.send().await.map_err(|e| {
-            println!("Failed to update matching: {}", e);
-
-            // SDK のエラー詳細も出力
-            if let Some(service_error) = e.as_service_error() {
-                eprintln!("Service Error: {:?}", service_error);
-            }
-        });
+                if let Some(service_error) = e.as_service_error() {
+                    eprintln!("Service Error: {:?}", service_error);
+                }
+                format!("ユニット情報の更新に失敗しました: {}", e)
+            })?;
 
         Ok(())
     }
@@ -376,7 +377,7 @@ impl UnitRepository for DynamoDbUnitRepository {
             .send()
             .await
             .map_err(|e| format!("Failed to query get_game_units: {}", e))?;
-        println!("Query result: {:?}", result);
+        println!("ユニット情報を取得しました ゲームID: {}", game_id.value());
 
         let items = result.items();
         if items.is_empty() {

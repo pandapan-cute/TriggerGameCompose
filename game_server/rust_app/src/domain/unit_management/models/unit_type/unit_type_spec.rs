@@ -19,40 +19,40 @@ impl UnitTypeSpec {
                 "MIKUMO_OSAMU",
                 UnitTypeSpec {
                     unit_type_id: "MIKUMO_OSAMU".to_string(),
-                    base_attack: 30,
-                    base_defense: 10,
-                    base_avoid: 5,
-                    action_points: 2,
+                    base_attack: 3,
+                    base_defense: 4,
+                    base_avoid: 4,
+                    action_points: 13,
                 },
             ),
             (
                 "KUGA_YUMA",
                 UnitTypeSpec {
                     unit_type_id: "KUGA_YUMA".to_string(),
-                    base_attack: 50,
-                    base_defense: 5,
+                    base_attack: 9,
+                    base_defense: 8,
                     base_avoid: 10,
-                    action_points: 2,
+                    action_points: 16,
                 },
             ),
             (
                 "AMATORI_CHIKA",
                 UnitTypeSpec {
                     unit_type_id: "AMATORI_CHIKA".to_string(),
-                    base_attack: 25,
-                    base_defense: 15,
-                    base_avoid: 5,
-                    action_points: 2,
+                    base_attack: 2,
+                    base_defense: 4,
+                    base_avoid: 3,
+                    action_points: 12,
                 },
             ),
             (
                 "HYUSE_KURONIN",
                 UnitTypeSpec {
                     unit_type_id: "HYUSE_KURONIN".to_string(),
-                    base_attack: 25,
-                    base_defense: 15,
-                    base_avoid: 5,
-                    action_points: 2,
+                    base_attack: 8,
+                    base_defense: 9,
+                    base_avoid: 7,
+                    action_points: 15,
                 },
             ),
         ]
@@ -74,5 +74,9 @@ impl UnitTypeSpec {
 
     pub fn base_avoid(&self) -> i32 {
         self.base_avoid
+    }
+
+    pub fn action_points(&self) -> i32 {
+        self.action_points
     }
 }

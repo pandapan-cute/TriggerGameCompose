@@ -1,6 +1,7 @@
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::unit_management::models::unit_type::unit_type_spec::UnitTypeSpec;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
 use super::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
@@ -225,51 +226,6 @@ impl Unit {
         Ok(())
     }
 
-    /// メイントリガーでダメージを受ける
-    pub fn take_main_trigger_damage(&mut self, damage: i32) -> Result<(), String> {
-        if damage < 0 {
-            return Err("ダメージは0以上である必要があります".to_string());
-        }
-        let new_hp = self.main_trigger_hp.value() - damage;
-        self.main_trigger_hp = MainTriggerHP::new(new_hp.max(0));
-
-        // HPが0になったら自動ベイルアウト
-        if self.main_trigger_hp.value() == 0 {
-            self.bailout();
-        }
-        Ok(())
-    }
-
-    /// サブトリガーでダメージを受ける
-    pub fn take_sub_trigger_damage(&mut self, damage: i32) -> Result<(), String> {
-        if damage < 0 {
-            return Err("ダメージは0以上である必要があります".to_string());
-        }
-        let new_hp = self.sub_trigger_hp.value() - damage;
-        self.sub_trigger_hp = SubTriggerHP::new(new_hp.max(0));
-        Ok(())
-    }
-
-    /// メイントリガーを回復
-    pub fn heal_main_trigger(&mut self, amount: i32) -> Result<(), String> {
-        if amount < 0 {
-            return Err("回復量は0以上である必要があります".to_string());
-        }
-        let new_hp = self.main_trigger_hp.value() + amount;
-        self.main_trigger_hp = MainTriggerHP::new(new_hp);
-        Ok(())
-    }
-
-    /// サブトリガーを回復
-    pub fn heal_sub_trigger(&mut self, amount: i32) -> Result<(), String> {
-        if amount < 0 {
-            return Err("回復量は0以上である必要があります".to_string());
-        }
-        let new_hp = self.sub_trigger_hp.value() + amount;
-        self.sub_trigger_hp = SubTriggerHP::new(new_hp);
-        Ok(())
-    }
-
     /// 行動ポイントを消費
     pub fn consume_action_points(&mut self, amount: i32) -> Result<(), String> {
         if amount < 0 {
@@ -283,29 +239,12 @@ impl Unit {
         Ok(())
     }
 
-    /// 行動ポイントを回復
-    pub fn restore_action_points(&mut self, amount: i32) -> Result<(), String> {
-        if amount < 0 {
-            return Err("回復量は0以上である必要があります".to_string());
-        }
-        let new_points = self.current_action_points.value() + amount;
-        self.current_action_points = CurrentActionPoints::new(new_points);
-        Ok(())
-    }
-
-    /// ウェイトタイムを設定
-    pub fn set_wait_time(&mut self, wait_time: WaitTime) {
-        self.wait_time = wait_time;
-    }
-
-    /// メイントリガーを装備
-    pub fn equip_main_trigger(&mut self, trigger_id: TriggerId) {
-        self.using_main_trigger_id = trigger_id;
-    }
-
-    /// サブトリガーを装備
-    pub fn equip_sub_trigger(&mut self, trigger_id: TriggerId) {
-        self.using_sub_trigger_id = trigger_id;
+    /// 行動ポイントのリセット
+    pub fn reset_action_points(&mut self) {
+        let new_value = UnitTypeSpec::get_spec(&self.unit_type_id.value())
+            .map(|spec| spec.action_points())
+            .unwrap_or(0);
+        self.current_action_points = CurrentActionPoints::new(new_value);
     }
 
     pub fn set_main_trigger_azimuth(&mut self, azimuth: TriggerAzimuth) {

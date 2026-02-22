@@ -34,10 +34,11 @@ impl WebSocketSender for WebSocketapiSender {
             .await
             .map_err(|e| format!("Failed to send message: {}", e))?;
 
-        println!(
-            "WebSocketメッセージを送信 {}, {:?}",
-            connection_id, response
-        );
+        // デバッグ用ログ
+        // println!(
+        //     "WebSocketメッセージを送信 {}, {:?}",
+        //     connection_id, response
+        // );
 
         Ok(())
     }

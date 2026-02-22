@@ -258,7 +258,12 @@ impl TurnRepository for DynamoDbTurnRepository {
             .await
             .map_err(|e| format!("Failed to query turn: {}", e))?;
 
-        println!("Query result: {:?}", result);
+        println!(
+            "ターン情報を取得しました ゲームID: {}, プレイヤーID: {}, ターン番号: {:?}",
+            game_id.value(),
+            player_id.value(),
+            turn_number.value()
+        );
 
         let item = result.item();
         if item.is_none() {
@@ -378,7 +383,7 @@ impl TurnRepository for DynamoDbTurnRepository {
                     }
                 }
 
-                let step = Step::new(StepId::new(step_id_str.to_string()), actions);
+                let step = Step::new(StepId::new(step_id_str.to_string()), actions, vec![]);
                 steps.push(step);
             }
         }

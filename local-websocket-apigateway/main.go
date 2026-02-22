@@ -68,8 +68,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Println("Read error:", err)
 			break
 		}
-
-		log.Printf("Received: %+v\n", msg)
+		// 受信したメッセージのログ出力
+		// log.Printf("Received: %+v\n", msg)
 
 		// 接続を登録（connection_id として player_id を使用）
 		clientsMu.Lock()
@@ -105,7 +105,8 @@ func handlePostToConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Message data: %s", string(reqBody))
+	// Lambda からのリクエストボディのログ出力
+	// log.Printf("Message data: %s", string(reqBody))
 
 	// 接続を取得
 	clientsMu.RLock()
@@ -154,8 +155,8 @@ func invokeLambda(msg Message) map[string]interface{} {
 		return map[string]interface{}{"error": "Marshal failed"}
 	}
 
-	// ログ追加
-	log.Printf("Sending to Lambda: %s", string(payload))
+	// API Gateway から Lambda に送るペイロードのログ出力
+	// log.Printf("Sending to Lambda: %s", string(payload))
 
 	// Lambda Runtime API の正しいエンドポイント
 	lambdaURL := "http://game-server:9000/2015-03-31/functions/game_server/invocations"

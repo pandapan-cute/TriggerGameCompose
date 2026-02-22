@@ -120,13 +120,11 @@ export class CharacterImageState {
 
   /** メイントリガーの表示をオフにする */
   hideMainTriggerFan() {
-    this.mainTriggerFan?.destroyTriggerFan();
-    this.mainTriggerFan = null;
+    this.mainTriggerFan?.setTriggerVisible(false);
   }
   /** サブトリガーの表示をオフにする */
   hideSubTriggerFan() {
-    this.subTriggerFan?.destroyTriggerFan();
-    this.subTriggerFan = null;
+    this.subTriggerFan?.setTriggerVisible(false);
   }
 
   // ゲッター

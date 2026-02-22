@@ -1030,6 +1030,8 @@ export class GridCellsScene extends Phaser.Scene {
   executeTurn(turn: Turn) {
     let currentStepIndex = 0;
     const steps = turn.getSteps();
+    // 行動フェーズに入る前に全キャラクターの行動力表示を消す
+    this.characterManager.setAllActionPointsTextToNull();
 
     /** ステップの順番実行 */
     const executeNextStep = (index: number) => {
@@ -1051,14 +1053,16 @@ export class GridCellsScene extends Phaser.Scene {
         // this.fieldViewState.setSightAreaFieldView(turn.fieldView);
       }
       currentStepIndex++;
-      if (currentStepIndex < steps.length) {
-        // 次のステップを1.5秒後に実行（アニメーション完了を待つ）
-        this.time.delayedCall(1500, () => executeNextStep(currentStepIndex));
-      } else {
-        // 全ステップ完了後の処理
-        this.completeUnitActionPhase(turn.getTurnNumber());
-        console.log("=== 全ステップ実行完了 ===");
-      }
+      this.time.delayedCall(1500, () => {
+        if (currentStepIndex < steps.length) {
+          // 次のステップを1.5秒後に実行（アニメーション完了を待つ）
+          executeNextStep(currentStepIndex);
+        } else {
+          // 全ステップ完了後の処理
+          this.completeUnitActionPhase(turn.getTurnNumber());
+          console.log("=== 全ステップ実行完了 ===");
+        }
+      });
     };
     // 行動フェーズ開始
     executeNextStep(currentStepIndex);

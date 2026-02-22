@@ -119,8 +119,10 @@ impl ProcessTurnUseCase {
             return Ok(());
         } else {
             println!(
-                "対戦相手のターン情報が登録されていることを確認: {:?}",
-                opponent_turn_data.as_ref().unwrap()
+                "対戦相手のターン情報が登録されていることを確認しました ゲームID: {}, プレイヤーID: {}, ターン番号: {:?}",
+                game_id.value(),
+                game.get_opponent_player_id(&player_id)?.value(),
+                TurnNumber::new(game.current_turn_number().value()).value()
             );
         }
 
@@ -141,9 +143,10 @@ impl ProcessTurnUseCase {
             .map_err(|e| format!("ユニット情報の更新に失敗しました: {}", e))?;
 
         // ゲームのターン数を更新
-        let _ = game.advance_to_next_turn();
+        game.advance_to_next_turn()
+            .map_err(|e| format!("ターン数の更新に失敗しました: {}", e))?;
         self.game_repository
-            .update(&game)
+            .update_current_turn(&game)
             .await
             .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))?;
 

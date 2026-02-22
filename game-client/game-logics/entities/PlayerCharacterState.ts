@@ -175,6 +175,10 @@ export class PlayerCharacterState extends CharacterImageState {
     this.currentStep += steps;
   }
 
+  resetCurrentStep() {
+    this.currentStep = 0;
+  }
+
   // ゲッター
   getActionPoints() {
     return this.actionPoints;

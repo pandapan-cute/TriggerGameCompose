@@ -52,7 +52,7 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
         let turn_number = TurnNumber::new(1);
         let turn_start_datetime = TurnStartDatetime::new(Utc::now());
         let turn_status = TurnStatus::new(TurnStatusValue::StepSetting);
-        let step = Step::new(StepId::new(Uuid::new_v4().to_string()), vec![]);
+        let step = Step::new(StepId::new(Uuid::new_v4().to_string()), vec![], vec![]);
 
         Turn::new(
             turn_id,

@@ -7,12 +7,14 @@ import { UnitImage } from "./UnitImage";
  */
 export class FriendUnitImage extends UnitImage {
 
-  constructor(scene: Phaser.Scene, x: number, y: number, unitTypeId: string, gridConfig: GridConfig) {
+  constructor(scene: Phaser.Scene, x: number, y: number, unitTypeId: string, isBailout: boolean, gridConfig: GridConfig) {
 
     super(scene, x, y, unitTypeId, gridConfig);
 
     // 青い色調を追加（自分のキャラクター識別用）
     this.setTint(0xadd8e6); // 薄い青色
+
+    this.setVisible(!isBailout); // ベイルアウト状態なら非表示
 
     scene.add.existing(this);
   }

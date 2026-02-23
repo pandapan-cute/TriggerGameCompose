@@ -820,12 +820,6 @@ export class GridCellsScene extends Phaser.Scene {
         `行動力が${remainingActionPoints}残っています。次の行動を設定してください。`
       );
       this.showMovableHexes();
-
-      // React側にキャラクター選択を維持することを通知
-      // notifyCharacterSelection(
-      //   this.characterManager.selectedCharacter?.id,
-      //   remainingActionPoints
-      // );
     } else {
       // 行動力が0の場合：選択をクリア
       console.log("行動力が0になりました。キャラクター選択をクリアします。");

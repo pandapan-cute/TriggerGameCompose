@@ -36,6 +36,7 @@ export class PlayerCharacterState extends CharacterImageState {
       scene,
       hexPosition.x, hexPosition.y,
       friendUnit.unitTypeId,
+      friendUnit.isBailout,
       gridConfig
     );
 
@@ -57,7 +58,7 @@ export class PlayerCharacterState extends CharacterImageState {
       { main: 0, sub: 0 },
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
-      false,
+      friendUnit.isBailout,
       hexUtils
     );
 
@@ -65,7 +66,9 @@ export class PlayerCharacterState extends CharacterImageState {
     this.completeText = null;
     this.currentStep = 0;
 
-    this.updateActionPointsDisplay(scene);
+    if (!friendUnit.isBailout) {
+      this.updateActionPointsDisplay(scene);
+    }
   }
 
   /** 行動力表示を更新または削除する

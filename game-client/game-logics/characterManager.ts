@@ -154,16 +154,22 @@ export class CharacterManager {
    */
   setAllActionPointsTextToNull = () => {
     this.playerCharacters.forEach(character => {
+      character.getCompleteText()?.destroy();
+      character.setCompleteText(null);
       character.setActionPointsText(null);
     });
   };
 
   /**
-   * すべてのキャラクターの行動力表示を更新する
+   * 生存中キャラクターの行動力表示を更新する
    * @param scene - Phaserのシーン
    */
   setAllActionPointsText = (scene: Phaser.Scene) => {
     this.playerCharacters.forEach(character => {
+      if (character.getIsBailedOut()) {
+        character.setActionPointsText(null);
+        return;
+      }
       character.updateActionPointsDisplay(scene);
     });
   };

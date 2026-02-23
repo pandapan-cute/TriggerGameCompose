@@ -161,6 +161,13 @@ impl Turn {
         Ok(())
     }
 
+    /// プレイヤーを引数として各プレイヤー向けのターン情報を生成
+    pub fn generate_player_turn(&mut self, player_id: &PlayerId) -> Turn {
+        // ターンの情報をプレイヤーごとに向けた形に修正
+        self.player_id = player_id.clone();
+        self.clone()
+    }
+
     /// ターンが完了しているかどうか
     pub fn is_completed(&self) -> bool {
         self.turn_status.is_completed()

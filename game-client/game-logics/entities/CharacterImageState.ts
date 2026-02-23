@@ -32,7 +32,7 @@ export class CharacterImageState {
     /** サブトリガーの表示オブジェクト */
     private subTriggerFan: TriggerFanShape | null,
     /** ベイルアウト済みか */
-    private isBailedOut: boolean = false,
+    private isBailedOut: boolean,
     /** 座標計算系クラス */
     protected hexUtils: HexUtils,
   ) { }

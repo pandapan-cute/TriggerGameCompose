@@ -150,28 +150,34 @@ impl ProcessTurnUseCase {
             .await
             .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))?;
 
-        // ターンの完了
-        let response = WebSocketResponse::TurnExecutionResult { turn };
+        // ターンの情報をプレイヤーごとに向けた形に修正
+        let player_a_id = turn.player_id().clone();
+        let player_b_id = game.get_opponent_player_id(&player_a_id)?;
+        let turn_a = turn.generate_player_turn(&player_a_id);
+        let turn_b = turn.generate_player_turn(&player_b_id);
+        let response_a = WebSocketResponse::TurnExecutionResult { turn: turn_a };
+        let response_b = WebSocketResponse::TurnExecutionResult { turn: turn_b };
+
         // コネクションの取得
         let player1_connection_id = self
             .connection_repository
-            .get_connection_id(game.player1_id().value())
+            .get_connection_id(player_a_id.value())
             .await
             .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
 
         // WebSocket で通知を送信
         self.websocket_sender
-            .send_message(&player1_connection_id, &response)
+            .send_message(&player1_connection_id, &response_a)
             .await?;
 
         let player2_connection_id = self
             .connection_repository
-            .get_connection_id(game.player2_id().value())
+            .get_connection_id(player_b_id.value())
             .await
             .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
 
         self.websocket_sender
-            .send_message(&player2_connection_id, &response)
+            .send_message(&player2_connection_id, &response_b)
             .await?;
 
         // println!("Processing turn for game_id: {}", game_id);

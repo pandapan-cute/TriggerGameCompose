@@ -1,11 +1,16 @@
 'use client';
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
-import GameGrid from "@/game-logics/GameGrid";
 import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const GameGrid = dynamic(() => import("@/game-logics/GameGrid"), {
+  // フロント側で500が出るため、SSRを無効化
+  ssr: false,
+});
 
 export interface GridConfig {
   gridSize: number;

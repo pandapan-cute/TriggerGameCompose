@@ -27,6 +27,7 @@ export class EnemyCharacterState extends CharacterImageState {
     const image = new EnemyUnitImage(
       scene,
       hexPosition.x, hexPosition.y,
+      enemyUnit.isBailout,
       gridConfig
     );
 
@@ -47,7 +48,7 @@ export class EnemyCharacterState extends CharacterImageState {
       { main: 0, sub: 0 }, // トリガーの向きは初期値で0にしておく
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
-      false,
+      enemyUnit.isBailout,
       hexUtils
     );
   }

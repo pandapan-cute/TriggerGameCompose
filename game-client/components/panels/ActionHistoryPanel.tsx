@@ -1,7 +1,7 @@
-import { ActionHistory } from "@/game-logics/entities/ActionHistoryEntity";
+import { Action } from "@/game-logics/models/Action";
 
 interface ActionHistoryPanelProps {
-  globalActionHistory?: ActionHistory[];
+  globalActionHistory?: Action[];
 }
 
 // 履歴表示コンポーネント
@@ -15,24 +15,14 @@ const ActionHistoryPanel = ({
           key={index}
           className="mb-2 p-2 bg-gray-700 bg-opacity-50 rounded text-xs"
         >
-          <div className="text-sky-300 font-bold">
-            {history.characterId}
-          </div>
           <div className="text-slate-300">
-            位置: ({history.position.x}, {history.position.y})
+            位置: ({history.getPosition().col}, {history.getPosition().row})
           </div>
-          {history.mainTriggerAngle !== null && (
-            <div className="text-red-300">
-              Main: {history.mainTriggerAngle.toFixed(2)}°
-            </div>
-          )}
-          {history.subTriggerAngle !== null && (
-            <div className="text-blue-300">
-              Sub: {history.subTriggerAngle.toFixed(2)}°
-            </div>
-          )}
-          <div className="text-gray-400 text-xs">
-            {new Date(history.timestamp).toLocaleTimeString()}
+          <div className="text-red-300">
+            Main: {history.getUsingMainTriggerId()}°
+          </div>
+          <div className="text-blue-300">
+            Sub: {history.getUsingSubTriggerId()}°
           </div>
         </div>
       ))}

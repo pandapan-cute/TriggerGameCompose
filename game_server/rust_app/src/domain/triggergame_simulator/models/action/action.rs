@@ -110,13 +110,13 @@ impl Action {
     /// ただし、combatが発生しなかった場合はNoneを返す
     /// action_player_id: actionを実行したプレイヤーID(攻撃側)
     /// unit: 防御側ユニット情報
-    pub fn generate_combats(&self, defence_unit: &Unit) -> Option<Combat> {
+    pub fn generate_combats(&self, defence_unit: &mut Unit) -> Option<Combat> {
         // ユニットのステータス取得
         let unit_status = UnitTypeSpec::get_spec(&self.unit_type_id.value()).unwrap();
         // アクションタイプに応じてcombatを生成
         if self.is_attack() {
             // action主を攻撃者、引数の防御側ユニットを防御者とするcombatを生成
-            Combat::create(
+            let combat = Combat::create(
                 self.unit_id.clone(),
                 self.position.clone(),
                 self.using_main_trigger_id.clone(),
@@ -134,7 +134,16 @@ impl Action {
                 defence_unit.sub_trigger_azimuth().clone(),
                 unit_status.base_defense(),
                 unit_status.base_avoid(),
-            )
+            );
+
+            if combat.is_some() {
+                // combatでis_defeatedがtrueのときはunitも更新する
+                let combat_unwrapped = combat.as_ref().unwrap();
+                if combat_unwrapped.is_defeated() {
+                    defence_unit.bailout();
+                }
+            }
+            combat
         } else {
             // 攻撃アクションでない場合、Noneを返す
             None

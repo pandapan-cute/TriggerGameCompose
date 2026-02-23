@@ -127,18 +127,18 @@ impl ProcessTurnUseCase {
         }
 
         // ユニット情報の取得
-        let units = self
+        let mut units = self
             .unit_repository
             .get_game_units(&game_id)
             .await
             .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))?;
 
         // **ターンエンティティの演算処理開始**
-        let result_units = turn.turn_start(units, &opponent_turn_data.unwrap())?;
+        turn.turn_start(&mut units, &opponent_turn_data.unwrap())?;
 
         // ユニット情報の更新
         self.unit_repository
-            .update_units(&result_units)
+            .update_units(&units)
             .await
             .map_err(|e| format!("ユニット情報の更新に失敗しました: {}", e))?;
 

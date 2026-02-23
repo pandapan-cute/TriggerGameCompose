@@ -6,7 +6,7 @@ import { Combat } from "./Combat";
  * すべてのユニットのActionの集合 が Step
  * (個々のユニットの一回の行動 -> Action)
  */
-export class Step implements Step {
+export class Step {
 
   private stepId: string;
   private actions: Action[];

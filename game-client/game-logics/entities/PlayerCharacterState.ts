@@ -8,6 +8,7 @@ import { FriendUnit } from "../models/FriendUnit";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { TRIGGER_STATUS } from "../config/status";
+import { Combat } from "../models/Combat";
 
 export class PlayerCharacterState extends CharacterImageState {
 
@@ -56,6 +57,7 @@ export class PlayerCharacterState extends CharacterImageState {
       { main: 0, sub: 0 },
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
+      false,
       hexUtils
     );
 
@@ -168,6 +170,19 @@ export class PlayerCharacterState extends CharacterImageState {
       pixelPos.y + 20,
       this.actionPoints
     );
+  }
+
+  /** 
+   * キャラクターが防御アクションを実行した際の処理
+   * @override CharacterImageStateの同名メソッドをオーバーライドして、撃破された場合は行動力表示を削除する
+   */
+  executeCharacterDefense(
+    combat: Combat
+  ) {
+    super.executeCharacterDefense(combat);
+    if (combat.getIsDefeatedCombat()) {
+      this.setActionPointsText(null);
+    }
   }
 
   /** 現在のステップ数を指定値分進める */

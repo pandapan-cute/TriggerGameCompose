@@ -51,4 +51,31 @@ export class Combat {
   static fromJSON(rawCombat: unknown): Combat {
     return Object.setPrototypeOf(rawCombat as object, Combat.prototype) as Combat;
   }
+
+  // ゲッター
+  getAttackingUnitId(): string {
+    return this.attackingUnitId;
+  }
+
+  getDefendingUnitId(): string {
+    return this.defendingUnitId;
+  }
+
+  getDefenderPosition(): Position {
+    return this.defenderPosition;
+  }
+
+  getMainTriggerHp(): number {
+    return this.mainTriggerHp;
+  }
+
+  getSubTriggerHp(): number {
+    return this.subTriggerHp;
+  }
+  getIsAvoidedCombat(): boolean {
+    return this.isAvoided;
+  }
+  getIsDefeatedCombat(): boolean {
+    return this.isDefeated;
+  }
 }

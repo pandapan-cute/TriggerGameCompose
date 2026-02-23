@@ -274,21 +274,20 @@ impl Combat {
     ) -> bool {
         // ピクセル長での距離を取得する
         let (attacker_x, attacker_y) = attacker_position.get_pixel_position();
-        let (defender_x, defender_y) = defender_position.get_pixel_position();
+        let (defender_x, defender_y) = defender_position.get_enemy_pixel_position();
         let pixel_length =
             (((attacker_x - defender_x).pow(2) + (attacker_y - defender_y).pow(2)) as f64).sqrt();
 
         // トリガーの射程をピクセル長に変換する
         let game_config = GameConfig::get_game_config();
-        let hex_width = game_config.hex_width();
         let hex_height = game_config.hex_height();
         let attacker_trigger_status =
             TriggerStatus::get_trigger_status(attacker_trigger_id.value());
-        let trigger_range_in_pixels = (attacker_trigger_status.range() as f64)
-            * ((hex_width * 3 / 4) as f64).hypot(hex_height as f64);
 
-        if pixel_length >= trigger_range_in_pixels {
+        // 0.5は、ユニット中心からセルの端までの距離の補正
+        if pixel_length >= hex_height as f64 * (attacker_trigger_status.range() as f64 + 0.5) {
             // 射程内にいない場合はfalseを返す
+            println!("射程外です, アタッカー座標({:?},{:?}), ディフェンダー座標({:?},{:?}), トリガーID={:?}, 射程={:?}", attacker_x, attacker_y, defender_x, defender_y, attacker_trigger_id.value(), TriggerStatus::get_trigger_status(attacker_trigger_id.value()).range());
             return false;
         } else {
             // 射程内にいる場合はtrueを返す
@@ -304,9 +303,9 @@ impl Combat {
         trigger_angle: i32,
     ) -> bool {
         // 攻撃者から防御者への角度を計算する
-        let dx = (defender_position.get_pixel_position().0
+        let dx = (defender_position.get_enemy_pixel_position().0
             - attacker_position.get_pixel_position().0) as f64;
-        let dy = (defender_position.get_pixel_position().1
+        let dy = (defender_position.get_enemy_pixel_position().1
             - attacker_position.get_pixel_position().1) as f64;
         let angle_to_target = dy.atan2(dx).to_degrees();
 
@@ -391,6 +390,11 @@ impl Combat {
         }
 
         damage.floor() as i32
+    }
+
+    // ゲッター
+    pub fn is_defeated(&self) -> bool {
+        self.is_defeated
     }
 }
 

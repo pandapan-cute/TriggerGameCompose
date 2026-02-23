@@ -48,15 +48,16 @@ export class CharacterManager {
   }
 
   /**
- * ユニットIDでキャラクターを検索
- * @param unitId ユニットID
- * @return 見つかったPlayerCharacterStateまたはEnemyCharacterStateオブジェクト、見つからなかった場合はnull
- */
+   * ユニットIDでキャラクターを検索
+   * ベイルアウト済みのキャラクターは検索結果から除外する
+   * @param unitId ユニットID
+   * @return 見つかったPlayerCharacterStateまたはEnemyCharacterStateオブジェクト、見つからなかった場合はnull
+   */
   findCharacterByUnitId(
     unitId: string
   ): PlayerCharacterState | EnemyCharacterState | null {
     for (const character of [...this.playerCharacters, ...this.enemyCharacters]) {
-      if (character.getUnitId() === unitId) {
+      if (character.getUnitId() === unitId && character.getIsBailedOut() === false) {
         return character;
       }
     }
@@ -111,7 +112,8 @@ export class CharacterManager {
     for (const characterState of this.playerCharacters) {
       if (
         characterState.position.col === col &&
-        characterState.position.row === row
+        characterState.position.row === row &&
+        characterState.getIsBailedOut() === false
       ) {
         return characterState;
       }
@@ -134,7 +136,8 @@ export class CharacterManager {
     for (const characterState of [...this.playerCharacters, ...this.enemyCharacters]) {
       if (
         characterState.position.col === col &&
-        characterState.position.row === row
+        characterState.position.row === row &&
+        characterState.getIsBailedOut() === false
       ) {
         return true;
       }

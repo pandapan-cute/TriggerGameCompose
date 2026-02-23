@@ -3,6 +3,7 @@ import { UnitType } from "../config/CharacterConfig";
 import { TRIGGER_STATUS } from "../config/status";
 import { HexUtils } from "../hexUtils";
 import { Action } from "../models/Action";
+import { Combat } from "../models/Combat";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
@@ -30,6 +31,8 @@ export class CharacterImageState {
     private mainTriggerFan: TriggerFanShape | null,
     /** サブトリガーの表示オブジェクト */
     private subTriggerFan: TriggerFanShape | null,
+    /** ベイルアウト済みか */
+    private isBailedOut: boolean = false,
     /** 座標計算系クラス */
     protected hexUtils: HexUtils,
   ) { }
@@ -83,39 +86,56 @@ export class CharacterImageState {
   }
 
   /**
-   * 攻撃を受けた際の防御・回避の表示を行う
-   * @param stepChar - キャラクターのステップ結果
-   * @param playerId - プレイヤーのID
+   * 攻撃を与えた際の攻撃の表示を行う
+   * @param combat - 戦闘情報
    */
-  // private defendTriggerDisplay(
-  //   stepChar: StepCharacterResult,
-  //   playerId: string
-  // ) {
-  //   // 敵キャラクターかどうかを判定
-  //   const isEnemyCharacter = stepChar.playerId !== playerId;
-  //   if (stepChar.guardCount > 0) {
-  //     // 0より大きいHPの値を取得
-  //     const validHpValues = [
-  //       stepChar.mainTriggerHP,
-  //       stepChar.subTriggerHP,
-  //     ].filter((hp) => hp > 0);
-  //     const minHp = Math.min(...validHpValues);
-  //     // 減ってるほうのシールド状態を表示
-  //     this.gameView.showShieldImage(
-  //       isEnemyCharacter
-  //         ? this.hexUtils.invertPosition(stepChar.position)
-  //         : stepChar.position,
-  //       minHp
-  //     );
-  //   } else if (stepChar.avoidCount > 0) {
-  //     // 回避状態を表示
-  //     this.gameView.showAvoidImage(
-  //       isEnemyCharacter
-  //         ? this.hexUtils.invertPosition(stepChar.position)
-  //         : stepChar.position
-  //     );
-  //   }
-  // }
+  executeCharacterAttack(
+    combat: Combat
+  ) {
+    // 攻撃先(防御したユニット)の座標を取得
+    const targetPosition = combat.getDefenderPosition();
+    const invertedTargetPosition = this.hexUtils.invertPosition(targetPosition);
+    const targetPixelPos = this.hexUtils.getHexPosition(invertedTargetPosition.col, invertedTargetPosition.row);
+
+    // 攻撃エフェクトを表示
+    this.image.drawAnimatedArrowBetweenCharacters(
+      {
+        x: targetPixelPos.x,
+        y: targetPixelPos.y,
+      }
+    );
+  }
+
+
+  /**
+   * 攻撃を受けた際の防御・回避の表示を行う
+   * @param combat - 戦闘情報
+   */
+  executeCharacterDefense(
+    combat: Combat
+  ) {
+    if (combat.getIsDefeatedCombat()) {
+      // 撃破状態を表示してキャラクターを削除
+      this.image.showBailOutAndRemoveCharacter();
+      this.isBailedOut = true;
+      this.hideMainTriggerFan();
+      this.hideSubTriggerFan();
+    } else if (combat.getIsAvoidedCombat()) {
+      // 回避状態を表示
+      this.image.showAvoidImage();
+    } else {
+      // 0より大きいHPの値を取得
+      const validHpValues = [
+        combat.getMainTriggerHp(),
+        combat.getSubTriggerHp(),
+      ].filter((hp) => hp > 0);
+      const minHp = Math.min(...validHpValues);
+      // 減ってるほうのシールド状態を表示
+      this.image.showShieldImage(
+        minHp
+      );
+    }
+  }
 
 
   /** メイントリガーの表示をオフにする */
@@ -134,6 +154,10 @@ export class CharacterImageState {
 
   getUnitTypeId(): UnitType {
     return this.unitTypeId;
+  }
+
+  getIsBailedOut(): boolean {
+    return this.isBailedOut;
   }
 
   // セッター

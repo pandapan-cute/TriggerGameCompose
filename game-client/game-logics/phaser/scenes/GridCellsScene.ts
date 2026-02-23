@@ -1052,6 +1052,20 @@ export class GridCellsScene extends Phaser.Scene {
         // 視界情報の更新
         // this.fieldViewState.setSightAreaFieldView(turn.fieldView);
       }
+      // ステップ内コンバットの開始
+      for (const [combatIndex, combat] of step.getCombats().entries()) {
+        // 攻撃の表示
+        const attackingCharacter = this.characterManager.findCharacterByUnitId(combat.getAttackingUnitId());
+        if (attackingCharacter) {
+          console.log(`--- コンバット ${combatIndex + 1} 開始 ---`);
+          attackingCharacter.executeCharacterAttack(combat);
+        }
+        // 防御・回避の表示
+        const defendingCharacter = this.characterManager.findCharacterByUnitId(combat.getDefendingUnitId());
+        if (defendingCharacter) {
+          defendingCharacter.executeCharacterDefense(combat);
+        }
+      }
       currentStepIndex++;
       this.time.delayedCall(1500, () => {
         if (currentStepIndex < steps.length) {

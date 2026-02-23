@@ -28,7 +28,7 @@ impl GameConfig {
         GameConfig {
             hex_radius: 24,
             hex_width: 24 * 2,
-            hex_height: 24 * (3 as f64).sqrt() as i32,
+            hex_height: (24.0 * (3 as f64).sqrt()) as i32,
             gameboard_width: 36,
             gameboard_height: 36,
             avoid_weight: 2,

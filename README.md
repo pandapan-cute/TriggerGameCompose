@@ -1,5 +1,9 @@
 # TriggerGameCompose
 
+## 開発ルール
+
+- コントリビュート規約: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 ## テスト方法
 
 ### websocketクライアントでの接続テスト

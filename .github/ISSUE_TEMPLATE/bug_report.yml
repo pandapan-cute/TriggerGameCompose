@@ -1,0 +1,72 @@
+name: Bug Report
+description: 不具合報告用テンプレート
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 何が起きているかを簡潔に記載してください
+      placeholder: 例) ターン終了時に画面が更新されない
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 再現できる手順を番号で記載してください
+      placeholder: |
+        1. xxx にアクセス
+        2. yyy を実行
+        3. zzz でエラー発生
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ・スクリーンショット
+      description: エラーログ、画面キャプチャ、動画など
+      render: shell
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影響範囲
+      options:
+        - game-client
+        - game_server
+        - local-websocket-apigateway
+        - local-dynamodb-initialize
+        - その他
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: 発生確認ブランチ
+      placeholder: 例) develop / main / feature/123-xxx
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 原因の仮説や関連Issueがあれば記載

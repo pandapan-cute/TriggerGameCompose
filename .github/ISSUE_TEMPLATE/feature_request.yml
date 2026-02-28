@@ -1,0 +1,66 @@
+name: Feature Request
+description: 機能追加・改善提案テンプレート
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・課題
+      description: 何を解決したいかを記載してください
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案内容
+      description: 実現したい仕様や挙動
+    validations:
+      required: true
+
+  - type: textarea
+    id: value
+    attributes:
+      label: 期待される効果
+      description: ユーザー体験、保守性、パフォーマンス等の観点
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 対象範囲
+      options:
+        - game-client
+        - game_server
+        - local-websocket-apigateway
+        - local-dynamodb-initialize
+        - ドキュメント
+        - その他
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 完了条件を箇条書きで記載
+      placeholder: |
+        - [ ] 条件1
+        - [ ] 条件2
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 代替案（任意）
+      description: 検討した他の方法があれば記載
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 関連Issue、参考資料、制約など

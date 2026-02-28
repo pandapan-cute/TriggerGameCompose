@@ -1,0 +1,39 @@
+- name: feature
+  color: "1D76DB"
+  description: 新機能の追加
+
+- name: bug
+  color: "D73A4A"
+  description: 不具合修正が必要
+
+- name: docs
+  color: "0075CA"
+  description: ドキュメントの追加・更新
+
+- name: chore
+  color: "6B7280"
+  description: 保守作業・雑務
+
+- name: refactor
+  color: "8B5CF6"
+  description: 振る舞いを変えない構造改善
+
+- name: test
+  color: "0E8A16"
+  description: テスト追加・修正
+
+- name: ci
+  color: "1F6FEB"
+  description: CI/CD 関連の変更
+
+- name: build
+  color: "FBCA04"
+  description: ビルド・依存関係の変更
+
+- name: security
+  color: "B60205"
+  description: セキュリティ関連の修正・対応
+
+- name: wontfix
+  color: "FFFFFF"
+  description: 対応予定なし

@@ -68,7 +68,7 @@ impl GetGameStateUseCase {
 
         let response = WebSocketResponse::GetGameStateResult {
             current_turn_number: game.current_turn_number().value() as u32,
-            enemy_units: EnemyUnitDto::from_units(&enemy_units),
+            enemy_units: EnemyUnitDto::from_units(&enemy_units, &friend_units, game.visibility()),
             friend_units: FriendUnitDto::from_units(&friend_units),
         };
 

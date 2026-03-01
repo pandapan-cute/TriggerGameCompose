@@ -258,6 +258,10 @@ impl Unit {
         self.sub_trigger_azimuth = azimuth;
     }
 
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
+    }
+
     /// ベイルアウト
     pub fn bailout(&mut self) {
         self.is_bailout = IsBailout::new(true);

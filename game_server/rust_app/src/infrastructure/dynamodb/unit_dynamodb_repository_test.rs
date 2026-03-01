@@ -3,7 +3,10 @@ mod tests {
     use crate::{
         domain::{
             player_management::models::player::player_id::player_id::PlayerId,
-            triggergame_simulator::models::game::game_id::game_id::GameId,
+            triggergame_simulator::models::game::{
+                game_id::game_id::GameId,
+                visibility::{self, Visibility},
+            },
             unit_management::{
                 models::unit::{
                     current_action_points::current_action_points::CurrentActionPoints,
@@ -71,9 +74,9 @@ mod tests {
     #[tokio::test]
     async fn test_update_unit() {
         let mut unit = create_test_unit();
-
+        let mut visibility = Visibility::create();
         // ユニットの状態を更新
-        unit.move_to(Position::new(7, 12));
+        unit.move_to(Position::new(7, 12), &mut visibility);
         unit.consume_action_points(1).unwrap();
 
         // UpdateItemの成功レスポンスをモック

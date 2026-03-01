@@ -1,5 +1,7 @@
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+use crate::domain::triggergame_simulator::models::action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
+use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
 use crate::domain::unit_management::models::unit;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::UnitTypeId;
@@ -110,7 +112,11 @@ impl Action {
     /// ただし、combatが発生しなかった場合はNoneを返す
     /// action_player_id: actionを実行したプレイヤーID(攻撃側)
     /// unit: 防御側ユニット情報
-    pub fn generate_combats(&self, defence_unit: &mut Unit) -> Option<Combat> {
+    pub fn generate_combats(
+        &self,
+        defence_unit: &mut Unit,
+        visibility: &mut Visibility,
+    ) -> Option<Combat> {
         // ユニットのステータス取得
         let unit_status = UnitTypeSpec::get_spec(&self.unit_type_id.value()).unwrap();
         // アクションタイプに応じてcombatを生成
@@ -134,6 +140,7 @@ impl Action {
                 defence_unit.sub_trigger_azimuth().clone(),
                 unit_status.base_defense(),
                 unit_status.base_avoid(),
+                visibility,
             );
 
             if combat.is_some() {
@@ -147,6 +154,55 @@ impl Action {
         } else {
             // 攻撃アクションでない場合、Noneを返す
             None
+        }
+    }
+
+    /// プレイヤーごとに見せるべき情報をフィルタリングする処理
+    /// ただし、combatが発生しなかった場合はNoneを返す
+    ///
+    /// * player_id: actionを実行したプレイヤーID(攻撃側)
+    /// * units: 防御側ユニット情報
+    /// * visibility: 視界情報
+    ///
+    /// ユニット表示パターン
+    /// 1. 視界内に入っている
+    ///     -> 位置とトリガーの向きは見えるようにする
+    /// 2. 視界外にいる かつ バグワーム装備中
+    ///     -> 位置とトリガーの向きも見えないようにする
+    ///        ユニットのタイプを不明にする
+    /// 3. 視界外にいる
+    ///     -> ユニットタイプも不明にする
+    pub fn to_player_action(
+        &mut self,
+        player_id: &PlayerId,
+        units: &Vec<Unit>,
+        visibility: &Visibility,
+    ) {
+        // プレイヤーから見て敵のユニットの行動は、位置とトリガーの向き以外は見えないようにする
+        let attack_unit = units.iter().find(|u| u.unit_id() == &self.unit_id).unwrap();
+        if attack_unit.owner_player_id() == player_id {
+            // 自分のユニットの行動はそのまま返す
+            return;
+        }
+
+        let visibility_data = visibility.calculate_visibility(units);
+        let action_visible =
+            visibility_data[self.position.row() as usize][self.position.col() as usize];
+        if action_visible {
+            // 見える場合は位置とトリガーの向きは見えるようにする
+            return;
+        }
+        if action_visible == false
+            && (self.using_main_trigger_id.is_bagworm() || self.using_sub_trigger_id.is_bagworm())
+        {
+            // 見えない場合 かつ バグワーム装備中の場合は、位置とトリガーの向きも見えないようにする
+            self.position = Position::new(-1, -1); // 見えない位置を(-1, -1)で表す
+            self.main_trigger_azimuth = TriggerAzimuth::new(-1);
+            self.sub_trigger_azimuth = TriggerAzimuth::new(-1);
+        }
+        if action_visible == false {
+            // 見えない場合は、ユニットタイプを不明にする
+            self.unit_type_id = UnitTypeId::new("UNKNOWN".to_string());
         }
     }
 

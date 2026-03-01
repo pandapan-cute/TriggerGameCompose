@@ -4,6 +4,7 @@ mod tests {
     use super::super::game::Game;
     use super::super::game_id::game_id::GameId;
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+    use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use uuid::Uuid;
 
     fn create_player_id() -> PlayerId {
@@ -62,8 +63,14 @@ mod tests {
         let current_turn_number = CurrentTurnNumber::new(6);
         let player1_id = create_player_id();
         let player2_id = create_player_id();
-
-        let mut game = Game::reconstruct(game_id, current_turn_number, player1_id, player2_id);
+        let visibility = Visibility::create();
+        let mut game = Game::reconstruct(
+            game_id,
+            current_turn_number,
+            player1_id,
+            player2_id,
+            visibility,
+        );
         assert!(game.is_game_finished());
 
         let result = game.advance_to_next_turn();
@@ -77,12 +84,14 @@ mod tests {
         let current_turn_number = CurrentTurnNumber::new(3);
         let player1_id = create_player_id();
         let player2_id = create_player_id();
+        let visibility = Visibility::create();
 
         let game = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
             player1_id.clone(),
             player2_id.clone(),
+            visibility,
         );
 
         assert_eq!(game.game_id(), &game_id);
@@ -95,18 +104,21 @@ mod tests {
         let current_turn_number = CurrentTurnNumber::new(1);
         let player1_id = create_player_id();
         let player2_id = create_player_id();
+        let visibility = Visibility::create();
 
         let game1 = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
             player1_id.clone(),
             player2_id.clone(),
+            visibility.clone(),
         );
         let game2 = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
             player1_id.clone(),
             player2_id.clone(),
+            visibility.clone(),
         );
         assert_eq!(game1, game2);
     }

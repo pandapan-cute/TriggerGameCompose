@@ -18,8 +18,8 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
 	use aws_sdk_dynamodb::{
 		config::{BehaviorVersion, Region},
 		operation::{
+            get_item::{GetItemInput, GetItemOutput},
 			put_item::{PutItemInput, PutItemOutput},
-			query::{QueryInput, QueryOutput},
 			update_item::{UpdateItemInput, UpdateItemOutput},
 		},
 		types::AttributeValue,
@@ -149,7 +149,7 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
         );
         action_map2.insert(
             "action_type".to_string(),
-            AttributeValue::S("WAIT".to_string()),
+            AttributeValue::S("Wait".to_string()),
         );
         action_map2.insert(
             "unit_id".to_string(),
@@ -234,15 +234,15 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
             AttributeValue::L(vec![AttributeValue::M(step_map)]),
         );
 
-        let query_rule = mock!(Client::query)
-            .match_requests(|_: &QueryInput| true)
+        let get_item_rule = mock!(Client::get_item)
+            .match_requests(|_: &GetItemInput| true)
             .then_output(move || {
-                QueryOutput::builder()
-                    .set_items(Some(vec![item.clone()]))
+                GetItemOutput::builder()
+                    .set_item(Some(item.clone()))
                     .build()
             });
 
-        let client = setup_mock_client(query_rule);
+        let client = setup_mock_client(get_item_rule);
         let repo = DynamoDbTurnRepository::new(client);
 
         let result = repo.get_turn_data(&game_id, &player_id, &turn_number).await;
@@ -263,14 +263,15 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
         let player_id = PlayerId::new(Uuid::new_v4().to_string());
         let turn_number = TurnNumber::new(1);
 
-        let query_rule = mock!(Client::query)
-            .match_requests(|_: &QueryInput| true)
-            .then_output(|| QueryOutput::builder().build());
+        let get_item_rule = mock!(Client::get_item)
+            .match_requests(|_: &GetItemInput| true)
+            .then_output(|| GetItemOutput::builder().build());
 
-        let client = setup_mock_client(query_rule);
+        let client = setup_mock_client(get_item_rule);
         let repo = DynamoDbTurnRepository::new(client);
 
         let result = repo.get_turn_data(&game_id, &player_id, &turn_number).await;
-        assert_ne!(result.iter().len(), 0);
+        assert!(result.is_ok(), "Failed to get turn: {:?}", result.err());
+        assert!(result.unwrap().is_none());
     }
 }

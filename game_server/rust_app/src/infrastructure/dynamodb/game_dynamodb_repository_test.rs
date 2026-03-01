@@ -9,8 +9,8 @@ mod tests {
     use aws_sdk_dynamodb::{
         config::{BehaviorVersion, Region},
         operation::{
+            get_item::{GetItemInput, GetItemOutput},
             put_item::{PutItemInput, PutItemOutput},
-            query::{QueryInput, QueryOutput},
             update_item::{UpdateItemInput, UpdateItemOutput},
         },
         types::AttributeValue,
@@ -95,15 +95,16 @@ mod tests {
             "player2_id".to_string(),
             AttributeValue::S(Uuid::new_v4().to_string()),
         );
-        let query_rule = mock!(Client::query)
-            .match_requests(|_: &QueryInput| true)
+
+        let get_item_rule = mock!(Client::get_item)
+            .match_requests(|_: &GetItemInput| true)
             .then_output(move || {
-                QueryOutput::builder()
-                    .set_items(Some(vec![item.clone()]))
+                GetItemOutput::builder()
+                    .set_item(Some(item.clone()))
                     .build()
             });
 
-        let client = setup_mock_client(query_rule);
+        let client = setup_mock_client(get_item_rule);
         let repo = DynamoDbGameRepository::new(client);
 
         let result = repo.get_game_by_id(&game_id).await;

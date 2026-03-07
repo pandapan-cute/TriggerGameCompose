@@ -45,7 +45,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private sendServerTurn: (steps: Step[]) => void) {
+  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -112,7 +112,9 @@ export class GridCellsScene extends Phaser.Scene {
     this.fieldViewState = new FieldViewState(
       this.hexUtils,
       this,
-      this.gridConfig
+      this.gridConfig,
+      this.fieldSteps,
+      this.visibility
     );
   }
 

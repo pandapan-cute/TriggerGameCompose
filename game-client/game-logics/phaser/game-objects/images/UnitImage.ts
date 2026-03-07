@@ -6,18 +6,37 @@ import { Position } from "@/game-logics/types";
  */
 export class UnitImage extends Phaser.GameObjects.Image {
 
-  constructor(scene: Phaser.Scene, x: number, y: number, unitTypeId: string, gridConfig: GridConfig) {
+  constructor(scene: Phaser.Scene, x: number, y: number, unitTypeId: string, private gridConfig: GridConfig) {
 
     super(scene, x, y, unitTypeId);
     this.setOrigin(0.5, 0.5);
     this.setDisplaySize(
-      gridConfig.hexRadius * 1.2,
-      gridConfig.hexRadius * 1.2
+      this.gridConfig.hexRadius * 1.2,
+      this.gridConfig.hexRadius * 1.2
     ); // 六角形に合わせたサイズ
     this.setDepth(2); // 前面に表示
 
     // キャラクターをクリック可能にする
     this.setInteractive();
+  }
+
+  /**
+   * ユニットの画像を更新する
+   * @param unitTypeId - 新しいユニットのタイプID。これが画像のパスになる。
+   */
+  updateUnitImage(unitTypeId: string) {
+    this.setDisplaySize(
+      this.gridConfig.hexRadius * 1.2,
+      this.gridConfig.hexRadius * 1.2
+    ); // 六角形に合わせたサイズ
+    this.setTexture(unitTypeId);
+  }
+
+  /**
+   * ユニットの可視性を更新する
+   */
+  updateVisibility(isVisible: boolean) {
+    this.setVisible(isVisible);
   }
 
   /** ユニットを移動させるアニメーション */

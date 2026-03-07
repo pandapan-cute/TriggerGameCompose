@@ -13,13 +13,15 @@ import { Turn } from "./models/Turn";
 interface GameGridProps {
   friendUnits: FriendUnit[];
   enemyUnits: EnemyUnit[];
+  fieldSteps: number[][];
+  visibility: boolean[][];
 }
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
+const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -146,7 +148,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits }) => {
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        const gridScene = new GridCellsScene(friendUnits, enemyUnits, handleTurnExecution);
+        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution);
         gridSceneRef.current = gridScene;
 
         // Phaserゲームの設定（画面サイズに合わせて調整）

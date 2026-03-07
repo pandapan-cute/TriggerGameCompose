@@ -31,11 +31,20 @@ impl EnemyUnitDto {
         enemy_unit: &Unit,
         friend_units: &Vec<Unit>,
         visibility: &Visibility,
+        visibility_data: &Vec<Vec<bool>>,
     ) -> Self {
-        let visibility_data = visibility.calculate_visibility(friend_units);
-        let action_visible = visibility_data[enemy_unit.position().row() as usize]
-            [enemy_unit.position().col() as usize];
-        if action_visible {}
+        let action_visible = visibility_data
+            [enemy_unit.position().get_enemy_position().row() as usize]
+            [enemy_unit.position().get_enemy_position().col() as usize];
+        for visibility_row in visibility_data {
+            println!("visibility_row: {:?}", visibility_row);
+        }
+        println!(
+            "EnemyUnitDto::to_enemy_unit_data - action_visible: {}, enemy_unit_id: {}, enemy_unit_type_id: {}",
+            action_visible,
+            enemy_unit.unit_id().value(),
+            enemy_unit.unit_type_id().value()
+        );
         if action_visible == false
             && (enemy_unit.using_main_trigger_id().is_bagworm()
                 || enemy_unit.using_sub_trigger_id().is_bagworm())
@@ -82,7 +91,13 @@ impl EnemyUnitDto {
         enemy_units
             .iter()
             .map(|enemy_unit| {
-                EnemyUnitDto::to_enemy_unit_data(enemy_unit, friend_units, visibility)
+                let visibility_data = visibility.calculate_visibility(friend_units);
+                EnemyUnitDto::to_enemy_unit_data(
+                    enemy_unit,
+                    friend_units,
+                    visibility,
+                    &visibility_data,
+                )
             })
             .collect()
     }

@@ -59,6 +59,9 @@ export class CharacterImageState {
     console.log(`キャラクター${this.unitId}の移動先: マス(${action.getPosition().col}, ${action.getPosition().row}) -> ピクセル(${targetPixelPos.x}, ${targetPixelPos.y})`);
     this.setDirection({ main: action.getMainTriggerAzimuth(), sub: action.getSubTriggerAzimuth() });
     console.log(`キャラクター${this.unitId}の向きを更新: メイン ${action.getMainTriggerAzimuth()}°, サブ ${action.getSubTriggerAzimuth()}°`);
+    // ユニットの画像と可視状態を更新
+    this.image.updateUnitImage(action.getUnitTypeId());
+    this.image.setVisible(action.getPosition().col !== 36 && action.getPosition().row !== 36); // 座標が範囲外でない場合のみ表示
     // 移動アニメーションを実行
     this.image.moveUnitTween(targetPixelPos.x, targetPixelPos.y, () => {
       // 移動完了後にトリガー表示を更新

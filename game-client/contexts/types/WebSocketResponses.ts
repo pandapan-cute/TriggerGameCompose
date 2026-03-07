@@ -19,6 +19,8 @@ export interface GetGameStateResponse {
   action: "getGameStateResult";
   enemyUnits: EnemyUnit[];
   friendUnits: FriendUnit[];
+  fieldSteps: number[][];
+  visibility: boolean[][];
 }
 
 

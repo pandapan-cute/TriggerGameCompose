@@ -8,12 +8,14 @@ import "phaser";
 export class HexagonCell extends Phaser.GameObjects.Graphics {
 
   private hexUtils: HexUtils;
+  private centerPos: { x: number; y: number; };
 
   constructor(hexUtils: HexUtils, scene: Phaser.Scene, pos: { x: number; y: number; }) {
     super(scene);
     this.hexUtils = hexUtils;
-    this.createHexagon(pos);
-    this.fillStyle(0xB0BEC5, 1); // グレーの塗りつぶし
+    this.centerPos = pos;
+    this.fillStyle(0x1565C0, 1); // グレーの塗りつぶし
+    this.createHexagon(this.centerPos);
     this.setDepth(0); // 背景レイヤー
 
     scene.add.existing(this);
@@ -21,12 +23,13 @@ export class HexagonCell extends Phaser.GameObjects.Graphics {
 
   /**
    * 視認可能エリアのセルに切り替える
-    * （白で塗りつぶす）
+   * （白で塗りつぶす）
    */
   switchCanSight() {
     // 白で塗りつぶし
+    this.clear();
     this.fillStyle(0xffffff, 1);
-    this.createHexagon({ x: this.x, y: this.y });
+    this.createHexagon(this.centerPos);
   }
 
   /**
@@ -35,8 +38,9 @@ export class HexagonCell extends Phaser.GameObjects.Graphics {
    */
   switchCannotSight() {
     // グレーで塗りつぶし
+    this.clear();
     this.fillStyle(0xB0BEC5, 1);
-    this.createHexagon({ x: this.x, y: this.y });
+    this.createHexagon(this.centerPos);
   }
 
   /** 六角形を描画するヘルパー関数 */

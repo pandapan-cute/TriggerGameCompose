@@ -75,6 +75,10 @@ export class Action {
     return this.unitId;
   }
 
+  getUnitTypeId(): UnitType {
+    return this.unitTypeId;
+  }
+
   getPosition(): Position {
     return this.position;
   }

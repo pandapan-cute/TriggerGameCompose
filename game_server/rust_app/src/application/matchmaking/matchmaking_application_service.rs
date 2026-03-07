@@ -86,6 +86,7 @@ impl MatchmakingApplicationService {
                         game_id: None,
                         enemy_units: vec![],
                         friend_units: vec![],
+                        field_steps: vec![],
                     };
                     // WebSocket で通知を送信
                     self.websocket_sender
@@ -145,6 +146,7 @@ impl MatchmakingApplicationService {
                     game_id: Some(game_id.value().to_string()),
                     enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&unit_entities),
+                    field_steps: game.visibility().field_steps().to_vec(),
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender
@@ -163,6 +165,7 @@ impl MatchmakingApplicationService {
                     game_id: Some(game_id.value().to_string()),
                     enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&enemy_units),
+                    field_steps: game.visibility().field_steps().to_vec(),
                 };
                 self.websocket_sender
                     .send_message(&opponent_connection_id, &opponent_response)
@@ -191,6 +194,7 @@ impl MatchmakingApplicationService {
                     game_id: None,
                     enemy_units: vec![],
                     friend_units: vec![],
+                    field_steps: vec![],
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender

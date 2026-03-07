@@ -24,10 +24,13 @@ export class EnemyCharacterState extends CharacterImageState {
       invertedPos.col,
       invertedPos.row
     );
+    const visible = enemyUnit.position.col === -1 || enemyUnit.position.row === -1 ? false : true; // 反転後の座標が範囲外なら非表示
     const image = new EnemyUnitImage(
       scene,
+      enemyUnit.unitTypeId,
       hexPosition.x, hexPosition.y,
       enemyUnit.isBailout,
+      visible,
       gridConfig
     );
 
@@ -46,8 +49,8 @@ export class EnemyCharacterState extends CharacterImageState {
       invertedPos, // 敵の座標は自分から見た逆位置で管理
       enemyUnit.unitTypeId,
       { main: 0, sub: 0 }, // トリガーの向きは初期値で0にしておく
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus?.range, mainTriggerKey, gridConfig, hexUtils, false),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus?.range, subTriggerKey, gridConfig, hexUtils, false),
       enemyUnit.isBailout,
       hexUtils
     );

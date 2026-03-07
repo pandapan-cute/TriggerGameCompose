@@ -6,7 +6,7 @@ import { Position } from "./types";
 export class GameView {
 
   private hexUtils: HexUtils;
-  constructor(private scene: Phaser.Scene, private gridConfig: GridConfig) {
+  constructor(private scene: Phaser.Scene, gridConfig: GridConfig) {
     this.hexUtils = new HexUtils(gridConfig);
   }
 

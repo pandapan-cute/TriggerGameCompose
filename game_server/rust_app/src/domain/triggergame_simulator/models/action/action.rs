@@ -186,8 +186,8 @@ impl Action {
         }
 
         let visibility_data = visibility.calculate_visibility(units);
-        let action_visible =
-            visibility_data[self.position.row() as usize][self.position.col() as usize];
+        let action_visible = visibility_data[self.position.get_enemy_position().row() as usize]
+            [self.position.get_enemy_position().col() as usize];
         if action_visible {
             // 見える場合は位置とトリガーの向きは見えるようにする
             return;

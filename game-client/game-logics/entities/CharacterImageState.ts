@@ -76,6 +76,7 @@ export class CharacterImageState {
   updateTriggerPositionsForCharacter(
     action: Action,
   ) {
+    const visible = action.getPosition().col < 0 || action.getPosition().row > 35 ? false : true; // 座標が範囲外なら非表示
     // メイントリガーのステータスを取得
     const mainTriggerKey = action.getUsingMainTriggerId() as keyof typeof TRIGGER_STATUS;
     const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
@@ -83,9 +84,9 @@ export class CharacterImageState {
     const subTriggerKey = action.getUsingSubTriggerId() as keyof typeof TRIGGER_STATUS;
     const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
     // メイントリガーの表示を更新
-    this.mainTriggerFan?.updateTriggerAzimuth(action.getMainTriggerAzimuth(), this.image.x, this.image.y, mainTriggerStatus.angle, mainTriggerStatus.range, mainTriggerKey);
+    this.mainTriggerFan?.updateTriggerAzimuth(action.getMainTriggerAzimuth(), this.image.x, this.image.y, mainTriggerStatus.angle, mainTriggerStatus.range, mainTriggerKey, visible);
     // サブトリガーの表示を更新
-    this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey);
+    this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey, visible);
   }
 
   /**

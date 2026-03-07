@@ -1062,6 +1062,8 @@ export class GridCellsScene extends Phaser.Scene {
           defendingCharacter.executeCharacterDefense(combat);
         }
       }
+      // 視界情報の更新
+      this.fieldViewState.setSightAreaFieldView(step.getVisibilityCells());
       currentStepIndex++;
       this.time.delayedCall(1500, () => {
         if (currentStepIndex < steps.length) {

@@ -20,21 +20,33 @@ pub struct Step {
     step_id: StepId,
     actions: Vec<Action>,
     combats: Vec<Combat>,
+    visibility_cells: Vec<Vec<bool>>,
 }
 
 impl Step {
     // privateなコンストラクタ
-    pub fn new(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
+    pub fn new(
+        step_id: StepId,
+        actions: Vec<Action>,
+        combats: Vec<Combat>,
+        visibility_cells: Vec<Vec<bool>>,
+    ) -> Self {
         Self {
             step_id,
             actions,
             combats,
+            visibility_cells,
         }
     }
 
     /// 新規ステップの生成
-    pub fn create(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
-        Self::new(step_id, actions, combats)
+    pub fn create(
+        step_id: StepId,
+        actions: Vec<Action>,
+        combats: Vec<Combat>,
+        visibility_cells: Vec<Vec<bool>>,
+    ) -> Self {
+        Self::new(step_id, actions, combats, visibility_cells)
     }
 
     /// 戦闘演算の開始
@@ -128,6 +140,7 @@ impl Step {
         self.actions.iter_mut().for_each(|action| {
             action.to_player_action(player_id, units, visibility);
         });
+        self.visibility_cells = visibility.calculate_visibility(units);
         self.clone()
     }
 

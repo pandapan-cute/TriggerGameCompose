@@ -40,14 +40,15 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
    * @param triggerAngle トリガーの角度
    * @param triggerRange トリガーの範囲
    * @param triggerName トリガーの名前
+   * @param visible トリガーの表示状態
    */
-  updateTriggerAzimuth(direction: number, x: number, y: number, triggerAngle: number, triggerRange: number, triggerName: string) {
+  updateTriggerAzimuth(direction: number, x: number, y: number, triggerAngle: number, triggerRange: number, triggerName: string, visible: boolean) {
     this.direction = direction;
     this.triggerAngle = triggerAngle;
     this.triggerRange = triggerRange;
     // 扇形の更新
     this.updateTriggerShape(x, y, this.color, direction - 90, triggerAngle, triggerRange);
-    this.setVisible(true); // 更新時に扇形を表示
+    this.setVisible(visible); // 更新時に扇形の表示状態を設定
 
     const correctedDirection = direction - 90;
     const label = this.getData('label');
@@ -57,7 +58,7 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
         x + Math.cos((correctedDirection * Math.PI) / 180) * this.gridConfig.hexRadius * triggerRange + 1.0,
         y + Math.sin((correctedDirection * Math.PI) / 180) * this.gridConfig.hexRadius * triggerRange + 1.0,
       );
-      label.setVisible(true);
+      label.setVisible(visible); // 更新時にラベルの表示状態を設定
     }
   }
 

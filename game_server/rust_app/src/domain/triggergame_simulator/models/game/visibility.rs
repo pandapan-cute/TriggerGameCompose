@@ -70,12 +70,6 @@ impl Visibility {
 
         for unit in units {
             let pos = unit.position();
-            let viewer_col = pos.col() as usize;
-            let viewer_row = pos.row() as usize;
-            let viewer_height = self.field_steps[viewer_row][viewer_col];
-
-            let base_range = 8;
-            let max_view_range = base_range + viewer_height;
 
             for row in 0..height {
                 for col in 0..width {

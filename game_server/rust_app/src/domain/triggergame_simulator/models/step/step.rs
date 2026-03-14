@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::domain::player_management::models::player;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::Action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
@@ -140,7 +141,13 @@ impl Step {
         self.actions.iter_mut().for_each(|action| {
             action.to_player_action(player_id, units, visibility);
         });
-        self.visibility_cells = visibility.calculate_visibility(units);
+        // プレイヤーから見た視界を計算して、visibility_cellsを更新する
+        let player_units: Vec<Unit> = units
+            .iter()
+            .filter(|u| u.owner_player_id() == player_id)
+            .cloned()
+            .collect();
+        self.visibility_cells = visibility.calculate_visibility(&player_units);
         self.clone()
     }
 

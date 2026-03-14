@@ -25,10 +25,6 @@ export class UnitImage extends Phaser.GameObjects.Image {
    * @param unitTypeId - 新しいユニットのタイプID。これが画像のパスになる。
    */
   updateUnitImage(unitTypeId: string) {
-    this.setDisplaySize(
-      this.gridConfig.hexRadius * 1.2,
-      this.gridConfig.hexRadius * 1.2
-    ); // 六角形に合わせたサイズ
     this.setTexture(unitTypeId);
   }
 

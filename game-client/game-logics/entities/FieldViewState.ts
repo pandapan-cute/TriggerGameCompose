@@ -105,12 +105,12 @@ export class FieldViewState {
       for (const [rowIndex, row] of col.entries()) {
         if (row === true && this.fieldView[rowIndex][colIndex].canSight !== true) {
           // 視認可能エリアのセルに切り替える
-          this.fieldView[rowIndex][colIndex].backGroundGraphic?.switchCanSight();
           this.fieldView[rowIndex][colIndex].canSight = true;
-        } else {
+          this.fieldView[rowIndex][colIndex].backGroundGraphic?.switchCanSight();
+        } else if (row === false && this.fieldView[rowIndex][colIndex].canSight !== false) {
           // 視認不可能エリアのセルに切り替える
-          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.switchCannotSight();
           this.fieldView[rowIndex][colIndex].canSight = false;
+          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.switchCannotSight();
         }
       }
     }

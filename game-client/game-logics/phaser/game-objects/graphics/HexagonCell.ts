@@ -14,7 +14,7 @@ export class HexagonCell extends Phaser.GameObjects.Graphics {
     super(scene);
     this.hexUtils = hexUtils;
     this.centerPos = pos;
-    this.fillStyle(0x1565C0, 1); // グレーの塗りつぶし
+    this.fillStyle(0x78909C, 1); // グレーの塗りつぶし
     this.createHexagon(this.centerPos);
     this.setDepth(0); // 背景レイヤー
 
@@ -39,7 +39,7 @@ export class HexagonCell extends Phaser.GameObjects.Graphics {
   switchCannotSight() {
     // グレーで塗りつぶし
     this.clear();
-    this.fillStyle(0xB0BEC5, 1);
+    this.fillStyle(0x78909C, 1);
     this.createHexagon(this.centerPos);
   }
 

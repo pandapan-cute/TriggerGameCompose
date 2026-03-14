@@ -14,13 +14,15 @@
 - 機能追加: `feature/<issue番号>-<要約>`
 - バグ修正: `fix/<issue番号>-<要約>`
 - 雑務/保守: `chore/<要約>`
+- リファクタリング: `refactor/<要約>`
 - ドキュメント: `docs/<要約>`
 
 例:
 
-- `feature/123-turn-timeout`
-- `fix/245-invalid-action-order`
-- `docs/contributing-update`
+- `feature/123-turn_timeout`
+- `fix/245-invalid_action_order`
+- `refactor/456_code_structure`
+- `docs/contributing_update`
 
 ## 2. コミットメッセージ
 
@@ -28,6 +30,7 @@ Conventional Commits を推奨します。
 
 - `feat: ターン終了処理を追加`
 - `fix: 移動可能マス判定の不具合を修正`
+- `refactor: ターン処理ロジックを分割`
 - `docs: READMEに起動手順を追記`
 
 1コミット1目的を基本にしてください。

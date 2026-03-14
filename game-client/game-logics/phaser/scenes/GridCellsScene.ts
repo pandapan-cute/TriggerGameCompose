@@ -9,11 +9,10 @@ import { UnitImageLoader } from "./loader/UnitImageLoader";
 import { GameAssetsLoader } from "./loader/GameAssetsLoader";
 import { GameCamera } from "../cameras/GameCamera";
 import { CharacterManager } from "@/game-logics/characterManager";
-import { CHARACTER_STATUS, TRIGGER_STATUS } from "@/game-logics/config/status";
+import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
-import { MovableHighlightCell } from "../game-objects/graphics/MovableHighlightCell";
 import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
 import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
@@ -22,6 +21,11 @@ import { Turn } from "@/game-logics/models/Turn";
 import { Action, ActionType } from "@/game-logics/models/Action";
 import { TriggerFanShape } from "../game-objects/graphics/TriggerFanShape";
 import { InputController, type InputControllerDeps } from "./inputs/InputController";
+import { SelectionService, type SelectionServiceDeps } from "./services/SelectionService";
+import {
+  TriggerSettingController,
+  type TriggerSettingControllerDeps,
+} from "./controllers/TriggerSettingController";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -79,6 +83,10 @@ export class GridCellsScene extends Phaser.Scene {
   private gameView!: GameView;
   /** 入力処理コントローラ */
   private inputController: InputController | null = null;
+  /** 選択・移動処理サービス */
+  private selectionService: SelectionService | null = null;
+  /** トリガー設定処理コントローラ */
+  private triggerSettingController: TriggerSettingController | null = null;
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -132,6 +140,7 @@ export class GridCellsScene extends Phaser.Scene {
     // this.setupMatchmakingListeners(); // マッチ決定後のイベントリスナーを設定
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
     this.createCharacters(); // キャラクターを配置
+    this.setupSceneControllers(); // SelectionService / TriggerSettingController を初期化
     this.setupInputController(); // InputController を初期化してイベントをバインドする
     if (this.pendingTurn) {
       const queuedTurn = this.pendingTurn;
@@ -139,6 +148,22 @@ export class GridCellsScene extends Phaser.Scene {
       this.executeTurn(queuedTurn);
     }
     // this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
+  }
+
+  /**
+   * シーンの委譲先コントローラ群を初期化する
+   */
+  private setupSceneControllers(): void {
+    if (!this.selectionService) {
+      this.selectionService = new SelectionService(this.createSelectionServiceDeps());
+    }
+
+    if (!this.triggerSettingController) {
+      this.triggerSettingController = new TriggerSettingController(
+        this,
+        this.createTriggerSettingControllerDeps()
+      );
+    }
   }
 
   /**
@@ -172,7 +197,7 @@ export class GridCellsScene extends Phaser.Scene {
         this.isDraggingTrigger = isDragging;
       },
       updateTriggerAngleFromPointer: (pointer: Phaser.Input.Pointer) => {
-        this.updateTriggerAngleFromPointer(pointer);
+        this.triggerSettingController?.updateTriggerAngleFromPointer(pointer);
       },
       updateHoverFromPointer: (pointer: Phaser.Input.Pointer) => {
         this.updateHoverFromPointer(pointer);
@@ -181,7 +206,9 @@ export class GridCellsScene extends Phaser.Scene {
         this.commitGridClick(pointer);
       },
       completeTriggerSetting: () => {
-        this.completeTriggerSetting(this.currentTriggerAngle);
+        this.triggerSettingController?.completeTriggerSetting(
+          this.currentTriggerAngle
+        );
       },
       setupNativePinchGesture: (camera: Phaser.Cameras.Scene2D.Camera) => {
         this.gameView.setupNativePinchGesture(camera);
@@ -190,30 +217,80 @@ export class GridCellsScene extends Phaser.Scene {
   }
 
   /**
+   * SelectionService へ渡す依存関数を構築する
+   */
+  private createSelectionServiceDeps(): SelectionServiceDeps {
+    return {
+      scene: this,
+      characterManager: this.characterManager,
+      fieldViewState: this.fieldViewState,
+      hexUtils: this.hexUtils,
+      gridConfig: this.gridConfig,
+      consumeActionPoint: (remainingMoves: number) => {
+        this.consumeActionPoint(remainingMoves);
+      },
+      startTriggerSetting: () => {
+        this.triggerSettingController?.startTriggerSetting();
+      },
+      resetTriggerSettingState: () => {
+        this.triggerSettingMode = false;
+        this.triggerSettingType = null;
+      },
+    };
+  }
+
+  /**
+   * TriggerSettingController へ渡す依存関数を構築する
+   */
+  private createTriggerSettingControllerDeps(): TriggerSettingControllerDeps {
+    return {
+      characterManager: this.characterManager,
+      fieldViewState: this.fieldViewState,
+      hexUtils: this.hexUtils,
+      gridConfig: this.gridConfig,
+      isTriggerDragging: () => this.isDraggingTrigger,
+      getTriggerSettingType: () => this.triggerSettingType,
+      setTriggerSettingType: (triggerType: "main" | "sub" | null) => {
+        this.triggerSettingType = triggerType;
+      },
+      setTriggerSettingMode: (isEnabled: boolean) => {
+        this.triggerSettingMode = isEnabled;
+      },
+      getCurrentTriggerAngle: () => this.currentTriggerAngle,
+      setCurrentTriggerAngle: (angle: number) => {
+        this.currentTriggerAngle = angle;
+      },
+      getTriggerFan: () => this.triggerFan,
+      setTriggerFan: (fan: TriggerFanShape | null) => {
+        this.triggerFan = fan;
+      },
+      getTriggerPoints: () => this.triggerPoints,
+      setTriggerPoints: (points: Phaser.GameObjects.Graphics[] | null) => {
+        this.triggerPoints = points;
+      },
+      recordActionHistory: () => {
+        this.recordActionHistory();
+      },
+      showMovableHexes: () => {
+        this.selectionService?.showMovableHexes();
+      },
+      clearSelection: () => {
+        this.selectionService?.clearSelection();
+      },
+      showActionCompletedText: (character: Phaser.GameObjects.Image) => {
+        this.showActionCompletedText(character);
+      },
+      checkAllCharactersActionPointsCompleted: () => {
+        this.checkAllCharactersActionPointsCompleted();
+      },
+    };
+  }
+
+  /**
    * pointer 座標に応じてトリガー角度を更新する
    */
   private updateTriggerAngleFromPointer(pointer: Phaser.Input.Pointer): void {
-    if (
-      !this.isDraggingTrigger ||
-      !this.characterManager.selectedCharacter ||
-      !this.triggerFan
-    ) {
-      return;
-    }
-
-    const centerPos = this.hexUtils.getHexPosition(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row
-    );
-    const newAngle = this.hexUtils.calculateMouseAngle(
-      centerPos.x,
-      centerPos.y,
-      pointer.x,
-      pointer.y,
-      this.cameras.main
-    );
-    this.currentTriggerAngle = newAngle;
-    this.updateTriggerFan();
+    this.triggerSettingController?.updateTriggerAngleFromPointer(pointer);
   }
 
   /**
@@ -259,221 +336,7 @@ export class GridCellsScene extends Phaser.Scene {
       return;
     }
 
-    const characterAtPosition = this.characterManager.getPlayerCharacterAt(
-      hexCoord.col,
-      hexCoord.row
-    );
-
-    if (characterAtPosition) {
-      if (characterAtPosition === this.characterManager.selectedCharacter) {
-        this.characterManager.beforePositionState.set(
-          this.characterManager.selectedCharacter.image,
-          this.characterManager.selectedCharacter.position
-        );
-
-        console.log("選択中のキャラクターをクリック: トリガー設定モードに入ります");
-        const actionPoints = characterAtPosition.getActionPoints() || 0;
-        this.consumeActionPoint(actionPoints - 1);
-        this.startTriggerSetting();
-      } else {
-        this.selectCharacter(characterAtPosition.image);
-        console.log(`キャラクターを選択: (${hexCoord.col}, ${hexCoord.row})`);
-      }
-      return;
-    }
-
-    if (this.characterManager.selectedCharacter) {
-      const actionPoints =
-        this.characterManager.playerCharacters.find(
-          (char) => char.image === this.characterManager.selectedCharacter?.image
-        )?.getActionPoints() || 0;
-      const adjacentHexes = this.hexUtils.getAdjacentHexes(
-        this.characterManager.selectedCharacter.position.col,
-        this.characterManager.selectedCharacter.position.row,
-        actionPoints
-      );
-
-      const isMovable = adjacentHexes.find(
-        (hex) => hex.col === hexCoord.col && hex.row === hexCoord.row
-      );
-
-      this.characterManager.beforePositionState.set(
-        this.characterManager.selectedCharacter.image,
-        this.characterManager.selectedCharacter.position
-      );
-
-      if (isMovable && !characterAtPosition) {
-        this.moveCharacter(hexCoord.col, hexCoord.row);
-        this.startTriggerSetting();
-        console.log(
-          `キャラクターを移動: (${hexCoord.col}, ${hexCoord.row}, AP残り:${isMovable.remainActiveCount})`
-        );
-        this.consumeActionPoint(isMovable.remainActiveCount);
-      } else {
-        this.clearSelection();
-      }
-      return;
-    }
-
-    console.log(`クリックされた六角形: (${hexCoord.col}, ${hexCoord.row})`);
-  }
-
-  /**
-   * キャラクターを選択する
-   * @param character 選択されたキャラクター
-   */
-  private selectCharacter(character: Phaser.GameObjects.Image) {
-    // 行動力をチェック
-    const selectedCharacter =
-      this.characterManager.findPlayerCharacterByImage(character);
-    if (selectedCharacter && selectedCharacter.getActionPoints() <= 0) {
-      console.log("このキャラクターは既に行動が完了しています。");
-      return;
-    }
-
-    // 既に選択されているキャラクターをリセット
-    this.clearSelection();
-
-    // 新しいキャラクターを選択
-    this.characterManager.selectedCharacter = selectedCharacter;
-
-    if (this.characterManager.selectedCharacter) {
-      // 選択されたキャラクターを強調表示
-      character.setTint(0xffff00); // 黄色で強調
-
-      // 移動可能なマスを表示
-      this.showMovableHexes();
-    }
-  }
-
-  /**
-   * 移動可能な六角形マスを表示する
-   */
-  private showMovableHexes() {
-    if (!this.characterManager.selectedCharacter) {
-      console.log(
-        "キャラクターが選択されていません。",
-        this.characterManager.selectedCharacter
-      );
-      return;
-    }
-
-    // 背景に座標の高さを表示する
-    this.fieldViewState.changeTileText("buildingHeight");
-
-    // 前回の移動可能マスを削除
-    this.characterManager.movableHexes.forEach((hex) => hex.destroy());
-    this.characterManager.movableHexes = [];
-
-    const selectedCharacter =
-      this.characterManager.findPlayerCharacterByImage(
-        this.characterManager.selectedCharacter.image
-      );
-    if (!selectedCharacter) return;
-
-    // 行動力をチェック
-    const actionPoints = selectedCharacter.getActionPoints() || 0;
-
-    const adjacentHexes = this.hexUtils.getAdjacentHexes(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row,
-      actionPoints
-    );
-
-    // 現在の位置をオレンジ色でハイライト（トリガー設定可能を示す）
-    const currentPos = this.hexUtils.getHexPosition(
-      selectedCharacter.position.col,
-      selectedCharacter.position.row
-    );
-    const currentHex = new MovableHighlightCell(this.hexUtils, this, currentPos, {
-      fillColor: 0xff8c00,
-      fillAlpha: 0.3,
-      lineColor: 0xff6600,
-      lineAlpha: 1.0,
-      lineWidth: 2,
-      depth: 0.8,
-    });
-    this.characterManager.movableHexes.push(currentHex);
-
-    // 隣接する6マスに緑色のハイライトを表示（行動力が残っている場合のみ）
-    if (actionPoints > 0) {
-      adjacentHexes.forEach((hex) => {
-        // そのマスに他のキャラクターがいない場合のみ移動可能
-        if (!this.characterManager.isCharacterAt(hex.col, hex.row)) {
-          const pos = this.hexUtils.getHexPosition(hex.col, hex.row);
-          const movableHex = new MovableHighlightCell(this.hexUtils, this, pos, {
-            fillColor: 0x00ff00,
-            fillAlpha: 0.4,
-            lineColor: 0x00aa00,
-            lineAlpha: 1.0,
-            lineWidth: 2,
-            depth: 0.8,
-          });
-
-          // 移動可能マスのリストに追加
-          this.characterManager.movableHexes.push(movableHex);
-        }
-      });
-    }
-  }
-
-  /**
-   * 選択状態をクリアする
-   */
-  private clearSelection() {
-    // 選択されたキャラクターの色を元に戻す
-    if (this.characterManager.selectedCharacter) {
-      // プレイヤーキャラクターか敵キャラクターかで色を分ける
-      if (
-        this.characterManager.playerCharacters.includes(
-          this.characterManager.selectedCharacter
-        )
-      ) {
-        this.characterManager.selectedCharacter.image.setTint(0xadd8e6); // 薄い青色
-      } else {
-        this.characterManager.selectedCharacter.image.setTint(0xffb6c1); // 薄い赤色
-      }
-    }
-
-    // 移動可能マスを削除
-    this.characterManager.movableHexes.forEach((hex) => hex.destroy());
-    this.characterManager.movableHexes = [];
-
-    // トリガー設定モードをリセット
-    this.triggerSettingMode = false;
-    this.triggerSettingType = null;
-
-    // 選択状態をリセット
-    this.characterManager.selectedCharacter = null;
-
-    // 背景を通常表示に戻す
-    this.fieldViewState.changeTileText("position");
-  }
-
-  /**
-   * キャラクターを指定された位置に移動する
-   * @param targetCol 移動先の列
-   * @param targetRow 移動先の行
-   */
-  private moveCharacter(targetCol: number, targetRow: number) {
-    if (!this.characterManager.selectedCharacter) return;
-
-    // 移動先の位置を計算
-    const targetPosition = this.hexUtils.getHexPosition(targetCol, targetRow);
-
-    // キャラクターを移動
-    this.characterManager.selectedCharacter.image.setPosition(
-      targetPosition.x,
-      targetPosition.y
-    );
-
-    // // キャラクターの位置情報を更新（移動後の位置）
-    this.characterManager.selectedCharacter.position = {
-      col: targetCol,
-      row: targetRow,
-    };
-
-    console.log(`キャラクターが (${targetCol}, ${targetRow}) に移動しました`);
+    this.selectionService?.handleGridClick(hexCoord.col, hexCoord.row);
   }
 
   private updateCellHighlight() {
@@ -533,219 +396,6 @@ export class GridCellsScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * トリガー設定モードを開始する
-   */
-  private startTriggerSetting() {
-    if (!this.characterManager.selectedCharacter) return;
-
-    this.triggerSettingMode = true;
-    this.triggerSettingType = "main";
-
-    // キャラクターを紫色で強調表示（トリガー設定モード）
-    this.characterManager.selectedCharacter.image.setTint(0xff00ff);
-
-    // タイル上には座標を表示
-    this.fieldViewState.changeTileText("position");
-
-    // mainトリガーの設定を開始
-    this.showTriggerFan();
-  }
-
-  /**
-   * トリガー扇形を表示する
-   */
-  private showTriggerFan() {
-    if (!this.characterManager.selectedCharacter || !this.triggerSettingType)
-      return;
-
-    const characterState = this.characterManager.findCharacterByImage(
-      this.characterManager.selectedCharacter.image
-    );
-    if (!characterState) return;
-
-    // キャラクターのステータスを取得
-    const characterKey = characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
-    const characterStatus = CHARACTER_STATUS[characterKey];
-    if (!characterStatus) return;
-
-    // 設定中のトリガータイプに応じて装備を取得
-    const triggerName =
-      this.triggerSettingType === "main"
-        ? characterStatus.main
-        : characterStatus.sub;
-    const triggerStatus =
-      TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
-    if (!triggerStatus) return;
-
-    // キャラクター固有の角度と射程を使用
-    const angle = triggerStatus.angle;
-    const range = triggerStatus.range;
-
-    console.log(
-      `${triggerName}（${this.triggerSettingType}）トリガーの向きを設定してください（角度範囲: ${angle}度, 射程: ${range}）`
-    );
-    console.log(
-      "扇形をドラッグして角度を調整し、マウスを離すかクリックで確定してください"
-    );
-
-    // 初期角度を設定（現在の向きまたはデフォルト）
-    this.currentTriggerAngle = characterState.direction
-      ? characterState.direction[this.triggerSettingType]
-      : 0;
-
-    // subトリガーの場合は色を変える
-    const color = this.triggerSettingType === "main" ? 0xff6b6b : 0x6b6bff;
-
-    const pixelPos = this.hexUtils.getHexPosition(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row
-    );
-
-    // 扇形を描画（移動後の位置を中心に）
-    this.triggerFan = new TriggerFanShape(this, pixelPos.x,
-      pixelPos.y, color, this.currentTriggerAngle, angle, range, triggerName, this.gridConfig, this.hexUtils, true);
-    this.triggerPoints = this.triggerFan.drawTriggerRangePoints(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row, color);
-  }
-
-  /**
-   * マウスのドラッグでトリガー扇形の表示を更新する
-   */
-  private updateTriggerFan() {
-    if (
-      !this.triggerFan ||
-      !this.characterManager.selectedCharacter ||
-      !this.triggerSettingType
-    )
-      return;
-
-    const characterState = this.characterManager.findCharacterByImage(
-      this.characterManager.selectedCharacter.image
-    );
-    if (!characterState) return;
-
-    // キャラクターのステータスを取得
-    const characterKey = characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
-    const characterStatus = CHARACTER_STATUS[characterKey];
-    if (!characterStatus) return;
-
-    // 設定中のトリガータイプに応じて装備を取得
-    const triggerName =
-      this.triggerSettingType === "main"
-        ? characterStatus.main
-        : characterStatus.sub;
-    const triggerStatus =
-      TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
-    if (!triggerStatus) return;
-
-    // 既存の扇形を削除
-    this.triggerFan.getData("label").destroy();
-    this.triggerFan.destroy();
-    this.triggerPoints?.map((point) => point.destroy());
-
-    // 新しい扇形を描画（移動後の位置を中心に）
-    const angle = triggerStatus.angle;
-    const range = triggerStatus.range;
-
-    // subトリガーの場合は色を変える
-    const color = this.triggerSettingType === "main" ? 0xff6b6b : 0x6b6bff;
-
-    const pixelPos = this.hexUtils.getHexPosition(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row
-    );
-
-    this.triggerFan = new TriggerFanShape(this, pixelPos.x,
-      pixelPos.y, color, this.currentTriggerAngle, angle, range, triggerName, this.gridConfig, this.hexUtils, true);
-
-    // トリガー範囲ポイントも更新
-    this.triggerPoints = this.triggerFan.drawTriggerRangePoints(
-      this.characterManager.selectedCharacter.position.col,
-      this.characterManager.selectedCharacter.position.row,
-      color
-    );
-  }
-
-  /**
-   * トリガー設定を完了する
-   * @param direction 設定された方向
-   */
-  private completeTriggerSetting(direction: number) {
-    if (!this.characterManager.selectedCharacter || !this.triggerSettingType)
-      return;
-
-    const characterState = this.characterManager.findCharacterByImage(
-      this.characterManager.selectedCharacter.image
-    );
-    if (!characterState) return;
-
-    // 現在のキャラクターの向きを取得または初期化
-    let directions = characterState.direction;
-    if (!directions) {
-      directions = { main: 0, sub: 0 };
-      characterState.direction = directions;
-    }
-
-    // 方向を設定
-    directions[this.triggerSettingType] = direction;
-
-    console.log(
-      `${this.triggerSettingType}トリガーの向きを ${direction.toFixed(
-        1
-      )}度 に設定しました`
-    );
-
-    // 次のトリガー設定または完了
-    if (this.triggerSettingType === "main") {
-      this.triggerSettingType = "sub";
-      this.clearTriggerDisplay();
-      this.showTriggerFan();
-    } else {
-      this.finishTriggerSetting();
-    }
-  }
-
-  /**
-   * トリガー設定を終了する
-   */
-  private finishTriggerSetting() {
-    // 行動履歴を記録
-    this.recordActionHistory();
-
-    this.triggerSettingMode = false;
-    this.triggerSettingType = null;
-    this.clearTriggerDisplay();
-
-    console.log("トリガー設定が完了しました");
-
-    if (!this.characterManager.selectedCharacter) return;
-    // 行動力が残っているかチェック
-    const remainingActionPoints =
-      this.characterManager.findPlayerCharacterByImage(
-        this.characterManager.selectedCharacter?.image
-      )?.getActionPoints() ?? 0;
-
-    if (remainingActionPoints > 0) {
-      // 行動力が残っている場合：キャラクター選択を維持し、移動可能マスを再表示
-      console.log(
-        `行動力が${remainingActionPoints}残っています。次の行動を設定してください。`
-      );
-      this.showMovableHexes();
-    } else {
-      // 行動力が0の場合：選択をクリア
-      console.log("行動力が0になりました。キャラクター選択をクリアします。");
-      // 行動力が0になった場合、「行動設定済み」テキストを表示
-      this.showActionCompletedText(
-        this.characterManager.selectedCharacter.image
-      );
-      this.clearSelection();
-    }
-
-    // 行動履歴記録後に全キャラクターの行動力をチェック
-    this.checkAllCharactersActionPointsCompleted();
-  }
 
   /**
    * 行動力を消費する
@@ -828,19 +478,6 @@ export class GridCellsScene extends Phaser.Scene {
     );
 
     characterState.setCompleteText(text);
-  }
-
-  /**
-   * トリガー表示をクリアする
-   */
-  private clearTriggerDisplay() {
-    if (this.triggerFan) {
-      this.triggerFan.getData("label").destroy();
-      this.triggerFan.destroy();
-      this.triggerFan = null;
-      this.triggerPoints?.map((point) => point.destroy());
-      this.triggerPoints = null;
-    }
   }
 
   /**

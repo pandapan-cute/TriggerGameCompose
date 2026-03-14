@@ -18,7 +18,6 @@ import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
 import { Step } from "@/game-logics/models/Step";
 import { Turn } from "@/game-logics/models/Turn";
-import { Action, ActionType } from "@/game-logics/models/Action";
 import { TriggerFanShape } from "../game-objects/graphics/TriggerFanShape";
 import { InputController, type InputControllerDeps } from "./inputs/InputController";
 import { SelectionService, type SelectionServiceDeps } from "./services/SelectionService";
@@ -26,6 +25,11 @@ import {
   TriggerSettingController,
   type TriggerSettingControllerDeps,
 } from "./controllers/TriggerSettingController";
+import { TurnPlanner, type TurnPlannerDeps } from "./services/TurnPlanner";
+import {
+  TurnReplayController,
+  type TurnReplayControllerDeps,
+} from "./controllers/TurnReplayController";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -87,6 +91,10 @@ export class GridCellsScene extends Phaser.Scene {
   private selectionService: SelectionService | null = null;
   /** トリガー設定処理コントローラ */
   private triggerSettingController: TriggerSettingController | null = null;
+  /** ターン計画サービス */
+  private turnPlanner: TurnPlanner | null = null;
+  /** ターン再生コントローラ */
+  private turnReplayController: TurnReplayController | null = null;
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -164,6 +172,16 @@ export class GridCellsScene extends Phaser.Scene {
         this.createTriggerSettingControllerDeps()
       );
     }
+
+    if (!this.turnPlanner) {
+      this.turnPlanner = new TurnPlanner(this.createTurnPlannerDeps());
+    }
+
+    if (!this.turnReplayController) {
+      this.turnReplayController = new TurnReplayController(
+        this.createTurnReplayControllerDeps()
+      );
+    }
   }
 
   /**
@@ -227,7 +245,7 @@ export class GridCellsScene extends Phaser.Scene {
       hexUtils: this.hexUtils,
       gridConfig: this.gridConfig,
       consumeActionPoint: (remainingMoves: number) => {
-        this.consumeActionPoint(remainingMoves);
+        this.turnPlanner?.consumeActionPoint(remainingMoves);
       },
       startTriggerSetting: () => {
         this.triggerSettingController?.startTriggerSetting();
@@ -269,7 +287,7 @@ export class GridCellsScene extends Phaser.Scene {
         this.triggerPoints = points;
       },
       recordActionHistory: () => {
-        this.recordActionHistory();
+        this.turnPlanner?.recordActionHistory();
       },
       showMovableHexes: () => {
         this.selectionService?.showMovableHexes();
@@ -281,7 +299,50 @@ export class GridCellsScene extends Phaser.Scene {
         this.showActionCompletedText(character);
       },
       checkAllCharactersActionPointsCompleted: () => {
-        this.checkAllCharactersActionPointsCompleted();
+        this.turnPlanner?.checkAllCharactersActionPointsCompleted();
+      },
+    };
+  }
+
+  /**
+   * TurnPlanner へ渡す依存関数を構築する
+   */
+  private createTurnPlannerDeps(): TurnPlannerDeps {
+    return {
+      scene: this,
+      characterManager: this.characterManager,
+      turn: this.turn,
+      hexUtils: this.hexUtils,
+      sendServerTurn: (steps: Step[]) => {
+        this.sendServerTurn(steps);
+      },
+    };
+  }
+
+  /**
+   * TurnReplayController へ渡す依存関数を構築する
+   */
+  private createTurnReplayControllerDeps(): TurnReplayControllerDeps {
+    return {
+      scene: this,
+      characterManager: this.characterManager,
+      fieldViewState: this.fieldViewState,
+      onReplayCompleted: () => { },
+      clearTriggerArrows: () => {
+        this.triggerArrows.forEach((arrow) => arrow.destroy());
+        this.triggerArrows = [];
+      },
+      setActionMode: (isActionMode: boolean) => {
+        this.isActionMode = isActionMode;
+      },
+      setActionAnimationInProgress: (isInProgress: boolean) => {
+        this.actionAnimationInProgress = isInProgress;
+      },
+      clearPlannedSteps: () => {
+        this.turnPlanner?.clearPlannedSteps();
+      },
+      restoreActionPointsText: () => {
+        this.characterManager.setAllActionPointsText(this);
       },
     };
   }
@@ -398,59 +459,6 @@ export class GridCellsScene extends Phaser.Scene {
 
 
   /**
-   * 行動力を消費する
-   * @param remainingMoves 残りの移動回数
-   */
-  private consumeActionPoint(remainingMoves: number) {
-    if (!this.characterManager.selectedCharacter) return;
-    const currentActionPoints =
-      this.characterManager.findPlayerCharacterByImage(
-        this.characterManager.selectedCharacter?.image
-      )?.getActionPoints() ?? 0;
-
-    if (currentActionPoints && currentActionPoints > 0) {
-      this.characterManager.findPlayerCharacterByImage(
-        this.characterManager.selectedCharacter?.image
-      )!.setActionPoints(remainingMoves);
-
-      console.log(
-        `キャラクター${this.characterManager.selectedCharacter?.id}の行動力を消費しました。残り: ${remainingMoves}`
-      );
-
-      // 行動力表示の更新
-      this.characterManager.selectedCharacter.updateActionPointsDisplay(this);
-    }
-  }
-
-  /**
-   * 全キャラクターの行動力が0になったかチェック
-   */
-  private checkAllCharactersActionPointsCompleted() {
-    let allCompleted = true;
-    let totalRemainingPoints = 0;
-
-    // プレイヤーキャラクターの行動力をチェック
-    for (const character of this.characterManager.playerCharacters) {
-      const actionPoints =
-        this.characterManager.findPlayerCharacterByImage(character.image)
-          ?.getActionPoints() || 0;
-      totalRemainingPoints += actionPoints;
-      if (actionPoints > 0) {
-        allCompleted = false;
-      }
-    }
-
-    console.log(`残り行動力合計: ${totalRemainingPoints}`);
-
-    if (allCompleted && this.characterManager.playerCharacters.length > 0) {
-      console.log(
-        "全キャラクターの行動が完了しました！行動履歴を送信します..."
-      );
-      this.sendServerTurn(this.turn.getSteps());
-    }
-  }
-
-  /**
    * 行動完了テキストを表示する
    */
   private showActionCompletedText(character: Phaser.GameObjects.Image) {
@@ -481,169 +489,14 @@ export class GridCellsScene extends Phaser.Scene {
   }
 
   /**
-   * 行動履歴を記録する
-   */
-  private recordActionHistory() {
-    /** 行動履歴を記録する */
-    const pushActionHistory = (col: number, row: number) => {
-      if (!this.characterManager.selectedCharacter) return;
-
-      const characterState = this.characterManager.findPlayerCharacterByImage(
-        this.characterManager.selectedCharacter.image
-      );
-      if (!characterState) return;
-
-      const directions = characterState.direction;
-      const mainTrigger =
-        CHARACTER_STATUS[characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS]
-          ?.main ?? null;
-      const subTrigger =
-        CHARACTER_STATUS[characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS]
-          ?.sub ?? null;
-
-      if (!directions || !mainTrigger || !subTrigger) {
-        console.warn(
-          "行動履歴の記録に失敗",
-          directions,
-          mainTrigger,
-          subTrigger
-        );
-        return;
-      }
-
-      // 行動履歴に記録
-      const action: Action = new Action(
-        ActionType.Move,
-        this.characterManager.selectedCharacter.getUnitId(),
-        this.characterManager.selectedCharacter.getUnitTypeId(),
-        {
-          col: col,
-          row: row,
-        },
-        mainTrigger,
-        subTrigger,
-        directions.main,
-        directions.sub,
-      );
-      // ターンの履歴に追加
-      this.turn.addActionWithIndex(this.characterManager.selectedCharacter.getCurrentStep(), action);
-      // キャラクターのステップを進める
-      this.characterManager.selectedCharacter.advanceStep();
-
-      // キャラクターIDを取得してログに出力
-      console.log(
-        `行動履歴を記録: キャラクター${characterState.getUnitTypeId()
-        }, 位置(${col}, ${row}), mainトリガー: ${directions.main.toFixed(
-          1
-        )}度, subトリガー: ${directions.sub.toFixed(1)}度`
-      );
-    };
-
-    if (!this.characterManager.selectedCharacter) return;
-
-    const beforePosition = this.characterManager.beforePositionState.get(
-      this.characterManager.selectedCharacter.image
-    );
-
-    if (
-      beforePosition &&
-      beforePosition !== this.characterManager.selectedCharacter.position
-    ) {
-      // 移動前の位置がある場合、その位置を記録
-      const { col, row } = beforePosition;
-
-      const movePath = this.hexUtils.findPath(
-        { col: col, row: row },
-        this.characterManager.selectedCharacter.position
-      );
-
-      for (const step of movePath) {
-        // 移動可能マスをクリック：キャラクターを移動
-        pushActionHistory(step.col, step.row);
-      }
-    } else {
-      // 移動していない場合、現在の位置を記録
-      const { col, row } = this.characterManager.selectedCharacter.position;
-      pushActionHistory(col, row);
-    }
-  }
-
-  /**
    * 指定されたステップの行動を実行
    */
   executeTurn(turn: Turn) {
-    let currentStepIndex = 0;
-    const steps = turn.getSteps();
-    // 行動フェーズに入る前に全キャラクターの行動力表示を消す
-    this.characterManager.setAllActionPointsTextToNull();
+    if (this.turnReplayController) {
+      this.turnReplayController.executeTurn(turn);
+      return;
+    }
 
-    /** ステップの順番実行 */
-    const executeNextStep = (index: number) => {
-      console.log(`=== ステップ ${index + 1} 実行開始 ===`);
-      const step = steps[index];
-
-      // ステップ内アクションの開始
-      for (const [actionIndex, action] of step.getActions().entries()) {
-        // actionの内容に応じてキャラクターの移動やトリガー表示を更新する
-        const character = this.characterManager.findCharacterByUnitId(action.getUnitId());
-        if (character) {
-          console.log(`--- アクション ${actionIndex + 1} 開始 ---`);
-          character.executeCharacterSingleAction(action, () => { });
-        }
-        // 矢印の削除
-        this.triggerArrows.forEach((arrow) => arrow.destroy());
-        this.triggerArrows = [];
-        // 視界情報の更新
-        // this.fieldViewState.setSightAreaFieldView(turn.fieldView);
-      }
-      // ステップ内コンバットの開始
-      for (const [combatIndex, combat] of step.getCombats().entries()) {
-        // 攻撃の表示
-        const attackingCharacter = this.characterManager.findCharacterByUnitId(combat.getAttackingUnitId());
-        if (attackingCharacter) {
-          console.log(`--- コンバット ${combatIndex + 1} 開始 ---`);
-          attackingCharacter.executeCharacterAttack(combat);
-        }
-        // 防御・回避の表示
-        const defendingCharacter = this.characterManager.findCharacterByUnitId(combat.getDefendingUnitId());
-        if (defendingCharacter) {
-          defendingCharacter.executeCharacterDefense(combat);
-        }
-      }
-      // 視界情報の更新
-      this.fieldViewState.setSightAreaFieldView(step.getVisibilityCells());
-      currentStepIndex++;
-      this.time.delayedCall(1500, () => {
-        if (currentStepIndex < steps.length) {
-          // 次のステップを1.5秒後に実行（アニメーション完了を待つ）
-          executeNextStep(currentStepIndex);
-        } else {
-          // 全ステップ完了後の処理
-          this.completeUnitActionPhase(turn.getTurnNumber());
-          console.log("=== 全ステップ実行完了 ===");
-        }
-      });
-    };
-    // 行動フェーズ開始
-    executeNextStep(currentStepIndex);
-  }
-
-  /** 行動フェーズを完了して設定モードに戻る */
-  private completeUnitActionPhase(turnNumber: number) {
-    console.log(`行動フェーズ完了 - 設定モードに戻ります (ターン ${turnNumber})`);
-    this.isActionMode = false;
-    this.actionAnimationInProgress = false;
-
-    // 全キャラクターのトリガー表示をクリア
-    this.characterManager.hideAllTriggerFans();
-
-    // 全キャラクターの行動力をリセット
-    this.characterManager.resetAllActionPoints();
-
-    // 行動履歴をクリア
-    this.turn.clearSteps();
-
-    // キャラクターの行動力を表示
-    this.characterManager.setAllActionPointsText(this);
+    this.pendingTurn = turn;
   }
 };

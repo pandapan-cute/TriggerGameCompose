@@ -8,7 +8,7 @@ pub struct TriggerAzimuth {
 
 impl TriggerAzimuth {
     const MAX: i32 = 360;
-    const MIN: i32 = 0;
+    const MIN: i32 = -1;
 
     pub fn new(value: i32) -> Self {
         Self::validate(value);

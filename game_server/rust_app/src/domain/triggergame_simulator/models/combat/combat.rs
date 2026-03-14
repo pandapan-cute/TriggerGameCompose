@@ -1,7 +1,10 @@
-use crate::domain::triggergame_simulator::configs::game_config::GameConfig;
 use crate::domain::triggergame_simulator::configs::trigger_status::TriggerStatus;
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
 use crate::domain::triggergame_simulator::models::combat::is_avoided;
+use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
+use crate::domain::triggergame_simulator::{
+    configs::game_config::GameConfig, models::game::visibility,
+};
 use crate::domain::unit_management::models::unit::position::position::Position;
 use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
@@ -105,6 +108,7 @@ impl Combat {
         defender_sub_trigger_azimuth: TriggerAzimuth,
         defender_base_defense: i32,
         defender_base_avoid: i32,
+        visibility: &mut Visibility,
     ) -> Option<Self> {
         // 攻撃側のメイントリガーが防御側に当たる可能性があるか確認
         let is_main_trigger_hit = Self::check_trigger_in_range_and_angle(
@@ -120,8 +124,11 @@ impl Combat {
             &attacker_sub_trigger_azimuth,
             &defender_position,
         );
-        if !is_main_trigger_hit && !is_sub_trigger_hit {
-            // 射程外、角度の範囲外の場合はNoneを返す
+        // 攻撃側側から見て防御側が見えているか確認
+        let is_defender_visible =
+            visibility.check_units_visibility(&attacker_position, &defender_position);
+        if (!is_main_trigger_hit && !is_sub_trigger_hit) || !is_defender_visible {
+            // 射程外 かつ 角度の範囲外　または 視界外の場合はNoneを返す
             return None;
         }
 

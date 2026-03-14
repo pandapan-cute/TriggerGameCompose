@@ -5,6 +5,7 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use crate::domain::triggergame_simulator::models::game::current_turn_number::current_turn_number::CurrentTurnNumber;
 use crate::domain::triggergame_simulator::models::game::game::Game;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::repositories::game_repository::GameRepository;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -45,6 +46,21 @@ impl DynamoDbGameRepository {
             "player2_id".to_string(),
             AttributeValue::S(game.player2_id().value().to_string()),
         );
+
+        let field_steps = game
+            .visibility()
+            .field_steps()
+            .iter()
+            .map(|row| {
+                AttributeValue::L(
+                    row.iter()
+                        .map(|height| AttributeValue::N(height.to_string()))
+                        .collect(),
+                )
+            })
+            .collect();
+        item.insert("field_steps".to_string(), AttributeValue::L(field_steps));
+
         item
     }
 }
@@ -129,6 +145,36 @@ impl GameRepository for DynamoDbGameRepository {
             .and_then(|v| v.as_s().ok())
             .ok_or("プレイヤー2のIDが見つかりませんでした。")?;
 
+        let visibility = if let Some(field_steps_attr) = game_item.get("field_steps") {
+            let rows = field_steps_attr
+                .as_l()
+                .map_err(|_| "field_steps の形式が不正です。".to_string())?;
+
+            let field_steps = rows
+                .iter()
+                .map(|row_attr| {
+                    let row = row_attr
+                        .as_l()
+                        .map_err(|_| "field_steps の行形式が不正です。".to_string())?;
+
+                    row.iter()
+                        .map(|height_attr| {
+                            let height_str = height_attr
+                                .as_n()
+                                .map_err(|_| "field_steps の高さ形式が不正です。".to_string())?;
+                            height_str
+                                .parse::<i32>()
+                                .map_err(|e| format!("field_steps の高さ解析に失敗しました: {}", e))
+                        })
+                        .collect::<Result<Vec<i32>, String>>()
+                })
+                .collect::<Result<Vec<Vec<i32>>, String>>()?;
+
+            Visibility::new(field_steps)
+        } else {
+            Visibility::create()
+        };
+
         Ok(Game::reconstruct(
             GameId::new(game_id_str.to_string()),
             CurrentTurnNumber::new(
@@ -138,6 +184,7 @@ impl GameRepository for DynamoDbGameRepository {
             ),
             PlayerId::new(player1_id_str.to_string()),
             PlayerId::new(player2_id_str.to_string()),
+            visibility,
         ))
     }
 }

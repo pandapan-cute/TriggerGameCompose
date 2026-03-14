@@ -21,7 +21,7 @@ export class FieldViewState {
   /** フィールド状態を保持する2次元配列 */
   private fieldView: FieldViewCell[][];
 
-  constructor(private hexUtils: HexUtils, private scene: Phaser.Scene, private gridConfig: GridConfig) {
+  constructor(private hexUtils: HexUtils, private scene: Phaser.Scene, private gridConfig: GridConfig, private fieldSteps: number[][], visibility: boolean[][]) {
     // フィールドビューを初期化（列×行）
     this.fieldView = Array.from({ length: gridConfig.gridWidth }, () =>
       Array.from({ length: gridConfig.gridHeight }, (): FieldViewCell => ({
@@ -34,6 +34,8 @@ export class FieldViewState {
     this.createBackground();
     // 背景タイルの作成
     this.createBackgroundTiles();
+    // 初期の視認可能エリアを設定
+    this.setSightAreaFieldView(visibility);
   }
 
   /**
@@ -66,7 +68,7 @@ export class FieldViewState {
         this.fieldView[col][row].backGroundGraphic = hexagon;
 
         // 六角形の位置情報を書き込む
-        this.fieldView[col][row].tilePositionText = new OnGridCellText(this.scene, this.hexUtils, { col, row });
+        this.fieldView[col][row].tilePositionText = new OnGridCellText(this.scene, this.hexUtils, { col, row }, this.fieldSteps);
       }
     }
   }
@@ -91,38 +93,24 @@ export class FieldViewState {
 
   /** 
    * 視認可能エリアのフィールドビューを設定する
-   * @param sightArea 視認可能エリアの2次元配列
+   * @param visibilty 視認可能エリアの2次元配列
    */
-  setSightAreaFieldView(sightArea: boolean[][]) {
+  setSightAreaFieldView(visibilty: boolean[][]) {
 
     if (this.scene === null) {
       console.warn("Sceneが未初期化のため、視認可能エリアのフィールドビューを設定できません。");
       return;
     }
-    for (const [rowIndex, row] of sightArea.entries()) {
-      for (const [colIndex, col] of row.entries()) {
-
-        if (col) {
-          // 視界領域内
-          if (this.fieldView[rowIndex][colIndex]?.canSight) {
-            // 既に視認可能エリアの場合は何もしない
-            continue;
-          }
-          // 視認可能エリアで、まだ背景グラフィックがない場合、新規作成
-          const pos = this.hexUtils.getHexPosition(colIndex, rowIndex);
-
-          if (this.fieldView[rowIndex][colIndex]?.backGroundGraphic) {
-            // 既存の背景グラフィックがあれば削除
-            this.fieldView[rowIndex][colIndex].backGroundGraphic?.switchCanSight();
-          } else {
-            const hexagon = new HexagonCell(this.hexUtils, this.scene, pos);
-            this.fieldView[rowIndex][colIndex].backGroundGraphic = hexagon;
-          }
+    for (const [colIndex, col] of visibilty.entries()) {
+      for (const [rowIndex, row] of col.entries()) {
+        if (row === true && this.fieldView[rowIndex][colIndex].canSight !== true) {
+          // 視認可能エリアのセルに切り替える
           this.fieldView[rowIndex][colIndex].canSight = true;
-        } else {
-          // 既存の背景グラフィックがあれば削除
-          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.switchCannotSight();
+          this.fieldView[rowIndex][colIndex].backGroundGraphic?.switchCanSight();
+        } else if (row === false && this.fieldView[rowIndex][colIndex].canSight !== false) {
+          // 視認不可能エリアのセルに切り替える
           this.fieldView[rowIndex][colIndex].canSight = false;
+          this.fieldView[rowIndex][colIndex]?.backGroundGraphic?.switchCannotSight();
         }
       }
     }

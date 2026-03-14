@@ -82,7 +82,7 @@ impl ProcessTurnUseCase {
         }
 
         // ターンエンティティの作成
-        let mut turn = Turn::new(
+        let turn = Turn::new(
             TurnId::new(
                 game_id.clone().value().to_string()
                     + "_"
@@ -126,6 +126,20 @@ impl ProcessTurnUseCase {
             );
         }
 
+        // ターンエンティティの演算処理開始前に、両プレイヤーのターン情報をもとにターンエンティティを生成
+        let opponent_turn = opponent_turn_data.unwrap();
+        let (mut player1_turn, mut player2_turn) = if turn.player_id() == game.player1_id()
+            && opponent_turn.player_id() == game.player2_id()
+        {
+            (turn, opponent_turn)
+        } else if turn.player_id() == game.player2_id()
+            && opponent_turn.player_id() == game.player1_id()
+        {
+            (opponent_turn, turn)
+        } else {
+            return Err("ターン情報のプレイヤーIDがゲーム参加者と一致しません".to_string());
+        };
+
         // ユニット情報の取得
         let mut units = self
             .unit_repository
@@ -134,7 +148,7 @@ impl ProcessTurnUseCase {
             .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))?;
 
         // **ターンエンティティの演算処理開始**
-        turn.turn_start(&mut units, &opponent_turn_data.unwrap())?;
+        game.turn_start(&mut player1_turn, &mut player2_turn, &mut units)?;
 
         // ユニット情報の更新
         self.unit_repository
@@ -150,34 +164,30 @@ impl ProcessTurnUseCase {
             .await
             .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))?;
 
-        // ターンの情報をプレイヤーごとに向けた形に修正
-        let player_a_id = turn.player_id().clone();
-        let player_b_id = game.get_opponent_player_id(&player_a_id)?;
-        let turn_a = turn.generate_player_turn(&player_a_id);
-        let turn_b = turn.generate_player_turn(&player_b_id);
-        let response_a = WebSocketResponse::TurnExecutionResult { turn: turn_a };
-        let response_b = WebSocketResponse::TurnExecutionResult { turn: turn_b };
-
         // コネクションの取得
         let player1_connection_id = self
             .connection_repository
-            .get_connection_id(player_a_id.value())
+            .get_connection_id(player1_turn.player_id().value())
             .await
             .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
-
-        // WebSocket で通知を送信
-        self.websocket_sender
-            .send_message(&player1_connection_id, &response_a)
-            .await?;
 
         let player2_connection_id = self
             .connection_repository
-            .get_connection_id(player_b_id.value())
+            .get_connection_id(player2_turn.player_id().value())
             .await
             .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
 
+        // ターンの情報をプレイヤーごとに向けた形に修正
+        let response_player_1 = WebSocketResponse::TurnExecutionResult { turn: player1_turn };
+        let response_player_2 = WebSocketResponse::TurnExecutionResult { turn: player2_turn };
+
+        // WebSocket で通知を送信
         self.websocket_sender
-            .send_message(&player2_connection_id, &response_b)
+            .send_message(&player1_connection_id, &response_player_1)
+            .await?;
+
+        self.websocket_sender
+            .send_message(&player2_connection_id, &response_player_2)
             .await?;
 
         // println!("Processing turn for game_id: {}", game_id);

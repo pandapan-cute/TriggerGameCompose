@@ -29,6 +29,8 @@ export default function GamePage() {
 
   const [friendUnits, setFriendUnits] = useState<FriendUnit[]>([]);
   const [enemyUnits, setEnemyUnits] = useState<EnemyUnit[]>([]);
+  const [fieldSteps, setFieldSteps] = useState<number[][]>([]);
+  const [visibility, setVisibility] = useState<boolean[][]>([]);
 
   useEffect(() => {
     const handleGameStateResult = (data: WebSocketResponseType) => {
@@ -36,6 +38,8 @@ export default function GamePage() {
         console.log("ゲーム状態を受信:", data);
         setFriendUnits(data.friendUnits);
         setEnemyUnits(data.enemyUnits);
+        setFieldSteps(data.fieldSteps);
+        setVisibility(data.visibility);
       }
     };
 
@@ -74,7 +78,7 @@ export default function GamePage() {
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && (
         <div className="w-full h-full">
-          <GameGrid friendUnits={friendUnits} enemyUnits={enemyUnits} />
+          <GameGrid friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} />
         </div>
       )}
     </div>

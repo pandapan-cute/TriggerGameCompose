@@ -16,7 +16,7 @@ use crate::{
         triggergame_simulator::{
             models::game::{
                 current_turn_number::current_turn_number::CurrentTurnNumber, game::Game,
-                game_id::game_id::GameId,
+                game_id::game_id::GameId, visibility,
             },
             repositories::game_repository::GameRepository,
         },
@@ -86,6 +86,7 @@ impl MatchmakingApplicationService {
                         game_id: None,
                         enemy_units: vec![],
                         friend_units: vec![],
+                        field_steps: vec![],
                     };
                     // WebSocket で通知を送信
                     self.websocket_sender
@@ -138,12 +139,14 @@ impl MatchmakingApplicationService {
                     .await?;
                 // ユニット情報を保存
                 self.insert_units(&unit_entities).await?;
+                let visibility = game.visibility();
                 // マッチング完了を通知
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
                     game_id: Some(game_id.value().to_string()),
-                    enemy_units: EnemyUnitDto::from_units(&enemy_units),
+                    enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&unit_entities),
+                    field_steps: game.visibility().field_steps().to_vec(),
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender
@@ -160,8 +163,9 @@ impl MatchmakingApplicationService {
                 let opponent_response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
                     game_id: Some(game_id.value().to_string()),
-                    enemy_units: EnemyUnitDto::from_units(&unit_entities),
+                    enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&enemy_units),
+                    field_steps: game.visibility().field_steps().to_vec(),
                 };
                 self.websocket_sender
                     .send_message(&opponent_connection_id, &opponent_response)
@@ -190,6 +194,7 @@ impl MatchmakingApplicationService {
                     game_id: None,
                     enemy_units: vec![],
                     friend_units: vec![],
+                    field_steps: vec![],
                 };
                 // WebSocket で通知を送信
                 self.websocket_sender

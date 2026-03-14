@@ -91,60 +91,8 @@ impl Turn {
         )
     }
 
-    /// 別のターンと結合
-    pub fn merge(&mut self, other: &Turn) -> Result<(), String> {
-        // 各ステップのアクションを結合
-        for (i, other_step) in other.steps.iter().enumerate() {
-            if self.steps.len() <= i {
-                // 自分のステップ数が少ない場合は、相手のステップをそのまま追加
-                self.steps.push(other_step.clone());
-                continue;
-            }
-            self.steps[i].merge_actions(other_step)?;
-        }
-
-        Ok(())
-    }
-
-    /// ターンの戦闘処理を開始
-    pub fn turn_start(
-        &mut self,
-        units: &mut Vec<Unit>,
-        opponent_turn: &Turn,
-    ) -> Result<(), String> {
-        print!(
-            "ターン開始: {:?} のターン{:?}, {:?}が開始されました",
-            self.player_id,
-            self.turn_number,
-            self.turn_status()
-        );
-        if !self.turn_status.is_step_setting() {
-            return Err("行動設定中のステータスでないとターンを開始できません".to_string());
-        }
-        if !opponent_turn.is_step_setting() {
-            return Err(
-                "対戦相手のターンが行動設定中のステータスでないとターンを開始できません"
-                    .to_string(),
-            );
-        }
-        // プレイヤー1とプレイヤー2のターン情報の結合
-        self.merge(opponent_turn)?;
-        // ユニット行動モードに移行
-        self.start_unit_stepping()?;
-
-        // ターン開始時にユニットの行動ポイントをリセット
-        units.iter_mut().for_each(|u| u.reset_action_points());
-
-        // 各ステップの戦闘演算を開始
-        for step in &mut self.steps {
-            step.step_start(units)?;
-        }
-
-        Ok(())
-    }
-
     /// ターンをユニット行動中ステータスに変更
-    fn start_unit_stepping(&mut self) -> Result<(), String> {
+    pub fn start_unit_stepping(&mut self) -> Result<(), String> {
         if !self.turn_status.is_step_setting() {
             return Err("行動設定中のステータスでないとユニット行動を開始できません".to_string());
         }
@@ -210,6 +158,15 @@ impl Turn {
 
     pub fn steps(&self) -> &Vec<Step> {
         &self.steps
+    }
+
+    pub fn steps_mut(&mut self) -> &mut Vec<Step> {
+        &mut self.steps
+    }
+
+    // セッター
+    pub fn set_steps(&mut self, steps: Vec<Step>) {
+        self.steps = steps;
     }
 }
 

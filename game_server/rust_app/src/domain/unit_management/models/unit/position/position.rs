@@ -14,6 +14,15 @@ impl Position {
         Self { col, row }
     }
 
+    /// 敵ユニット用に座標を反転させて取得
+    pub fn get_enemy_position(&self) -> Self {
+        let game_config = GameConfig::get_game_config();
+        Self::new(
+            game_config.gameboard_width() - 1 - self.col,
+            game_config.gameboard_height() - 1 - self.row,
+        )
+    }
+
     /// 敵ユニットのピクセル情報の取得
     pub fn get_enemy_pixel_position(&self) -> (i32, i32) {
         let game_config = GameConfig::get_game_config();
@@ -56,11 +65,11 @@ impl Position {
 
     // バリデーションの実装
     fn validate(col: i32, row: i32) {
-        if col < 0 {
-            panic!("Position colは0以上である必要があります");
+        if col < -1 {
+            panic!("Position colは-1以上である必要があります");
         }
-        if row < 0 {
-            panic!("Position rowは0以上である必要があります");
+        if row < -1 {
+            panic!("Position rowは-1以上である必要があります");
         }
     }
 }

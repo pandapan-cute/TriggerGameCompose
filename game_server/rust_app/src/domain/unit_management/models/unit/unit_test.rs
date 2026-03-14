@@ -2,6 +2,7 @@
 mod tests {
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+    use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use crate::infrastructure::dynamodb::test_utils::{
         create_test_0_action_points_unit, create_test_unit,
     };
@@ -37,8 +38,9 @@ mod tests {
     fn test_move_to() {
         let mut unit = create_test_unit();
         let new_position = Position::new(5, 5);
+        let mut visibility = Visibility::create();
 
-        unit.move_to(new_position.clone());
+        unit.move_to(new_position.clone(), &mut visibility);
 
         assert_eq!(unit.position().col(), 5);
         assert_eq!(unit.position().row(), 5);
@@ -49,8 +51,8 @@ mod tests {
     fn test_move_to_insufficient_action_points() {
         let mut unit = create_test_0_action_points_unit();
         let new_position = Position::new(5, 5);
-
-        let result = unit.move_to(new_position);
+        let mut visibility = Visibility::create();
+        let result = unit.move_to(new_position, &mut visibility);
         assert!(!result);
     }
 
@@ -60,7 +62,8 @@ mod tests {
         unit.bailout();
 
         let new_position = Position::new(5, 5);
-        let result = unit.move_to(new_position);
+        let mut visibility = Visibility::create();
+        let result = unit.move_to(new_position, &mut visibility);
 
         assert!(!result);
     }

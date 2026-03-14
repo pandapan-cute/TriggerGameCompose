@@ -26,6 +26,8 @@ pub enum WebSocketResponse {
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報
         friend_units: Vec<FriendUnitDto>,
+        /// フィールドのステップ情報
+        field_steps: Vec<Vec<i32>>,
     },
 
     /// ゲーム状態取得結果
@@ -36,6 +38,10 @@ pub enum WebSocketResponse {
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報
         friend_units: Vec<FriendUnitDto>,
+        /// フィールドのステップ情報
+        field_steps: Vec<Vec<i32>>,
+        /// フィールドの可視情報
+        visibility: Vec<Vec<bool>>,
     },
 
     /// ターン実行結果

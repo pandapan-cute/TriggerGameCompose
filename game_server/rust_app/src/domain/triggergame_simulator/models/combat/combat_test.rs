@@ -2,6 +2,7 @@
 mod tests {
     use super::super::combat::Combat;
     use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+    use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
     use crate::domain::unit_management::models::unit::position::position::Position;
     use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
     use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
@@ -23,8 +24,13 @@ mod tests {
         TriggerAzimuth::new(0)
     }
 
+    fn create_test_visiblity() -> Visibility {
+        Visibility::new(vec![vec![0; 10]; 10])
+    }
+
     #[test]
     fn test_create_combat_returns_option() {
+        let mut visibility = create_test_visiblity();
         let combat = Combat::create(
             create_test_unit_id(),
             create_test_position(),
@@ -43,6 +49,7 @@ mod tests {
             create_test_trigger_azimuth(),
             5,
             2,
+            &mut visibility,
         );
 
         // Combatの生成に成功するか（射程や角度等の条件により失敗する可能性あり）

@@ -1,6 +1,7 @@
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
 use crate::domain::unit_management::models::unit_type::unit_type_spec::UnitTypeSpec;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
@@ -182,7 +183,7 @@ impl Unit {
     /// ベイルアウト済みのユニットは移動できない  
     ///
     /// 行動ポイントが不足している場合は移動できない  
-    pub fn move_to(&mut self, new_position: Position) -> bool {
+    pub fn move_to(&mut self, new_position: Position, visibility: &mut Visibility) -> bool {
         if self.is_bailout.is_bailout() {
             return false;
         }
@@ -190,15 +191,17 @@ impl Unit {
         if self.position == new_position {
             return false;
         }
+        // 移動に必要な行動ポイントを取得
+        let required_action_points =
+            visibility.get_action_points_for_move(&self.position, &new_position);
 
-        const ACTION_POINT_COST_PER_MOVE: i32 = 1; // 移動はアクションポイントを1消費する
-        if self.current_action_points.value() < ACTION_POINT_COST_PER_MOVE {
+        if self.current_action_points.value() < required_action_points {
+            // 行動ポイントが不足している場合は移動できない
             return false;
         }
         self.position = new_position;
-        self.current_action_points = CurrentActionPoints::new(
-            self.current_action_points.value() - ACTION_POINT_COST_PER_MOVE,
-        );
+        self.current_action_points =
+            CurrentActionPoints::new(self.current_action_points.value() - required_action_points);
         true
     }
 
@@ -253,6 +256,10 @@ impl Unit {
 
     pub fn set_sub_trigger_azimuth(&mut self, azimuth: TriggerAzimuth) {
         self.sub_trigger_azimuth = azimuth;
+    }
+
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
     }
 
     /// ベイルアウト

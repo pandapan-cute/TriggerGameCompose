@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::domain::player_management::models::player;
+use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::Action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
+use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
 use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
 use crate::domain::unit_management::models::unit::{
     position::position::Position, trigger_id::trigger_id::TriggerId, unit_id::unit_id::UnitId, Unit,
@@ -18,25 +21,41 @@ pub struct Step {
     step_id: StepId,
     actions: Vec<Action>,
     combats: Vec<Combat>,
+    visibility_cells: Vec<Vec<bool>>,
 }
 
 impl Step {
     // privateなコンストラクタ
-    pub fn new(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
+    pub fn new(
+        step_id: StepId,
+        actions: Vec<Action>,
+        combats: Vec<Combat>,
+        visibility_cells: Vec<Vec<bool>>,
+    ) -> Self {
         Self {
             step_id,
             actions,
             combats,
+            visibility_cells,
         }
     }
 
     /// 新規ステップの生成
-    pub fn create(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
-        Self::new(step_id, actions, combats)
+    pub fn create(
+        step_id: StepId,
+        actions: Vec<Action>,
+        combats: Vec<Combat>,
+        visibility_cells: Vec<Vec<bool>>,
+    ) -> Self {
+        Self::new(step_id, actions, combats, visibility_cells)
     }
 
     /// 戦闘演算の開始
-    pub fn step_start(&mut self, units: &mut Vec<Unit>) -> Result<(), String> {
+    pub fn step_start(
+        &mut self,
+        units: &mut Vec<Unit>,
+        visibility: &mut Visibility,
+    ) -> Result<(), String> {
         // 1. アクションとユニットの整合性チェック
         for action in &self.actions {
             // 対応するユニットが存在しなければエラー
@@ -60,7 +79,7 @@ impl Step {
                 continue;
             }
             // ユニットの位置を更新
-            unit.move_to(action.position().clone());
+            unit.move_to(action.position().clone(), visibility);
 
             const ACTION_POINT_CAN_UPDATE_TRIGGER: i32 = 1; // 消費はしないが、トリガーの更新が可能な行動ポイントの閾値
             if unit.current_action_points().value() >= ACTION_POINT_CAN_UPDATE_TRIGGER {
@@ -104,7 +123,7 @@ impl Step {
                     continue;
                 }
                 // 射程やトリガーの有効範囲の判定は、Actionのcreate内で行う
-                if let Some(combat) = action.generate_combats(defence_unit) {
+                if let Some(combat) = action.generate_combats(defence_unit, visibility) {
                     self.combats.push(combat);
                 }
             }
@@ -112,13 +131,24 @@ impl Step {
         Ok(())
     }
 
-    /// 他のステップのアクションを結合
-    pub fn merge_actions(&mut self, other: &Step) -> Result<(), String> {
-        // 他のステップのアクションを自分のアクションリストに追加
-        self.actions.extend(other.actions.clone());
-        // 他のステップの戦闘を自分の戦闘リストに追加(多分今は必要なし。今後出てくるかも。)
-        self.combats.extend(other.combats.clone());
-        Ok(())
+    /// プレイヤーごとに見せるべき情報をフィルタリングする処理
+    pub fn to_player_step(
+        &mut self,
+        player_id: &PlayerId,
+        units: &Vec<Unit>,
+        visibility: &Visibility,
+    ) -> Step {
+        self.actions.iter_mut().for_each(|action| {
+            action.to_player_action(player_id, units, visibility);
+        });
+        // プレイヤーから見た視界を計算して、visibility_cellsを更新する
+        let player_units: Vec<Unit> = units
+            .iter()
+            .filter(|u| u.owner_player_id() == player_id)
+            .cloned()
+            .collect();
+        self.visibility_cells = visibility.calculate_visibility(&player_units);
+        self.clone()
     }
 
     // ゲッター
@@ -128,6 +158,11 @@ impl Step {
 
     pub fn actions(&self) -> &Vec<Action> {
         &self.actions
+    }
+
+    // セッター的なもの
+    pub fn push_actions(&mut self, new_actions: &Vec<Action>) {
+        self.actions.extend(new_actions.clone());
     }
 }
 

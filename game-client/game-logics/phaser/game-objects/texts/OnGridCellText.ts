@@ -1,5 +1,4 @@
 'use client';
-import { FIELD_STEPS } from "@/game-logics/config/FieldData";
 import { HexUtils } from "@/game-logics/hexUtils";
 import "phaser";
 
@@ -11,18 +10,17 @@ export class OnGridCellText extends Phaser.GameObjects.Text {
 
   private position: { col: number; row: number; };
 
-  constructor(scene: Phaser.Scene, hexUtils: HexUtils, position: { col: number; row: number; }) {
+  constructor(scene: Phaser.Scene, hexUtils: HexUtils, position: { col: number; row: number; }, private fieldSteps: number[][]) {
     const pos = hexUtils.getHexPosition(position.col, position.row);
     super(scene, pos.x, pos.y, `(${position.col},${position.row})`, {
       fontSize: "9px",
-      color: "#000",
+      color: "#000000bd",
       fontFamily: "monospace",
-      backgroundColor: "rgba(255, 255, 255, 0.7)",
       padding: { x: 2, y: 1 },
     });
 
     this.setOrigin(0.5, 0.5);
-    this.setDepth(0.1);
+    this.setDepth(1);
 
     scene.add.existing(this);
 
@@ -36,7 +34,7 @@ export class OnGridCellText extends Phaser.GameObjects.Text {
 
   /** タイル上に建物の高さを表示 */
   switchToBuildingHeight() {
-    const buildingHeight = FIELD_STEPS[this.position.row][this.position.col];
-    this.setText(buildingHeight.toString());
+    const buildingHeight = this.fieldSteps[this.position.row][this.position.col];
+    this.setText(buildingHeight > 0 ? buildingHeight.toString() : "");
   }
 }

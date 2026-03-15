@@ -110,11 +110,8 @@ mod tests {
         game_id::game_id::GameId, visibility::Visibility,
     };
     use crate::domain::unit_management::models::unit::{
-        having_trigger_ids::having_trigger_ids::HavingTriggerIds,
-        position::position::Position,
-        trigger_id::trigger_id::TriggerId,
-        unit_type_id::unit_type_id::UnitTypeId,
-        Unit,
+        having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
+        trigger_id::trigger_id::TriggerId, unit_type_id::unit_type_id::UnitTypeId, Unit,
     };
 
     fn create_unit(owner: &PlayerId, position: Position) -> Unit {

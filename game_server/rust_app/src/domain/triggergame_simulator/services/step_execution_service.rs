@@ -241,11 +241,8 @@ mod tests {
     use crate::domain::triggergame_simulator::models::step::step::Step;
     use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
     use crate::domain::unit_management::models::unit::{
-        having_trigger_ids::having_trigger_ids::HavingTriggerIds,
-        position::position::Position,
-        trigger_id::trigger_id::TriggerId,
-        unit_type_id::unit_type_id::UnitTypeId,
-        Unit,
+        having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
+        trigger_id::trigger_id::TriggerId, unit_type_id::unit_type_id::UnitTypeId, Unit,
     };
     use uuid::Uuid;
 
@@ -304,8 +301,14 @@ mod tests {
             .apply_action_movements(&step, &mut units, &mut visibility)
             .unwrap();
 
-        assert_eq!(units[0].using_main_trigger_id(), &TriggerId::new("ASTEROID".to_string()));
-        assert_eq!(units[0].using_sub_trigger_id(), &TriggerId::new("BAGWORM".to_string()));
+        assert_eq!(
+            units[0].using_main_trigger_id(),
+            &TriggerId::new("ASTEROID".to_string())
+        );
+        assert_eq!(
+            units[0].using_sub_trigger_id(),
+            &TriggerId::new("BAGWORM".to_string())
+        );
     }
 
     #[test]
@@ -319,7 +322,13 @@ mod tests {
             .apply_action_movements(&step, &mut units, &mut visibility)
             .unwrap();
 
-        assert_eq!(units[0].using_main_trigger_id(), &TriggerId::new("KOGETSU".to_string()));
-        assert_eq!(units[0].using_sub_trigger_id(), &TriggerId::new("SHIELD".to_string()));
+        assert_eq!(
+            units[0].using_main_trigger_id(),
+            &TriggerId::new("KOGETSU".to_string())
+        );
+        assert_eq!(
+            units[0].using_sub_trigger_id(),
+            &TriggerId::new("SHIELD".to_string())
+        );
     }
 }

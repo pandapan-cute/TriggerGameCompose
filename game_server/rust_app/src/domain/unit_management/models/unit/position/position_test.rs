@@ -17,15 +17,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Position colは0以上である必要があります")]
+    #[should_panic(expected = "Position colは-1以上である必要があります")]
     fn test_negative_col_panic() {
-        Position::new(-1, 5);
+        Position::new(-2, 5);
     }
 
     #[test]
-    #[should_panic(expected = "Position rowは0以上である必要があります")]
+    #[should_panic(expected = "Position rowは-1以上である必要があります")]
     fn test_negative_row_panic() {
-        Position::new(5, -1);
+        Position::new(5, -2);
     }
 
     #[test]

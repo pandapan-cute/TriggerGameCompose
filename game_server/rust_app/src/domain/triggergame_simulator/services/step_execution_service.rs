@@ -131,7 +131,7 @@ impl StepExecutionService {
                 unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
             } else {
                 // この分岐に入る条件: 行動ポイント不足でトリガー更新不可な場合。
-                print!(
+                println!(
                     "トリガーの更新に必要な行動ポイントが不足しています。unit_id={:?}, current_action_points={}, required_action_points={}",
                     unit.unit_id(),
                     unit.current_action_points().value(),

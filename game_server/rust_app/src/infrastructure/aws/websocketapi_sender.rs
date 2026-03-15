@@ -5,6 +5,8 @@ use crate::application::websocket::{
     websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
 };
 
+const MAX_WEBSOCKET_MESSAGE_BYTES: usize = 32 * 1024;
+
 pub struct WebSocketapiSender {
     client: Client,
 }
@@ -25,6 +27,15 @@ impl WebSocketSender for WebSocketapiSender {
     ) -> Result<(), String> {
         let data =
             serde_json::to_vec(response).map_err(|e| format!("Serialization error: {}", e))?;
+        let payload_len = data.len();
+
+        // API Gateway WebSocket の 1メッセージ上限(32KB)を超えると 413 が返る。
+        if payload_len > MAX_WEBSOCKET_MESSAGE_BYTES {
+            return Err(format!(
+                "Failed to send message. connection_id={}, payload_bytes={} exceeds 32KB limit",
+                connection_id, payload_len
+            ));
+        }
 
         self.client
             .post_to_connection()
@@ -32,7 +43,18 @@ impl WebSocketSender for WebSocketapiSender {
             .data(Blob::new(data))
             .send()
             .await
-            .map_err(|e| format!("Failed to send message: {}", e))?;
+            .map_err(|e| {
+                // `Display` だと "service error" までしか出ないため `Debug` で詳細を残す
+                let debug_error = format!("{:?}", e);
+                eprintln!(
+                    "WebSocket send failed. connection_id={}, payload_bytes={}, detail={}",
+                    connection_id, payload_len, debug_error
+                );
+                format!(
+                    "Failed to send message. connection_id={}, payload_bytes={}, detail={}",
+                    connection_id, payload_len, debug_error
+                )
+            })?;
 
         // デバッグ用ログ
         // println!(

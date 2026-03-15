@@ -50,6 +50,7 @@ body:
     id: scope
     attributes:
       label: 影響範囲
+      multiple: true
       options:
         - game-client
         - game_server

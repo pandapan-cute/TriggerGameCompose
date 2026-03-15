@@ -5,6 +5,7 @@ import { ActionType } from "@/game-logics/models/Action";
 import { Step } from "@/game-logics/models/Step";
 import { Turn } from "@/game-logics/models/Turn";
 import { HexUtils } from "@/game-logics/hexUtils";
+import { ActionCompletedText } from "../../game-objects/texts/ActionCompletedText";
 
 /**
  * TurnPlanner が参照する依存関係。
@@ -58,6 +59,37 @@ export class TurnPlanner {
       );
     }
   }
+
+  /**
+   * 行動完了テキストを表示する
+   */
+  public showActionCompletedText(character: Phaser.GameObjects.Image) {
+    const characterState =
+      this.deps.characterManager.findPlayerCharacterByImage(character);
+    if (!characterState) return;
+
+    const pixelPos = this.deps.hexUtils.getHexPosition(
+      characterState.position.col,
+      characterState.position.row
+    );
+
+    // 既存のテキストがあれば削除
+    const existingText = characterState.getCompleteText();
+    if (existingText) {
+      existingText.destroy();
+    }
+
+    // 新しいテキストを作成
+    const text = new ActionCompletedText(
+      this.deps.scene,
+      pixelPos.x,
+      pixelPos.y - 40,
+      "行動設定済み"
+    );
+
+    characterState.setCompleteText(text);
+  }
+
 
   /**
    * 全プレイヤーキャラクターの行動力を集計し、

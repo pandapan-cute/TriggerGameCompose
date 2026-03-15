@@ -13,7 +13,6 @@ import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
-import { ActionCompletedText } from "../game-objects/texts/ActionCompletedText";
 import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
 import { FriendUnit } from "@/game-logics/models/FriendUnit";
 import { Step } from "@/game-logics/models/Step";
@@ -296,7 +295,7 @@ export class GridCellsScene extends Phaser.Scene {
         this.selectionService?.clearSelection();
       },
       showActionCompletedText: (character: Phaser.GameObjects.Image) => {
-        this.showActionCompletedText(character);
+        this.turnPlanner?.showActionCompletedText(character);
       },
       checkAllCharactersActionPointsCompleted: () => {
         this.turnPlanner?.checkAllCharactersActionPointsCompleted();
@@ -345,13 +344,6 @@ export class GridCellsScene extends Phaser.Scene {
         this.characterManager.setAllActionPointsText(this);
       },
     };
-  }
-
-  /**
-   * pointer 座標に応じてトリガー角度を更新する
-   */
-  private updateTriggerAngleFromPointer(pointer: Phaser.Input.Pointer): void {
-    this.triggerSettingController?.updateTriggerAngleFromPointer(pointer);
   }
 
   /**
@@ -455,37 +447,6 @@ export class GridCellsScene extends Phaser.Scene {
       );
       this.characterManager.enemyCharacters.push(enemyCharacterState);
     });
-  }
-
-
-  /**
-   * 行動完了テキストを表示する
-   */
-  private showActionCompletedText(character: Phaser.GameObjects.Image) {
-    const characterState =
-      this.characterManager.findPlayerCharacterByImage(character);
-    if (!characterState) return;
-
-    const pixelPos = this.hexUtils.getHexPosition(
-      characterState.position.col,
-      characterState.position.row
-    );
-
-    // 既存のテキストがあれば削除
-    const existingText = characterState.getCompleteText();
-    if (existingText) {
-      existingText.destroy();
-    }
-
-    // 新しいテキストを作成
-    const text = new ActionCompletedText(
-      this,
-      pixelPos.x,
-      pixelPos.y - 40,
-      "行動設定済み"
-    );
-
-    characterState.setCompleteText(text);
   }
 
   /**

@@ -225,3 +225,101 @@ impl StepExecutionService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StepExecutionService;
+    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+    use crate::domain::triggergame_simulator::models::action::action::Action;
+    use crate::domain::triggergame_simulator::models::action::action_type::action_type::{
+        ActionType, ActionTypeValue,
+    };
+    use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+    use crate::domain::triggergame_simulator::models::game::{
+        game_id::game_id::GameId, visibility::Visibility,
+    };
+    use crate::domain::triggergame_simulator::models::step::step::Step;
+    use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
+    use crate::domain::unit_management::models::unit::{
+        having_trigger_ids::having_trigger_ids::HavingTriggerIds,
+        position::position::Position,
+        trigger_id::trigger_id::TriggerId,
+        unit_type_id::unit_type_id::UnitTypeId,
+        Unit,
+    };
+    use uuid::Uuid;
+
+    fn create_unit_with_ap(action_points: i32) -> Unit {
+        Unit::create(
+            UnitTypeId::new("KUGA_YUMA".to_string()),
+            GameId::new("550e8400-e29b-41d4-a716-446655440300".to_string()),
+            PlayerId::new("550e8400-e29b-41d4-a716-446655440301".to_string()),
+            Position::new(1, 1),
+            TriggerId::new("KOGETSU".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            HavingTriggerIds::new(vec![
+                TriggerId::new("KOGETSU".to_string()),
+                TriggerId::new("ASTEROID".to_string()),
+            ]),
+            HavingTriggerIds::new(vec![
+                TriggerId::new("SHIELD".to_string()),
+                TriggerId::new("BAGWORM".to_string()),
+            ]),
+            100,
+            100,
+            8,
+            action_points,
+        )
+    }
+
+    fn create_step_for(unit: &Unit) -> Step {
+        let action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            unit.unit_id().clone(),
+            unit.unit_type_id().clone(),
+            unit.position().clone(),
+            TriggerId::new("ASTEROID".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
+            TriggerAzimuth::new(45),
+            TriggerAzimuth::new(270),
+        );
+
+        Step::create(
+            StepId::new(Uuid::new_v4().to_string()),
+            vec![action],
+            Vec::new(),
+            Vec::new(),
+        )
+    }
+
+    #[test]
+    fn test_apply_action_movements_updates_trigger_at_ap_boundary() {
+        // 仕様: APがちょうど1ならトリガー更新は許可される。
+        let unit = create_unit_with_ap(1);
+        let step = create_step_for(&unit);
+        let mut units = vec![unit.clone()];
+        let mut visibility = Visibility::create();
+
+        StepExecutionService::new()
+            .apply_action_movements(&step, &mut units, &mut visibility)
+            .unwrap();
+
+        assert_eq!(units[0].using_main_trigger_id(), &TriggerId::new("ASTEROID".to_string()));
+        assert_eq!(units[0].using_sub_trigger_id(), &TriggerId::new("BAGWORM".to_string()));
+    }
+
+    #[test]
+    fn test_apply_action_movements_does_not_update_trigger_when_ap_is_less_than_boundary() {
+        // 仕様: APが1未満ならトリガー更新は拒否される。
+        let mut units = vec![create_unit_with_ap(0)];
+        let step = create_step_for(&units[0]);
+        let mut visibility = Visibility::create();
+
+        StepExecutionService::new()
+            .apply_action_movements(&step, &mut units, &mut visibility)
+            .unwrap();
+
+        assert_eq!(units[0].using_main_trigger_id(), &TriggerId::new("KOGETSU".to_string()));
+        assert_eq!(units[0].using_sub_trigger_id(), &TriggerId::new("SHIELD".to_string()));
+    }
+}

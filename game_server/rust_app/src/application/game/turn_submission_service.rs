@@ -225,3 +225,126 @@ impl TurnSubmissionService {
             .await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TurnSubmissionService;
+    use async_trait::async_trait;
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
+
+    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+    use crate::domain::triggergame_simulator::models::game::{
+        game::Game, game_id::game_id::GameId,
+    };
+    use crate::domain::triggergame_simulator::models::turn::{
+        turn_number::turn_number::TurnNumber, Turn,
+    };
+    use crate::domain::triggergame_simulator::repositories::{
+        game_repository::GameRepository, turn_repository::TurnRepository,
+    };
+
+    struct InMemoryGameRepository {
+        game: Game,
+    }
+
+    #[async_trait]
+    impl GameRepository for InMemoryGameRepository {
+        async fn save(&self, _game: &Game) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn update_current_turn(&self, _game: &Game) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn get_game_by_id(&self, _game_id: &GameId) -> Result<Game, String> {
+            Ok(self.game.clone())
+        }
+    }
+
+    struct InMemoryTurnRepository {
+        turns: Mutex<HashMap<(String, String, i32), Turn>>,
+    }
+
+    impl InMemoryTurnRepository {
+        fn new() -> Self {
+            Self {
+                turns: Mutex::new(HashMap::new()),
+            }
+        }
+
+        fn insert(&self, turn: Turn) {
+            let key = (
+                turn.game_id().value().to_string(),
+                turn.player_id().value().to_string(),
+                turn.turn_number().value(),
+            );
+            self.turns.lock().unwrap().insert(key, turn);
+        }
+    }
+
+    #[async_trait]
+    impl TurnRepository for InMemoryTurnRepository {
+        async fn save(&self, turn: &Turn) -> Result<(), String> {
+            let key = (
+                turn.game_id().value().to_string(),
+                turn.player_id().value().to_string(),
+                turn.turn_number().value(),
+            );
+            self.turns.lock().unwrap().insert(key, turn.clone());
+            Ok(())
+        }
+
+        async fn update(&self, turn: &Turn) -> Result<(), String> {
+            self.save(turn).await
+        }
+
+        async fn get_turn_data(
+            &self,
+            game_id: &GameId,
+            player_id: &PlayerId,
+            turn_number: &TurnNumber,
+        ) -> Result<Option<Turn>, String> {
+            let key = (
+                game_id.value().to_string(),
+                player_id.value().to_string(),
+                turn_number.value(),
+            );
+            Ok(self.turns.lock().unwrap().get(&key).cloned())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_accept_submission_rejects_resubmission_for_same_turn() {
+        // 仕様: 同一プレイヤーによる同一ターンの再提出は拒否する。
+        let game_id = GameId::new("550e8400-e29b-41d4-a716-446655440100".to_string());
+        let player1_id = PlayerId::new("550e8400-e29b-41d4-a716-446655440101".to_string());
+        let player2_id = PlayerId::new("550e8400-e29b-41d4-a716-446655440102".to_string());
+        let game = Game::create(game_id.clone(), &player1_id, &player2_id);
+
+        let game_repo = Arc::new(InMemoryGameRepository { game: game.clone() });
+        let turn_repo = Arc::new(InMemoryTurnRepository::new());
+
+        let existing_turn = Turn::create(
+            game_id.clone(),
+            player1_id.clone(),
+            TurnNumber::new(game.current_turn_number().value()),
+            chrono::Utc::now(),
+        );
+        turn_repo.insert(existing_turn);
+
+        let service = TurnSubmissionService::new(game_repo, turn_repo);
+        let result = service
+            .accept_submission(
+                game_id.value().to_string(),
+                player1_id.value().to_string(),
+                Vec::new(),
+            )
+            .await;
+
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert_eq!(err, "このターンの情報はすでに登録されています。");
+    }
+}

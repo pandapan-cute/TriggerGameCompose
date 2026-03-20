@@ -41,6 +41,7 @@ use crate::{
 };
 
 mod application;
+mod config;
 mod domain;
 mod infrastructure;
 

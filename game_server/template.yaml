@@ -19,6 +19,10 @@ Resources:
       Runtime: provided.al2
       Architectures:
       - x86_64
+      Environment:
+        Variables:
+          # 本番環境用の環境変数
+          APP_ENV: prod
       Policies:
         - Statement:
           - Effect: Allow

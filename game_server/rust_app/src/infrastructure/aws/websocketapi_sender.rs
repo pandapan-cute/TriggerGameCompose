@@ -1,8 +1,11 @@
 use async_trait::async_trait;
 use aws_sdk_apigatewaymanagement::{primitives::Blob, Client};
 
-use crate::application::websocket::{
-    websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
+use crate::{
+    application::websocket::{
+        websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
+    },
+    config::env::AppEnv,
 };
 
 const MAX_WEBSOCKET_MESSAGE_BYTES: usize = 32 * 1024;
@@ -30,7 +33,9 @@ impl WebSocketSender for WebSocketapiSender {
         let payload_len = data.len();
 
         // API Gateway WebSocket の 1メッセージ上限(32KB)を超えると 413 が返る。
-        if payload_len > MAX_WEBSOCKET_MESSAGE_BYTES {
+        if payload_len > MAX_WEBSOCKET_MESSAGE_BYTES
+            && AppEnv::from_env().unwrap_or(AppEnv::Local) == AppEnv::Prod
+        {
             return Err(format!(
                 "Failed to send message. connection_id={}, payload_bytes={} exceeds 32KB limit",
                 connection_id, payload_len

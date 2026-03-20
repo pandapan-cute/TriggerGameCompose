@@ -11,13 +11,13 @@ import { Turn } from "@/game-logics/models/Turn";
 export interface TurnReplayControllerDeps {
   scene: Phaser.Scene;
   characterManager: CharacterManager;
-  fieldViewState: FieldViewState;
   onReplayCompleted: (turnNumber: number) => void;
   clearTriggerArrows?: () => void;
   setActionMode?: (isActionMode: boolean) => void;
   setActionAnimationInProgress?: (isInProgress: boolean) => void;
   clearPlannedSteps?: () => void;
   restoreActionPointsText?: () => void;
+  updateFieldViewVisibility: () => boolean[][] | undefined;
 }
 
 /**
@@ -51,8 +51,15 @@ export class TurnReplayController {
     this.replayActions(turn, stepIndex);
     this.replayCombats(turn, stepIndex);
 
+    // ステップ再生後に視界情報を更新する。
+    const visibilityMap = this.deps.updateFieldViewVisibility();
+
+    // デバッグ用: サーバーからのステップ情報に含まれる視界マップとクライアントの視界マップを照合する。
     const step = steps[stepIndex];
-    this.deps.fieldViewState.setSightAreaFieldView(step.getVisibilityCells());
+    const clientVisibilityMap = step.getVisibilityCells();
+    if (clientVisibilityMap && visibilityMap) {
+      this.checkVisibilityDiscrepancy(clientVisibilityMap, visibilityMap);
+    }
 
     const nextStepIndex = stepIndex + 1;
     this.deps.scene.time.delayedCall(1500, () => {
@@ -155,5 +162,19 @@ export class TurnReplayController {
     const queuedTurn = this.pendingTurn;
     this.pendingTurn = null;
     return queuedTurn;
+  }
+
+  /**
+   * クライアントの視界情報をサーバーからのステップ情報と照らし合わせて差分がないか確認する
+   * ローカル環境で動くデバッグ用の関数
+   */
+  public checkVisibilityDiscrepancy(serverVisibilityMap: boolean[][], clientVisibilityMap: boolean[][]): void {
+    for (let row = 0; row < serverVisibilityMap.length; row++) {
+      for (let col = 0; col < serverVisibilityMap[row].length; col++) {
+        if (serverVisibilityMap[row][col] !== clientVisibilityMap[row][col]) {
+          console.warn(`視界の不一致を検出: (${col}, ${row}) - サーバー: ${serverVisibilityMap[row][col]}, クライアント: ${clientVisibilityMap[row][col]}`);
+        }
+      }
+    }
   }
 }

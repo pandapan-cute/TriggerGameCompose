@@ -3,6 +3,7 @@ import { CharacterManager } from "@/game-logics/characterManager";
 import { HexUtils } from "@/game-logics/hexUtils";
 import { GridConfig } from "@/game-logics/types";
 import { MovableHighlightCell } from "../../game-objects/graphics/MovableHighlightCell";
+import { FieldViewService } from "./FieldViewService";
 
 /**
  * SelectionService が参照する依存関係。
@@ -20,6 +21,7 @@ export interface SelectionServiceDeps {
   consumeActionPoint: (remainingMoves: number) => void;
   startTriggerSetting: () => void;
   resetTriggerSettingState: () => void;
+  updateFieldViewVisibility: () => boolean[][] | undefined;
 }
 
 /**
@@ -257,6 +259,8 @@ export class SelectionService {
       col: targetCol,
       row: targetRow,
     };
+
+    const _ = this.deps.updateFieldViewVisibility();
 
     console.log(`キャラクターが (${targetCol}, ${targetRow}) に移動しました`);
   }

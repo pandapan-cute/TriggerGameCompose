@@ -23,6 +23,8 @@ RUN mkdir src && \
     rm -rf src
 
 ENV DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+# ローカル開発用の環境変数を設定
+ENV APP_ENV=local
 
 # ソースコードをマウント
 VOLUME /app/src

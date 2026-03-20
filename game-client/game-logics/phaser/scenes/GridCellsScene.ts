@@ -29,6 +29,7 @@ import {
   TurnReplayController,
   type TurnReplayControllerDeps,
 } from "./controllers/TurnReplayController";
+import { FieldViewService } from "./services/FieldViewService";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -94,6 +95,8 @@ export class GridCellsScene extends Phaser.Scene {
   private turnPlanner: TurnPlanner | null = null;
   /** ターン再生コントローラ */
   private turnReplayController: TurnReplayController | null = null;
+  /** 視界情報管理サービス */
+  private fieldViewService: FieldViewService | null = null;
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -161,6 +164,11 @@ export class GridCellsScene extends Phaser.Scene {
    * シーンの委譲先コントローラ群を初期化する
    */
   private setupSceneControllers(): void {
+
+    if (!this.fieldViewService) {
+      this.initializeFieldViewService();
+    }
+
     if (!this.selectionService) {
       this.selectionService = new SelectionService(this.createSelectionServiceDeps());
     }
@@ -253,6 +261,9 @@ export class GridCellsScene extends Phaser.Scene {
         this.triggerSettingMode = false;
         this.triggerSettingType = null;
       },
+      updateFieldViewVisibility: () => {
+        return this.fieldViewService?.updateVisibility();
+      }
     };
   }
 
@@ -325,7 +336,6 @@ export class GridCellsScene extends Phaser.Scene {
     return {
       scene: this,
       characterManager: this.characterManager,
-      fieldViewState: this.fieldViewState,
       onReplayCompleted: () => { },
       clearTriggerArrows: () => {
         this.triggerArrows.forEach((arrow) => arrow.destroy());
@@ -343,7 +353,22 @@ export class GridCellsScene extends Phaser.Scene {
       restoreActionPointsText: () => {
         this.characterManager.setAllActionPointsText(this);
       },
+      updateFieldViewVisibility: () => {
+        return this.fieldViewService?.updateVisibility();
+      }
     };
+  }
+
+  /**
+   * 視界情報管理サービスを初期化する
+   */
+  private initializeFieldViewService(): void {
+    this.fieldViewService = new FieldViewService({
+      characterManager: this.characterManager,
+      fieldViewState: this.fieldViewState,
+      hexUtils: this.hexUtils,
+      gridConfig: this.gridConfig,
+    });
   }
 
   /**

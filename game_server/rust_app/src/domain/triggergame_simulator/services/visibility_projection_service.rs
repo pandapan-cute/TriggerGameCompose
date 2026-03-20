@@ -1,3 +1,4 @@
+use crate::config::env::AppEnv;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::{
     game::visibility::Visibility, step::step::Step,
@@ -33,16 +34,15 @@ impl VisibilityProjectionService {
         units: &Vec<Unit>,
         visibility: &Visibility,
     ) -> Step {
-        // 移動元:
-        // - src/domain/triggergame_simulator/models/step/step.rs
-        // - Step::to_player_step の全体処理
-
         // 1) アクションをプレイヤー視点でフィルタリングする。
         self.project_actions_for_player(step, player_id, units, visibility);
 
-        // 2) プレイヤー向け可視セルを再計算する。
-        let visibility_cells = self.calculate_player_visibility_cells(player_id, units, visibility);
-        step.set_visibility_cells(visibility_cells);
+        if AppEnv::from_env().unwrap_or(AppEnv::Local) == AppEnv::Local {
+            // 2) プレイヤー向け可視セルを再計算する。(ローカル環境のみ)
+            let visibility_cells =
+                self.calculate_player_visibility_cells(player_id, units, visibility);
+            step.set_visibility_cells(visibility_cells);
+        }
 
         // 3) 投影済みStepクローンを返す。
         step.clone()

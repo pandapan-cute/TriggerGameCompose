@@ -4,7 +4,7 @@
 
 本番環境のシステム構成図は以下を参照してください
 
-![システム構成図](./_Documents/02_基本設計/システム構成図.drawio.svg)
+![システム構成図](./docs/02_基本設計/システム構成図.drawio.svg)
 
 ## Docker Composeを利用したローカル実行
 
@@ -38,7 +38,7 @@ docker compose down
 
 ```text
 TriggerGameCompose/
-├── _Documents/                  # 仕様・設計・実装メモなどのドキュメント
+├── docs/                  # 仕様・設計・実装メモなどのドキュメント
 ├── game-client/                 # フロントエンド (Next.js + Phaser)
 ├── game_server/                 # バックエンド (Rust + AWS SAM)
 ├── local-dynamodb-initialize/   # ローカル DynamoDB 初期化ツール (Go)
@@ -64,7 +64,7 @@ DynamoDBのローカル版はdocker compose内で `amazon/dynamodb-local:latest`
 
 開発環境構築手順は以下のドキュメントを参照してください。
 
-[開発環境構築手順書](./_Documents/99_その他/環境構築/開発環境構築手順書.md)
+[開発環境構築手順書](./docs/99_その他/環境構築/開発環境構築手順書.md)
 
 ### 本番環境
 
@@ -72,7 +72,7 @@ DynamoDBのローカル版はdocker compose内で `amazon/dynamodb-local:latest`
 
 ### ゲームの基本的なルール・設計
 
-[ドメインモデリング](./_Documents/02_基本設計/ドメイン駆動設計/01_ドメインモデリング/ドメインモデリング.md)
+[ドメインモデリング](./docs/02_基本設計/ドメイン駆動設計/01_ドメインモデリング/ドメインモデリング.md)
 
 ### 連絡先
 

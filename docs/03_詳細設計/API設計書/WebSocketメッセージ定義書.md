@@ -16,9 +16,9 @@ asyncapi.yamlはメッセージの更新があったら最新化してくださ�
 
 ```bash
 npx @asyncapi/cli generate fromTemplate \
-    _Documents/03_詳細設計/API設計書/asyncapi.yaml \
+    docs/03_詳細設計/API設計書/asyncapi.yaml \
     @asyncapi/html-template \
-    --output _Documents/03_詳細設計/API設計書/asyncapi-html
+    --output docs/03_詳細設計/API設計書/asyncapi-html
 
 # Need to install the following packages:
 # @asyncapi/cli@6.0.0
@@ -27,7 +27,7 @@ npx @asyncapi/cli generate fromTemplate \
 
 ### PDF 化（HTML から作成）
 
-1. 生成された _Documents/03_詳細設計/API設計書/asyncapi-html/index.html をブラウザで開く
+1. 生成された docs/03_詳細設計/API設計書/asyncapi-html/index.html をブラウザで開く
 2. ブラウザの印刷機能で PDF 保存する
 
 ---

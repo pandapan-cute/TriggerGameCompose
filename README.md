@@ -1,68 +1,79 @@
 # TriggerGameCompose
 
-## 開発ルール
+## システム構成
 
-- コントリビュート規約: [CONTRIBUTING.md](./CONTRIBUTING.md)
+本番環境のシステム構成図は以下を参照してください
 
-## テスト方法
+![システム構成図](./docs/02_基本設計/システム構成図.drawio.svg)
 
-### websocketクライアントでの接続テスト
+## Docker Composeを利用したローカル実行
 
-```bash
-# (前提)websocatのインストール
-npm install -g wscat
+プロジェクトの実行にはDocker composeを利用します。
 
-# WebSocketサーバーに接続
-wscat -c ws://localhost:8080
-
-# クラウド
-wscat -c wss://y0kc9gtshi.execute-api.ap-northeast-1.amazonaws.com/Prod/
-
-# 接続後、対話的にメッセージを送信
-{"action": "matchmaking", "player_id": "212df6af-6345-46a3-b7fe-d1d892ae0f2d"}
-{"type": "ping"}
-```
-
-## Dockerコマンド
+Docker Composeさえあればローカル実行できる状態を維持しておきたいです。
+もしうまく行かなければご連絡お願いします。
 
 ```bash
 # Dockerコンテナの起動
 docker compose up --build
+```
 
-# composeの停止と関連コンテナの削除
+上記の起動コマンド実行後、ブラウザで `http://localhost:3000` にアクセスすることで、Next.jsアプリケーションが表示されます。
+
+ChromeとEdgeや、一般タブとシークレットタブなど複数のブラウザでアクセスすることで、対戦機能の確認ができます。
+(同じプロファイルだとセッションが共有されてしまうため、別のプロファイルやシークレットモードでアクセスしてください。)
+
+止めるときは以下のコマンドを使用してください
+
+```bash
+# Dockerコンテナの停止
 docker compose down
 ```
 
-## ツール
+## プロジェクト構成
 
-### VSCode拡張機能
+### ディレクトリ構成
 
-* todo-tree
+本リポジトリの主要ディレクトリは以下です。
 
-## タスクリスト
+```text
+TriggerGameCompose/
+├── docs/                  # 仕様・設計・実装メモなどのドキュメント
+├── game-client/                 # フロントエンド (Next.js + Phaser)
+├── game_server/                 # バックエンド (Rust + AWS SAM)
+├── local-dynamodb-initialize/   # ローカル DynamoDB 初期化ツール (Go)
+├── local-websocket-apigateway/  # ローカル WebSocket API Gateway 代替 (Go)
+├── docker-compose.yml           # ローカル起動用 Compose 定義
+├── CONTRIBUTING.md              # コントリビュートルール
+└── README.md                    # プロジェクトの入口ドキュメント
+```
 
-* [x] プレイヤーidとクライアントIDの保存機能実装
-* [x] プレイヤーidからクライアントIDを取得する機能実装
-* [x] ユニット管理にゲームidを追加
-* [x] マッチIDとゲームIDってどちらも必要？？（triggergame-simulator）
-        -> マッチIDをゲームIDに統一する方向で実装
-* [x] マッチングに移行した段階でユニットの初期状態をテーブルに登録
-  * [x] 現在装備しているトリガーも含めて取得する
-* [x] マッチング完了のレスポンスにユニット情報を含める
-  * [x] 味方キャラのフロント情報作成と敵情報作成機能を入れる 
-  * [x] ユニットがBAGWORMをそうびしている場合は不可視とする
-* [x] マッチング完了時にゲーム状態をリポジトリに登録する
-  * [x] ゲーム状態を保存するリポジトリを作成
-* [x] 受け取った初期ゲーム情報をもとにゲーム画面を作成
-      -> ほんとはゲーム画面のURLパスでゲームIDを取得してwsのメッセージで情報取得が一番いいと思うけど。。
-         現時点では保留。後で実装。
-* [x] フロント側のキャラクター操作->サーバーへのリクエストまでの実装
-* [x] サーバー側でのターン処理シーケンスの実装
-  * [x] ターン内の操作をリクエストしたあとのシーケンスを作成
-* [x] Action/Stepのエンティティを使ってフロントエンドのゲームロジック改善
-* [x] 集積したAction/Stepの情報をサーバーにプッシュする機能の実装
-* [x] サーバー側でAction/Stepの情報を受け取ってゲーム状態を更新する機能の修正（多分すぐは動かないだろう・・）
-  * [ ] 15秒で1ターン終了のロジックを入れる
-  * [ ] 最終ターン時にゲーム終了のロジックを入れる
-* [ ] サーバーから受け取ったターン情報でゲーム画面を更新する機能の実装
-* [ ] ゲーム終了時のロジック作成
+DynamoDBのローカル版はdocker compose内で `amazon/dynamodb-local:latest` のイメージを使用しています。
+データベースの初期化の目的で `local-dynamodb-initialize` をdocker composeで動かしています。
+
+なんでローカル用のツールをGo言語で作っているかというと、
+会社ではRust使わないので、、使う可能性のあるGoの勉強のためです。。
+
+## その他重要事項
+
+### 開発ルール
+
+- コントリビュート規約: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+### 開発環境構築
+
+開発環境構築手順は以下のドキュメントを参照してください。
+
+[開発環境構築手順書](./docs/99_その他/環境構築/開発環境構築手順書.md)
+
+### 本番環境
+
+[本番環境ページリンク](https://main.dsxdacl6jlb8y.amplifyapp.com/)
+
+### ゲームの基本的なルール・設計
+
+[ドメインモデリング](./docs/02_基本設計/ドメイン駆動設計/01_ドメインモデリング/ドメインモデリング.md)
+
+### 連絡先
+
+[開発者のXアカウント](https://x.com/pandapan_cute)

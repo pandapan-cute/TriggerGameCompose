@@ -1,0 +1,468 @@
+asyncapi: 2.6.0
+info:
+  title: TriggerGame WebSocket API
+  version: 1.0.0
+  description: |
+    TriggerGameのクライアントとサーバー間の通信に使用するWebSocket APIの定義です。
+
+defaultContentType: application/json
+
+servers:
+  local:
+    url: ws://localhost:3001
+    protocol: ws
+    description: ローカルのWebSocket gateway
+  production:
+    url: "{domain}/{stage}"
+    protocol: wss
+    description: API Gateway WebSocket endpoint
+    variables:
+      domain:
+        default: y0kc9gtshi.execute-api.ap-northeast-1.amazonaws.com
+      stage:
+        default: prod
+
+channels:
+  /:
+    publish:
+      operationId: clientToServer
+      summary: Client sends command messages to server
+      message:
+        oneOf:
+          - $ref: '#/components/messages/MatchmakingRequest'
+          - $ref: '#/components/messages/GetGameStateRequest'
+          - $ref: '#/components/messages/TurnExecutionRequest'
+          - $ref: '#/components/messages/PingRequest'
+          - $ref: '#/components/messages/CancelMatchingRequest'
+    subscribe:
+      operationId: serverToClient
+      summary: Server pushes result/event messages to client
+      message:
+        oneOf:
+          - $ref: '#/components/messages/MatchmakingResult'
+          - $ref: '#/components/messages/GetGameStateResult'
+          - $ref: '#/components/messages/TurnExecutionResult'
+          - $ref: '#/components/messages/ErrorResponse'
+          - $ref: '#/components/messages/PongResponse'
+          - $ref: '#/components/messages/CancelMatchingResult'
+
+components:
+  messages:
+    MatchmakingRequest:
+      name: matchmaking
+      title: Matchmaking Request
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+          - units
+        properties:
+          action:
+            type: string
+            enum: [matchmaking]
+          playerId:
+            type: string
+          units:
+            type: array
+            items:
+              $ref: '#/components/schemas/CreateUnitDto'
+
+    GetGameStateRequest:
+      name: getGameState
+      title: Get Game State Request
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+          - gameId
+        properties:
+          action:
+            type: string
+            enum: [getGameState]
+          playerId:
+            type: string
+          gameId:
+            type: string
+
+    TurnExecutionRequest:
+      name: turnExecution
+      title: Turn Execution Request
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+          - gameId
+          - steps
+        properties:
+          action:
+            type: string
+            enum: [turnExecution]
+          playerId:
+            type: string
+          gameId:
+            type: string
+          steps:
+            type: array
+            items:
+              $ref: '#/components/schemas/Step'
+
+    PingRequest:
+      name: ping
+      title: Ping Request
+      payload:
+        type: object
+        required:
+          - action
+        properties:
+          action:
+            type: string
+            enum: [ping]
+
+    CancelMatchingRequest:
+      name: cancelMatching
+      title: Cancel Matching Request
+      x-implementationStatus: client-type-only
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+        properties:
+          action:
+            type: string
+            enum: [cancelMatching]
+          playerId:
+            type: string
+
+    MatchmakingResult:
+      name: matchmakingResult
+      title: Matchmaking Result
+      payload:
+        type: object
+        required:
+          - action
+          - status
+          - enemyUnits
+          - friendUnits
+          - fieldSteps
+        properties:
+          action:
+            type: string
+            enum: [matchmakingResult]
+          status:
+            type: string
+            enum: [InProgress, Interrupted, Completed]
+          gameId:
+            type: string
+          enemyUnits:
+            type: array
+            items:
+              $ref: '#/components/schemas/EnemyUnitDto'
+          friendUnits:
+            type: array
+            items:
+              $ref: '#/components/schemas/FriendUnitDto'
+          fieldSteps:
+            type: array
+            items:
+              type: array
+              items:
+                type: integer
+
+    GetGameStateResult:
+      name: getGameStateResult
+      title: Get Game State Result
+      payload:
+        type: object
+        required:
+          - action
+          - currentTurnNumber
+          - enemyUnits
+          - friendUnits
+          - fieldSteps
+          - visibility
+        properties:
+          action:
+            type: string
+            enum: [getGameStateResult]
+          currentTurnNumber:
+            type: integer
+            minimum: 1
+          enemyUnits:
+            type: array
+            items:
+              $ref: '#/components/schemas/EnemyUnitDto'
+          friendUnits:
+            type: array
+            items:
+              $ref: '#/components/schemas/FriendUnitDto'
+          fieldSteps:
+            type: array
+            items:
+              type: array
+              items:
+                type: integer
+          visibility:
+            type: array
+            items:
+              type: array
+              items:
+                type: boolean
+
+    TurnExecutionResult:
+      name: turnExecutionResult
+      title: Turn Execution Result
+      payload:
+        type: object
+        required:
+          - action
+          - turn
+        properties:
+          action:
+            type: string
+            enum: [turnExecutionResult]
+          turn:
+            $ref: '#/components/schemas/Turn'
+
+    ErrorResponse:
+      name: error
+      title: Error Response
+      payload:
+        type: object
+        required:
+          - action
+          - message
+        properties:
+          action:
+            type: string
+            enum: [error]
+          message:
+            type: string
+
+    PongResponse:
+      name: pong
+      title: Pong Response
+      payload:
+        type: object
+        required:
+          - action
+        properties:
+          action:
+            type: string
+            enum: [pong]
+
+    CancelMatchingResult:
+      name: cancelMatchingResult
+      title: Cancel Matching Result
+      x-implementationStatus: client-type-only
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+        properties:
+          action:
+            type: string
+            enum: [cancelMatchingResult]
+          playerId:
+            type: string
+
+  schemas:
+    CreateUnitDto:
+      type: object
+      required:
+        - unitTypeId
+        - initialX
+        - initialY
+        - usingMainTriggerId
+        - usingSubTriggerId
+        - mainTriggerIds
+        - subTriggerIds
+      properties:
+        unitTypeId:
+          type: string
+        initialX:
+          type: integer
+        initialY:
+          type: integer
+        usingMainTriggerId:
+          type: string
+        usingSubTriggerId:
+          type: string
+        mainTriggerIds:
+          type: array
+          items:
+            type: string
+        subTriggerIds:
+          type: array
+          items:
+            type: string
+
+    Position:
+      type: object
+      required:
+        - col
+        - row
+      properties:
+        col:
+          type: integer
+        row:
+          type: integer
+
+    Action:
+      type: object
+      required:
+        - actionId
+        - actionType
+        - unitId
+        - unitTypeId
+        - position
+        - usingMainTriggerId
+        - usingSubTriggerId
+        - mainTriggerAzimuth
+        - subTriggerAzimuth
+      properties:
+        actionId:
+          type: string
+        actionType:
+          type: string
+        unitId:
+          type: string
+        unitTypeId:
+          type: string
+        position:
+          $ref: '#/components/schemas/Position'
+        usingMainTriggerId:
+          type: string
+        usingSubTriggerId:
+          type: string
+        mainTriggerAzimuth:
+          type: integer
+        subTriggerAzimuth:
+          type: integer
+
+    Combat:
+      type: object
+      description: Simplified combat object used in step payload.
+      additionalProperties: true
+
+    Step:
+      type: object
+      required:
+        - stepId
+        - actions
+        - combats
+        - visibilityCells
+      properties:
+        stepId:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        combats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Combat'
+        visibilityCells:
+          type: array
+          items:
+            type: array
+            items:
+              type: boolean
+
+    Turn:
+      type: object
+      required:
+        - turnId
+        - gameId
+        - playerId
+        - turnNumber
+        - turnStartDatetime
+        - turnStatus
+        - steps
+      properties:
+        turnId:
+          type: string
+        gameId:
+          type: string
+        playerId:
+          type: string
+        turnNumber:
+          type: integer
+        turnStartDatetime:
+          type: string
+        turnStatus:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Step'
+
+    EnemyUnitDto:
+      type: object
+      required:
+        - unitId
+        - unitTypeId
+        - position
+        - usingMainTriggerId
+        - usingSubTriggerId
+        - isBailout
+      properties:
+        unitId:
+          type: string
+        unitTypeId:
+          type: string
+        position:
+          $ref: '#/components/schemas/Position'
+        usingMainTriggerId:
+          type: string
+        usingSubTriggerId:
+          type: string
+        isBailout:
+          type: boolean
+
+    FriendUnitDto:
+      type: object
+      required:
+        - unitId
+        - unitTypeId
+        - position
+        - usingMainTriggerId
+        - usingSubTriggerId
+        - havingMainTriggerIds
+        - havingSubTriggerIds
+        - mainTriggerHp
+        - subTriggerHp
+        - sightRange
+        - isBailout
+      properties:
+        unitId:
+          type: string
+        unitTypeId:
+          type: string
+        position:
+          $ref: '#/components/schemas/Position'
+        usingMainTriggerId:
+          type: string
+        usingSubTriggerId:
+          type: string
+        havingMainTriggerIds:
+          type: array
+          items:
+            type: string
+        havingSubTriggerIds:
+          type: array
+          items:
+            type: string
+        mainTriggerHp:
+          type: integer
+        subTriggerHp:
+          type: integer
+        sightRange:
+          type: integer
+        isBailout:
+          type: boolean

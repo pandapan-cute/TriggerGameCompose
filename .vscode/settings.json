@@ -33,6 +33,8 @@
       "source.organizeImports": "explicit"
     }
   },
+
+  // todo Treeのタグ設定
   "todo-tree.general.tags": [
     "BUG",
     "HACK",
@@ -42,5 +44,5 @@
     "[ ]",
     "[x]",
     "NOTE"
-  ]
+  ],
 }

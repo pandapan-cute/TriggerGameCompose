@@ -1,0 +1,234 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.6.4">
+  <diagram name="ページ-1" id="tYNTKP_I8CCHrG1fgv05">
+    <mxGraphModel dx="5580" dy="4215" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#0d1b2a;strokeColor=#4a90e2;fontColor=#fff;" value="🎮 ゲームページ (/game/[gameId])" vertex="1">
+          <mxGeometry height="2814" width="1237" x="8" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a1a3a;strokeColor=#9b59b6;fontColor=#fff;" value="▶ ターン再生フェーズ (操作ロック中)" vertex="1">
+          <mxGeometry height="497" width="838" x="341" y="3022" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a2a3a;strokeColor=#4a90e2;fontColor=#fff;" value="⚔️ 行動計画フェーズ" vertex="1">
+          <mxGeometry height="1697" width="1191" x="28" y="1003" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#16213e;strokeColor=#4a90e2;fontColor=#fff;" value="📱 ロビーページ (/lobby)" vertex="1">
+          <mxGeometry height="448" width="699" x="686" y="208" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a1a2e;strokeColor=#4a90e2;fontColor=#fff;" value="🏠 ホームページ (/)&#xa;    ―&#xa;    タイトル画面" vertex="1">
+          <mxGeometry height="102" width="199" x="1005" y="8" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#0f3460;strokeColor=#4a90e2;fontColor=#fff;" value="状態: InProgress&#xa;        ―&#xa;        マッチング中... (スピナー表示)&#xa;        WebSocket: matchmaking 送信" vertex="1">
+          <mxGeometry height="174" width="260" x="974" y="233" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a5c38;strokeColor=#4caf50;fontColor=#fff;" value="状態: Completed&#xa;        ―&#xa;        マッチング完了！&#xa;        3秒後に自動遷移" vertex="1">
+          <mxGeometry height="126" width="188" x="721" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#5c1a1a;strokeColor=#f44336;fontColor=#fff;" value="状態: Interrupted&#xa;        ―&#xa;        マッチング失敗 (警告表示)" vertex="1">
+          <mxGeometry height="102" width="251" x="1075" y="517" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#2d3561;strokeColor=#7c83d1;fontColor=#fff;" value="初期化中&#xa;        ―&#xa;        getGameState 送信&#xa;        friendUnits / enemyUnits 受信待ち" vertex="1">
+          <mxGeometry height="150" width="260" x="685" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#2c3e50;strokeColor=#95a5a6;fontColor=#fff;" value="⬡ 待機中&#xa;            ―&#xa;            選択なし・移動マス非表示&#xa;            スワイプ: カメラ移動&#xa;            ピンチ: ズーム" vertex="1">
+          <mxGeometry height="150" width="252" x="689" y="1028" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#2d4a22;strokeColor=#f1c40f;fontColor=#fff;" value="⬡ キャラクター選択済み&#xa;            ―&#xa;            黄色ハイライト&#xa;            移動可能マス表示 (建物高さ表示)&#xa;            スワイプ: カメラ移動&#xa;            ピンチ: ズーム" vertex="1">
+          <mxGeometry height="198" width="260" x="293" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#5c1a1a;strokeColor=#ff6b6b;fontColor=#fff;" value="🔴 メイントリガー設定中&#xa;            ―&#xa;            赤い扇形表示&#xa;            位置情報タイル表示&#xa;            ドラッグ: 角度更新" vertex="1">
+          <mxGeometry height="150" width="244" x="156" y="1644" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a1a5c;strokeColor=#6b6bff;fontColor=#fff;" value="🔵 サブトリガー設定中&#xa;            ―&#xa;            青い扇形表示&#xa;            ドラッグ: 角度更新" vertex="1">
+          <mxGeometry height="126" width="228" x="164" y="1892" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#4a3000;strokeColor=#f39c12;fontColor=#fff;" value="残り行動力 AP &gt; 0 ?" vertex="1">
+          <mxGeometry height="200" width="200" x="309" y="2140" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#4a3000;strokeColor=#f39c12;fontColor=#fff;" value="全キャラクター&#xa;            行動完了?" vertex="1">
+          <mxGeometry height="189" width="189" x="411" y="2486" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#1a3a1a;strokeColor=#2ecc71;fontColor=#fff;" value="⬆ サーバー送信中&#xa;        ―&#xa;        turnExecution 送信&#xa;        (全キャラクター AP = 0 で自動)" vertex="1">
+          <mxGeometry height="150" width="260" x="376" y="2774" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#2a1a4a;strokeColor=#9b59b6;fontColor=#fff;" value="ステップ再生&#xa;            ―&#xa;            アクション再生 (キャラ移動)&#xa;            コンバット再生 (攻撃/防御)&#xa;            視界エリア更新" vertex="1">
+          <mxGeometry height="174" width="260" x="376" y="3047" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#4a3000;strokeColor=#f39c12;fontColor=#fff;" value="次ステップあり?" vertex="1">
+          <mxGeometry height="175" width="175" x="727" y="3319" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);" value="" vertex="1">
+          <mxGeometry x="544" y="1719" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);" value="" vertex="1">
+          <mxGeometry x="604" y="1955" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="6" style="curved=1;startArrow=none;endArrow=block;exitX=0;exitY=0.76;entryX=0;entryY=0.28;" target="7" value="「マッチング開始」ボタンタップ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="726" y="159" />
+              <mxPoint x="726" y="208" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="7" style="curved=1;startArrow=none;endArrow=block;exitX=0;exitY=0.85;entryX=0.5;entryY=0;" target="8" value="matchmakingResult Completed 受信">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="815" y="456" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="7" style="curved=1;startArrow=none;endArrow=block;exitX=0.3;exitY=1;entryX=0.18;entryY=0;" target="9" value="WebSocket 切断 / エラー">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1024" y="456" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="7" style="curved=1;startArrow=none;endArrow=block;exitX=0.56;exitY=0;entryX=0.55;entryY=1;" target="6" value="「キャンセル」ボタンタップ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1123" y="208" />
+              <mxPoint x="1123" y="159" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="9" style="curved=1;startArrow=none;endArrow=block;exitX=0.54;exitY=0;entryX=0.79;entryY=1;" target="7" value="「再接続」ボタンタップ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1222" y="456" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" edge="1" parent="1" source="8" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="10" value="3秒後 自動遷移">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="28" edge="1" parent="1" source="10" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="11" value="getGameStateResult 受信&#xa;(友軍/敵軍ユニット確定)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" source="11" style="curved=1;startArrow=none;endArrow=block;exitX=0;exitY=0.68;entryX=0;entryY=0.09;" target="12" value="行動力ありキャラをタップ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="169" y="1239" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="12" style="curved=1;startArrow=none;endArrow=none;exitX=0.77;exitY=1;entryX=-Infinity;entryY=-Infinity;" target="20" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="544" y="1571" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="20" style="curved=1;startArrow=none;endArrow=none;exitX=-Infinity;exitY=Infinity;entryX=-Infinity;entryY=-Infinity;" target="21" value="行動力ありの別キャラをタップ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="544" y="1843" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="21" style="curved=1;startArrow=none;endArrow=block;exitX=Infinity;exitY=-Infinity;entryX=1;entryY=0.97;" target="12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="664" y="1843" />
+              <mxPoint x="664" y="1571" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="12" style="curved=1;startArrow=none;endArrow=block;exitX=0;exitY=0.95;entryX=0.28;entryY=0;" target="13" value="選択中の同じキャラをタップ&#xa;    (その場でトリガー設定)&#xa;    AP - 1 消費">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="171" y="1571" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" source="12" style="curved=1;startArrow=none;endArrow=block;exitX=0.42;exitY=1;entryX=0.73;entryY=0;" target="13" value="移動可能マスをタップ&#xa;    → キャラを移動 + AP 消費">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="387" y="1571" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="35" edge="1" parent="1" source="12" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.1;entryX=0.21;entryY=1;" target="11" value="移動不可マス / 関係ないエリアタップ&#xa;    → 選択解除">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="683" y="1239" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="36" edge="1" parent="1" source="13" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="14" value="タップ / ドラッグ離し&#xa;    → メイン角度確定">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="37" edge="1" parent="1" source="14" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.1;entryY=0;" target="15" value="タップ / ドラッグ離し&#xa;    → サブ角度確定&#xa;    → 行動履歴を Turn に記録">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="279" y="2079" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="38" edge="1" parent="1" source="15" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.28;entryX=1;entryY=0.82;" target="12" value="YES: 次の行動を設定可能">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="776" y="2079" />
+              <mxPoint x="776" y="1571" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="39" edge="1" parent="1" source="15" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.21;entryY=0;" target="16" value="NO: 行動力 0&#xa;    「行動設定済み」テキスト表示&#xa;    選択解除">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="409" y="2413" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="16" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.32;entryX=0.84;entryY=1;" target="11" value="NO: 未完了キャラあり">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="969" y="2413" />
+              <mxPoint x="969" y="1239" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="16" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="17" value="YES: 全員完了">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="17" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="18" value="turnExecutionResult 受信&#xa;    isActionMode = true">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="18" style="curved=1;startArrow=none;endArrow=block;exitX=0.32;exitY=1;entryX=0;entryY=0.32;" target="19" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="433" y="3270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="19" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.05;entryX=1;entryY=0.72;" target="18" value="YES: 1500ms 後 次ステップへ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="3270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="19" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.27;entryX=1;entryY=0.89;" target="11" value="NO: 全ステップ完了&#xa;    completeUnitActionPhase&#xa;    AP リセット / 選択解除">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1108" y="3270" />
+              <mxPoint x="1108" y="1239" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

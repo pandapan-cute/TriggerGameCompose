@@ -26,6 +26,10 @@ export class UnitImage extends Phaser.GameObjects.Image {
    */
   updateUnitImage(unitTypeId: string) {
     this.setTexture(unitTypeId);
+    this.setDisplaySize(
+      this.gridConfig.hexRadius * 1.2,
+      this.gridConfig.hexRadius * 1.2
+    );
   }
 
   /**

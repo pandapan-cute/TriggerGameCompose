@@ -45,4 +45,7 @@
     "[x]",
     "NOTE"
   ],
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 }

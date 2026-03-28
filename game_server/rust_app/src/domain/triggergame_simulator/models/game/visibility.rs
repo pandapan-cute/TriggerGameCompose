@@ -157,8 +157,9 @@ impl Visibility {
     }
 
     fn offset_to_cube(&self, col: i32, row: i32) -> (i32, i32, i32) {
-        let x = col - (row - (row & 1)) / 2;
-        let z = row;
+        // 描画側(HexUtils)と同じく列パリティ基準(odd-q)で変換する
+        let x = col;
+        let z = row - (col - (col & 1)) / 2;
         let y = -x - z;
         (x, y, z)
     }
@@ -184,8 +185,9 @@ impl Visibility {
     }
 
     fn cube_to_offset(&self, cube: (i32, i32, i32)) -> Position {
-        let col = cube.0 + (cube.2 - (cube.2 & 1)) / 2;
-        let row = cube.2;
+        // 描画側(HexUtils)と同じく列パリティ基準(odd-q)で逆変換する
+        let col = cube.0;
+        let row = cube.2 + (cube.0 - (cube.0 & 1)) / 2;
         Position::new(col, row)
     }
 
@@ -259,3 +261,7 @@ impl Visibility {
         result
     }
 }
+
+#[cfg(test)]
+#[path = "visibility_test.rs"]
+mod tests;

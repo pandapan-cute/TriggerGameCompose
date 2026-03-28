@@ -16,6 +16,9 @@ export interface FieldViewServiceDeps {
 
 /**
  * ゲームの視界情報を更新するサービス
+ * 
+ * シーケンスに変更があった場合は以下も修正
+ * docs/03_詳細設計/シーケンス図/視界変移フロントフロー.drawio.svg
  */
 export class FieldViewService {
   // ゲーム設定定数
@@ -182,8 +185,9 @@ export class FieldViewService {
    * @returns キューブ座標 [x, y, z]
    */
   private offsetToCube(col: number, row: number): [number, number, number] {
-    const x = col - (row - (row & 1)) / 2;
-    const z = row;
+    // 描画側(HexUtils)と同じく列パリティ基準(odd-q)で変換する
+    const x = col;
+    const z = row - (col - (col & 1)) / 2;
     const y = -x - z;
     return [x, y, z];
   }
@@ -194,8 +198,9 @@ export class FieldViewService {
    * @returns オフセット座標
    */
   private cubeToOffset(cube: [number, number, number]): Position {
-    const col = cube[0] + (cube[2] - (cube[2] & 1)) / 2;
-    const row = cube[2];
+    // 描画側(HexUtils)と同じく列パリティ基準(odd-q)で逆変換する
+    const col = cube[0];
+    const row = cube[2] + (cube[0] - (cube[0] & 1)) / 2;
     return { col: Math.round(col), row: Math.round(row) };
   }
 

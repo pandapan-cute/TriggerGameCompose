@@ -74,6 +74,10 @@ DynamoDBのローカル版はdocker compose内で `amazon/dynamodb-local:latest`
 
 [ドメインモデリング](./docs/02_基本設計/ドメイン駆動設計/01_ドメインモデリング/ドメインモデリング.md)
 
+### スプリント振り返り・目標設定動画
+
+[スプリント振り返り・目標設定動画](https://www.youtube.com/@pandapan_cute)
+
 ### 連絡先
 
 [開発者のXアカウント](https://x.com/pandapan_cute)

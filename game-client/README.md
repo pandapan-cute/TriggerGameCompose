@@ -16,6 +16,8 @@ AWS Amplifyに環境変数NEXT_PUBLIC_WS_URLはWebsocketサーバーのURLを指
 
 ## テスト
 
+### Vitest
+
 ユニットテストにはVitestを使用しています。
 
 ユニットテストの詳細については[Vitest導入](../docs/05_単体テスト/Vitest導入.md)を参照してください。
@@ -24,3 +26,23 @@ AWS Amplifyに環境変数NEXT_PUBLIC_WS_URLはWebsocketサーバーのURLを指
 # テストの実行
 npm run test
 ```
+
+### Storybook
+
+Storybookはコンポーネントの描画テストやドキュメントとして利用します。
+
+```bash
+# Storybookの起動
+npm run storybook
+```
+
+#### 参考
+
+- [Next.js + ViteでのStorybook導入](https://storybook.js.org/docs/get-started/frameworks/nextjs-vite/?renderer=react)
+
+## カラー
+
+| カラー | 役割 |
+| --- | --- |
+| `blue-400` | 味方キャラクターを示す |
+| `red-400` | 敵キャラクターを示す |

@@ -1,0 +1,40 @@
+/* 左上と右下に交差する線を表示する */
+.crossCaptionArea {
+  position: relative;
+}
+.crossCaptionStart::before,
+.crossCaptionStart::after,
+.crossCaptionEnd::before,
+.crossCaptionEnd::after {
+  content: "";
+  position: absolute;
+  background-color: #00d9ff;
+  pointer-events: none;
+}
+/* 横線 */
+.crossCaptionStart::before {
+  top: 14px;
+  width: 70px;
+  height: 2px;
+}
+/* 縦線 */
+.crossCaptionStart::after {
+  top: 0;
+  left: 12px;
+  width: 2px;
+  height: 30px;
+}
+/* 横線 */
+.crossCaptionEnd::before {
+  bottom: 14px;
+  right: 0;
+  width: 70px;
+  height: 2px;
+}
+/* 縦線 */
+.crossCaptionEnd::after {
+  bottom: 0;
+  right: 12px;
+  width: 2px;
+  height: 30px;
+}

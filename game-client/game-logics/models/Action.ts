@@ -1,4 +1,4 @@
-import { UnitType } from "../config/CharacterConfig";
+import { UnitType } from "@/types/UnitType";
 import { GridConfig, Position } from "../types";
 
 /**

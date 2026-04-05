@@ -1,6 +1,6 @@
 import { CharacterManager } from "@/game-logics/characterManager";
-import { FieldViewState } from "@/game-logics/entities/FieldViewState";
 import { Turn } from "@/game-logics/models/Turn";
+import { GameResult } from "@/types/GameTypes";
 
 /**
  * TurnReplayController が参照する依存関係。
@@ -18,6 +18,7 @@ export interface TurnReplayControllerDeps {
   clearPlannedSteps?: () => void;
   restoreActionPointsText?: () => void;
   updateFieldViewVisibility: () => boolean[][] | undefined;
+  completeGame?: (result: GameResult) => void;
 }
 
 /**
@@ -63,6 +64,15 @@ export class TurnReplayController {
 
     const nextStepIndex = stepIndex + 1;
     this.deps.scene.time.delayedCall(1500, () => {
+      // ゲーム終了判定を行う。
+      const gameResult = this.checkGameIsCompleted();
+      if (gameResult !== "draw") {
+        console.log("ゲーム終了判定: 結果 =", gameResult);
+        // ゲーム終了処理をここに追加する（例: 結果画面への遷移）
+        this.deps.completeGame?.(gameResult);
+        return;
+      }
+
       // 次ステップが存在するかを判定する。
       if (nextStepIndex < steps.length) {
         // 未再生ステップが残っている場合: 次ステップ再生へ進む。
@@ -147,21 +157,25 @@ export class TurnReplayController {
   }
 
   /**
-   * Scene 初期化前に受け取ったターンをキューへ保持する。
-   *
-   * @param turn 保留するターン。
+   * ゲームの終了判定を行う。
+   * @returns {{ isPlayerDefeated: boolean; isEnemyDefeated: boolean; }} プレイヤーと敵の敗北状態を含むオブジェクト
    */
-  public queuePendingTurn(turn: Turn): void {
-    this.pendingTurn = turn;
-  }
+  private checkGameIsCompleted(): GameResult {
+    const playerAliveCharacters = this.deps.characterManager.playerCharacters.filter(char => char.getIsBailedOut() === false);
+    const enemyAliveCharacters = this.deps.characterManager.enemyCharacters.filter(char => char.getIsBailedOut() === false);
 
-  /**
-   * 保留中ターンがあれば取得し、内部キューから取り除いて返す。
-   */
-  public dequeuePendingTurn(): Turn | null {
-    const queuedTurn = this.pendingTurn;
-    this.pendingTurn = null;
-    return queuedTurn;
+    const isPlayerDefeated = playerAliveCharacters.length === 0;
+    const isEnemyDefeated = enemyAliveCharacters.length === 0;
+
+    if (isPlayerDefeated && isEnemyDefeated) {
+      return "draw";
+    } else if (isPlayerDefeated) {
+      return "lose";
+    } else if (isEnemyDefeated) {
+      return "win";
+    } else {
+      return "draw"; // デフォルトは引き分けとする
+    }
   }
 
   /**

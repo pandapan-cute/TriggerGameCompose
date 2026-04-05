@@ -13,8 +13,7 @@ import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
-import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
-import { FriendUnit } from "@/game-logics/models/FriendUnit";
+import { FriendUnit } from "@/types/FriendUnit";
 import { Step } from "@/game-logics/models/Step";
 import { Turn } from "@/game-logics/models/Turn";
 import { TriggerFanShape } from "../game-objects/graphics/TriggerFanShape";
@@ -30,6 +29,8 @@ import {
   type TurnReplayControllerDeps,
 } from "./controllers/TurnReplayController";
 import { FieldViewService } from "./services/FieldViewService";
+import { EnemyUnit } from "@/types/EnemyUnit";
+import { GameResult } from "@/types/GameTypes";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -54,7 +55,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void) {
+  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (result: GameResult, playerCharacterStates: PlayerCharacterState[], enemyCharacterStates: EnemyCharacterState[]) => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -355,6 +356,10 @@ export class GridCellsScene extends Phaser.Scene {
       },
       updateFieldViewVisibility: () => {
         return this.fieldViewService?.updateVisibility();
+      },
+      /** ゲームの終了処理を実行する */
+      completeGame: (result: GameResult) => {
+        this.completeGame(result, this.characterManager.playerCharacters, this.characterManager.enemyCharacters);
       }
     };
   }

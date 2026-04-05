@@ -179,6 +179,16 @@ export class CharacterManager {
    */
   resetAllActionPoints() {
     this.playerCharacters.forEach((character) => {
+      if (character.getIsBailedOut()) {
+        // ベイルアウト済みユニットは次ターン以降も行動設定対象外にする。
+        character.setActionPoints(0);
+        character.setActionPointsText(null);
+        character.getCompleteText()?.destroy();
+        character.setCompleteText(null);
+        character.resetCurrentStep();
+        return;
+      }
+
       const unitTypeId = character.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
       const characterStatus = CHARACTER_STATUS[unitTypeId];
       if (characterStatus) {

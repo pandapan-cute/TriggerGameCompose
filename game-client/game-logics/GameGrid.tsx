@@ -5,10 +5,12 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useRouter } from "next/navigation";
 import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
-import { FriendUnit } from "./models/FriendUnit";
-import { EnemyUnit } from "./models/EnemyUnit";
+import { FriendUnit } from "../types/FriendUnit";
+import { EnemyUnit } from "../types/EnemyUnit";
 import { Step } from "./models/Step";
 import { Turn } from "./models/Turn";
+import BattleResultPanel from "@/components/panels/BattleResultPanel/container";
+import { GameResult } from "@/types/GameTypes";
 
 interface GameGridProps {
   friendUnits: FriendUnit[];
@@ -29,6 +31,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
 
   // ゲームを表示するDOMコンテナのRef
   const containerRef = useRef<HTMLDivElement>(null);
+  const resultDialogRef = useRef<HTMLDialogElement>(null);
 
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"setup" | "action">("setup");
@@ -42,7 +45,6 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     removeMessageListener,
     playerId,
     gameId,
-    fieldView,
     connect,
   } = useWebSocket();
 
@@ -88,6 +90,31 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     }
   };
 
+  /** ゲームの終了ステート */
+  const [gameResult, setGameResult] = useState<GameResult | null>(null);
+  /** ゲーム終了処理 */
+  const handleCompleteGame = (result: GameResult) => {
+    console.log("ゲーム終了処理を実行します。結果:", result);
+    setGameResult(result);
+  };
+
+  // 対戦結果ダイアログの開閉制御
+  useEffect(() => {
+    const dialog = resultDialogRef.current;
+    if (!dialog) return;
+
+    if (gameResult !== null) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+      return;
+    }
+
+    if (dialog.open) {
+      dialog.close();
+    }
+  }, [gameResult]);
+
   // WebSocketでターン実行結果を受信したときの処理
   useEffect(() => {
     /** ターンの実行 */
@@ -111,6 +138,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         const hydratedTurn = Turn.fromJSON(data.turn);
         targetScene.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
         setGameMode("action");
+        setCurrentTurn(data.turn.getTurnNumber());
       }
     };
 
@@ -148,7 +176,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution);
+        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame);
         gridSceneRef.current = gridScene;
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
@@ -206,22 +234,26 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         </div>
       </div>
 
-      {/* 対戦終了ボタン */}
-      <div className="absolute bottom-2 right-2 bg-black bg-opacity-80 text-white p-2 rounded-lg shadow-lg text-sm z-50">
-        <button
-          onClick={handleEndMatch}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold transition-colors"
-        >
-          対戦終了
-        </button>
-      </div>
-
       {/* Phaserゲームが表示されるコンテナ */}
       <div
         ref={containerRef}
         className="w-full h-full border border-gray-300 rounded-lg overflow-hidden"
         style={{ maxWidth: "100vw", maxHeight: "100vh" }}
       />
+
+      {/* ゲーム終了時の結果表示 */}
+      <dialog
+        ref={resultDialogRef}
+        className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none overflow-hidden border-none bg-transparent p-0 backdrop:bg-black/80"
+        onCancel={(event) => event.preventDefault()}
+      >
+        {gameResult !== null && (
+          <BattleResultPanel
+            result={gameResult}
+            turn={currentTurn}
+          />
+        )}
+      </dialog>
     </div>
   );
 };

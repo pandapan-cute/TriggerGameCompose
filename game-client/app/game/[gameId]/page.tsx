@@ -1,8 +1,8 @@
 'use client';
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
-import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
-import { FriendUnit } from "@/game-logics/models/FriendUnit";
+import { EnemyUnit } from "@/types/EnemyUnit";
+import { FriendUnit } from "@/types/FriendUnit";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";

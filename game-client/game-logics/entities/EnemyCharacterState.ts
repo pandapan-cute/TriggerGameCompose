@@ -1,13 +1,13 @@
 'use client';
-import { UnitType } from "../config/CharacterConfig";
+import { EnemyUnit } from "@/types/EnemyUnit";
 import { TRIGGER_STATUS } from "../config/status";
 import { HexUtils } from "../hexUtils";
 import { Action } from "../models/Action";
-import { EnemyUnit } from "../models/EnemyUnit";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { GridConfig } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
+import { UnitType } from "@/types/UnitType";
 
 /**
  * 敵キャラクターごとの状態管理の型定義

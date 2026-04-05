@@ -1,7 +1,5 @@
-import { CharacterImageState } from "./entities/CharacterImageState";
 import { HexUtils } from "./hexUtils";
 import { GridConfig } from "./types";
-import { Position } from "./types";
 
 export class GameView {
 

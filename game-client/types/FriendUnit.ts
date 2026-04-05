@@ -1,5 +1,5 @@
-import { UnitType } from "../config/CharacterConfig";
-import { Position } from "../types";
+import { Position } from "./Position";
+import { UnitType } from "./UnitType";
 
 /**
  * 友軍ユニットのインターフェース

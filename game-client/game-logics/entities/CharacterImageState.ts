@@ -1,5 +1,5 @@
 'use client';
-import { UnitType } from "../config/CharacterConfig";
+import { UnitType } from "@/types/UnitType";
 import { TRIGGER_STATUS } from "../config/status";
 import { HexUtils } from "../hexUtils";
 import { Action } from "../models/Action";

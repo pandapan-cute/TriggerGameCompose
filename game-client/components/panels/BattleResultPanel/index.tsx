@@ -156,7 +156,7 @@ const BattleResultPanel = ({
 								<span className={`h-[3px] w-20 ${resultBarColorMap[result].left} ${styles.leftBarYou}`} />
 
 								<h2
-									className={`inline-block bg-clip-text text-3xl text-transparent md:text-5xl ${resultColorMap[result]} font-michroma`}
+									className={`inline-block bg-clip-text text-3xl text-transparent md:text-5xl ${resultColorMap[result]} font-michroma italic -skew-x-8 tracking-wider`}
 								>
 									{resultTextMap[result]}
 								</h2>

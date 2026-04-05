@@ -5,23 +5,25 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useRouter } from "next/navigation";
 import { GridCellsScene } from "./phaser/scenes/GridCellsScene";
-import { FriendUnit } from "./models/FriendUnit";
-import { EnemyUnit } from "./models/EnemyUnit";
+import { FriendUnit } from "../types/FriendUnit";
+import { EnemyUnit } from "../types/EnemyUnit";
 import { Step } from "./models/Step";
 import { Turn } from "./models/Turn";
+import { GameResult } from "@/types/GameTypes";
 
 interface GameGridProps {
   friendUnits: FriendUnit[];
   enemyUnits: EnemyUnit[];
   fieldSteps: number[][];
   visibility: boolean[][];
+  setGameResult: (result: GameResult) => void;
 }
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility }) => {
+const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility, setGameResult }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -29,6 +31,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
 
   // ゲームを表示するDOMコンテナのRef
   const containerRef = useRef<HTMLDivElement>(null);
+  const resultDialogRef = useRef<HTMLDialogElement>(null);
 
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"setup" | "action">("setup");
@@ -42,7 +45,6 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     removeMessageListener,
     playerId,
     gameId,
-    fieldView,
     connect,
   } = useWebSocket();
 
@@ -88,6 +90,12 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     }
   };
 
+  /** ゲーム終了処理 */
+  const handleCompleteGame = (result: GameResult) => {
+    console.log("ゲーム終了処理を実行します。結果:", result);
+    setGameResult(result);
+  };
+
   // WebSocketでターン実行結果を受信したときの処理
   useEffect(() => {
     /** ターンの実行 */
@@ -111,6 +119,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         const hydratedTurn = Turn.fromJSON(data.turn);
         targetScene.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
         setGameMode("action");
+        setCurrentTurn(data.turn.getTurnNumber());
       }
     };
 
@@ -148,7 +157,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution);
+        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame);
         gridSceneRef.current = gridScene;
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
@@ -204,16 +213,6 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
           </h3>
           <p className="text-xs text-gray-300">ターン {currentTurn}</p>
         </div>
-      </div>
-
-      {/* 対戦終了ボタン */}
-      <div className="absolute bottom-2 right-2 bg-black bg-opacity-80 text-white p-2 rounded-lg shadow-lg text-sm z-50">
-        <button
-          onClick={handleEndMatch}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold transition-colors"
-        >
-          対戦終了
-        </button>
       </div>
 
       {/* Phaserゲームが表示されるコンテナ */}

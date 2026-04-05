@@ -100,6 +100,11 @@ export class TurnPlanner {
     let totalRemainingPoints = 0;
 
     for (const character of this.deps.characterManager.playerCharacters) {
+      // ベイルアウト済みキャラクターは行動設定対象外として扱う。
+      if (character.getIsBailedOut()) {
+        continue;
+      }
+
       const actionPoints =
         this.deps.characterManager.findPlayerCharacterByImage(character.image)
           ?.getActionPoints() || 0;

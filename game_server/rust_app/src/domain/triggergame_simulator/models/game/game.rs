@@ -147,7 +147,7 @@ impl Game {
 
     /// ゲームが終了しているかどうか（最終ターンに達しているか）
     pub fn is_game_finished(&self) -> bool {
-        self.current_turn_number.value() >= Self::MAX_TURNS
+        self.current_turn_number.value() > Self::MAX_TURNS
     }
 
     // ゲッター

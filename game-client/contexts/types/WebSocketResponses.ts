@@ -1,7 +1,7 @@
-import { EnemyUnit } from "@/game-logics/models/EnemyUnit";
-import { FriendUnit } from "@/game-logics/models/FriendUnit";
+import { FriendUnit } from "@/types/FriendUnit";
 import { Turn } from "@/game-logics/models/Turn";
 import { MatchingStatus } from "@/types/MatchingTypes";
+import { EnemyUnit } from "@/types/EnemyUnit";
 
 /**
  * マッチメイキングレスポンスの型定義
@@ -21,6 +21,7 @@ export interface GetGameStateResponse {
   friendUnits: FriendUnit[];
   fieldSteps: number[][];
   visibility: boolean[][];
+  currentTurnNumber: number;
 }
 
 

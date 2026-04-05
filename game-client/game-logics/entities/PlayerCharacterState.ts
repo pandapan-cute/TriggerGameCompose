@@ -4,7 +4,7 @@ import { CharacterImageState } from "./CharacterImageState";
 import { HexUtils } from "../hexUtils";
 import { ActionCompletedText } from "../phaser/game-objects/texts/ActionCompletedText";
 import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
-import { FriendUnit } from "../models/FriendUnit";
+import { FriendUnit } from "../../types/FriendUnit";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { TRIGGER_STATUS } from "../config/status";

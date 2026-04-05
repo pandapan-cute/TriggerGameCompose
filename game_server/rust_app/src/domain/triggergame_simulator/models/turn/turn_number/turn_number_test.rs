@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "TurnNumberは6以下である必要があります")]
+    #[should_panic(expected = "TurnNumberは7以下である必要があります")]
     fn test_above_max() {
         TurnNumber::new(7);
     }

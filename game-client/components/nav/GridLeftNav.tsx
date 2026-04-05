@@ -31,7 +31,7 @@ export default function GridLeftNav({
   /** ナビゲーション項目 */
   const navigationItems: NavItem[] = [
     {
-      idx: 1,
+      idx: 0,
       id: "help",
       icon: (
         <img
@@ -47,7 +47,6 @@ export default function GridLeftNav({
             <div>• 左クリック: キャラクター選択・移動</div>
             <div>• 左クリック + ドラッグ: 画面移動</div>
             <div>• マウスホイール: ズーム切り替え</div>
-            <div>• 対戦終了: 現在の対戦を強制終了してサイトホームに戻ります</div>
           </div>
         </div>
       ),

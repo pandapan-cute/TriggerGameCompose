@@ -21,6 +21,7 @@ export interface GetGameStateResponse {
   friendUnits: FriendUnit[];
   fieldSteps: number[][];
   visibility: boolean[][];
+  currentTurnNumber: number;
 }
 
 

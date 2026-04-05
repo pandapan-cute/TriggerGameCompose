@@ -1,6 +1,6 @@
 import { UnitType } from "@/types/UnitType";
 import Image from "next/image";
-import styles from "./view.module.css";
+import styles from "./index.module.css";
 import { GameResult } from "@/types/GameTypes";
 import { FriendUnit } from "@/types/FriendUnit";
 import { EnemyUnit } from "@/types/EnemyUnit";
@@ -113,7 +113,7 @@ const TeamRow = ({ units, isPlayer }: { units: (FriendUnit | EnemyUnit)[]; isPla
 	return (
 		<div className="flex flex-wrap items-start justify-center gap-4 md:gap-6">
 			{units.map((unit) => (
-				<StatusCard key={unit.unitTypeId} unit={unit} isPlayer={isPlayer} />
+				<StatusCard key={unit.unitId} unit={unit} isPlayer={isPlayer} />
 			))}
 		</div>
 	);

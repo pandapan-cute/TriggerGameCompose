@@ -9,7 +9,6 @@ import { FriendUnit } from "../types/FriendUnit";
 import { EnemyUnit } from "../types/EnemyUnit";
 import { Step } from "./models/Step";
 import { Turn } from "./models/Turn";
-import BattleResultPanel from "@/components/panels/BattleResultPanel/container";
 import { GameResult } from "@/types/GameTypes";
 
 interface GameGridProps {
@@ -17,13 +16,14 @@ interface GameGridProps {
   enemyUnits: EnemyUnit[];
   fieldSteps: number[][];
   visibility: boolean[][];
+  setGameResult: (result: GameResult) => void;
 }
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility }) => {
+const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility, setGameResult }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -90,30 +90,11 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     }
   };
 
-  /** ゲームの終了ステート */
-  const [gameResult, setGameResult] = useState<GameResult | null>(null);
   /** ゲーム終了処理 */
   const handleCompleteGame = (result: GameResult) => {
     console.log("ゲーム終了処理を実行します。結果:", result);
     setGameResult(result);
   };
-
-  // 対戦結果ダイアログの開閉制御
-  useEffect(() => {
-    const dialog = resultDialogRef.current;
-    if (!dialog) return;
-
-    if (gameResult !== null) {
-      if (!dialog.open) {
-        dialog.showModal();
-      }
-      return;
-    }
-
-    if (dialog.open) {
-      dialog.close();
-    }
-  }, [gameResult]);
 
   // WebSocketでターン実行結果を受信したときの処理
   useEffect(() => {
@@ -240,20 +221,6 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         className="w-full h-full border border-gray-300 rounded-lg overflow-hidden"
         style={{ maxWidth: "100vw", maxHeight: "100vh" }}
       />
-
-      {/* ゲーム終了時の結果表示 */}
-      <dialog
-        ref={resultDialogRef}
-        className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none overflow-hidden border-none bg-transparent p-0 backdrop:bg-black/80"
-        onCancel={(event) => event.preventDefault()}
-      >
-        {gameResult !== null && (
-          <BattleResultPanel
-            result={gameResult}
-            turn={currentTurn}
-          />
-        )}
-      </dialog>
     </div>
   );
 };

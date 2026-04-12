@@ -1,7 +1,7 @@
 asyncapi: 2.6.0
 info:
   title: TriggerGame WebSocket API
-  version: 1.0.0
+  version: 1.0.1
   description: |
     TriggerGameのクライアントとサーバー間の通信に使用するWebSocket APIの定義です。
 
@@ -32,6 +32,7 @@ channels:
           - $ref: '#/components/messages/MatchmakingRequest'
           - $ref: '#/components/messages/GetGameStateRequest'
           - $ref: '#/components/messages/TurnExecutionRequest'
+          - $ref: '#/components/messages/EventMotionLabTimer'
           - $ref: '#/components/messages/PingRequest'
           - $ref: '#/components/messages/CancelMatchingRequest'
     subscribe:
@@ -42,6 +43,7 @@ channels:
           - $ref: '#/components/messages/MatchmakingResult'
           - $ref: '#/components/messages/GetGameStateResult'
           - $ref: '#/components/messages/TurnExecutionResult'
+          - $ref: '#/components/messages/NotifyGameState'
           - $ref: '#/components/messages/ErrorResponse'
           - $ref: '#/components/messages/PongResponse'
           - $ref: '#/components/messages/CancelMatchingResult'
@@ -108,6 +110,26 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/Step'
+
+    EventMotionLabTimer:
+      name: eventMotionLabTimer
+      title: 動きの設定締切タイマーイベント
+      payload:
+        type: object
+        required:
+          - action
+          - gameId
+          - turnNumber
+        properties:
+          action:
+            type: string
+            enum: [eventMotionLabTimer]
+          gameId:
+            type: string
+            description: ゲームステート情報取得の検索に使用するゲームID
+          turnNumber:
+            type: integer
+            description: 現在のターン番号
 
     PingRequest:
       name: ping
@@ -220,12 +242,42 @@ components:
         required:
           - action
           - turn
+          - motionLabEndTime
         properties:
           action:
             type: string
             enum: [turnExecutionResult]
           turn:
             $ref: '#/components/schemas/Turn'
+          motionLabEndTime:
+            type: string
+            format: date-time
+            description: 動きの設定モードの終了時間。クライアント側でこの時間に合わせて動きの設定を完了・リクエスト送信させるために使用。
+
+    NotifyGameState:
+      name: notifyGameState
+      title: ゲーム状態の通知
+      payload:
+        type: object
+        required:
+          - message
+          - state
+        properties:
+          action:
+            type: string
+            enum: [notifyGameState]
+            description: クライアントへのゲーム状態通知を表すアクション
+          message:
+            type: string
+            description: 画面に表示させるメッセージ
+          state:
+             type: string
+             enum: [inProgress, completed]
+             description: ゲームの状態を表すフィールド。inProgressはゲーム進行中、completedはゲーム終了を表す。
+          outcome:
+            type: string
+            enum: [win, lose, draw]
+            description: ゲームの結果を表すフィールド。stateがcompletedのときにwin, lose, drawのいずれかを取る。
 
     ErrorResponse:
       name: error
@@ -355,7 +407,6 @@ components:
         - stepId
         - actions
         - combats
-        - visibilityCells
       properties:
         stepId:
           type: string
@@ -367,12 +418,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Combat'
-        visibilityCells:
-          type: array
-          items:
-            type: array
-            items:
-              type: boolean
 
     Turn:
       type: object

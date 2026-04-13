@@ -37,6 +37,18 @@ services:
     networks:
       - trigger-game-network
 
+  # EventBridge Schedulerのローカル環境
+  eventbridge-scheduler:
+    build:
+      context: ./local-eventbridge-scheduler
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./local-eventbridge-scheduler:/app  # ソースコードをマウント
+    networks:
+      - trigger-game-network
+
   # Lambda開発環境（cargo-lambda watch）
   game-server:
     build: ./game_server
@@ -49,6 +61,7 @@ services:
       RUST_LOG: "game_server=debug,aws_sdk_dynamodb=debug"  # ログレベル
       DYNAMODB_ENDPOINT: http://dynamodb-local:8000
       WEBSOCKET_GATEWAY_ENDPOINT: http://websocket-apigateway:8080
+      EVENTBRIDGE_SCHEDULER_ENDPOINT: http://eventbridge-scheduler:8081
     networks:
       - trigger-game-network
 

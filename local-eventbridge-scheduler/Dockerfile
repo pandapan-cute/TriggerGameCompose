@@ -20,6 +20,6 @@ RUN apk --no-cache add ca-certificates
 # ビルドステージから実行ファイルをコピー
 COPY --from=build /bin/local-eventbridge-scheduler /bin/local-eventbridge-scheduler
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["/bin/local-eventbridge-scheduler"]

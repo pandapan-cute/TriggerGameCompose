@@ -20,6 +20,12 @@ pub struct GameConfig {
     defend_weight: f64,
     /// 最小ダメージ量
     min_damage: i32,
+    /// 動きの設定時間（秒）
+    motion_lab_seconds: i64,
+    /// ユニットの行動時間（秒）
+    action_time_seconds: i64,
+    /// 通信待ち時間（秒）
+    communication_wait_seconds: i64,
 }
 
 impl GameConfig {
@@ -35,6 +41,9 @@ impl GameConfig {
             damage_weight: 1.0,
             defend_weight: 1.0,
             min_damage: 20,
+            motion_lab_seconds: 150,
+            action_time_seconds: 15,
+            communication_wait_seconds: 5,
         }
     }
 
@@ -81,5 +90,20 @@ impl GameConfig {
     /// 最小ダメージ量を取得
     pub fn min_damage(&self) -> i32 {
         self.min_damage
+    }
+
+    /// 動きの設定時間を取得
+    pub fn motion_lab_seconds(&self) -> i64 {
+        self.motion_lab_seconds
+    }
+
+    /// ユニットの行動時間を取得
+    pub fn motion_execute_seconds(&self) -> i64 {
+        self.action_time_seconds
+    }
+
+    /// 通信待ち時間を取得
+    pub fn communication_wait_seconds(&self) -> i64 {
+        self.communication_wait_seconds
     }
 }

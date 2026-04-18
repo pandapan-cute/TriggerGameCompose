@@ -14,6 +14,7 @@ use crate::{
             get_game_state_usecase::GetGameStateUseCase, process_turn_usecase::ProcessTurnUseCase,
         },
         matchmaking::matchmaking_application_service::MatchmakingApplicationService,
+        schedule::schedule_maker::ScheduleMaker,
         websocket::{
             websocket_request::WebSocketRequest, websocket_response::WebSocketResponse,
             websocket_sender::WebSocketSender,
@@ -29,7 +30,10 @@ use crate::{
         },
     },
     infrastructure::{
-        aws::websocketapi_sender::WebSocketapiSender,
+        aws::{
+            eventbridge_schedule_maker::EventBridgeScheduleMaker,
+            websocketapi_sender::WebSocketapiSender,
+        },
         dynamodb::{
             connection_dynamodb_repository::DynamoDbConnectionRepository,
             game_dynamodb_repository::DynamoDbGameRepository,
@@ -135,6 +139,8 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                 let game_repository = DynamoDbGameRepository::new(dynamo_client.clone());
                 // ターン情報を保存するリポジトリ
                 let turn_repository = DynamoDbTurnRepository::new(dynamo_client.clone());
+                // スケジュールイベント作例用クラス
+                let schedule_maker = EventBridgeScheduleMaker::new().await;
 
                 // アクションごとの処理
                 match message {
@@ -155,6 +161,7 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                             Arc::new(unit_repository),
                             Arc::new(game_repository),
                             Arc::new(websocket_sender),
+                            Arc::new(schedule_maker),
                         );
                         // マッチメイキング処理を実行
                         service
@@ -189,6 +196,7 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
                             Arc::new(turn_repository),
                             Arc::new(unit_repository),
                             Arc::new(websocket_sender),
+                            Arc::new(schedule_maker),
                         );
                         service.execute(game_id, player_id, steps).await?;
                     }

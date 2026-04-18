@@ -31,22 +31,22 @@ impl EventBridgeScheduleMaker {
     ///
     /// 任意環境変数:
     /// - EVENTBRIDGE_SCHEDULER_GROUP_NAME（未指定時は `default`）
-    pub async fn new() -> Result<Self, String> {
+    pub async fn new() -> Self {
         let scheduler_client = EventBridgeSchedulerClient::new().await;
 
         let target_arn = std::env::var("EVENTBRIDGE_SCHEDULER_TARGET_ARN")
-            .map_err(|_| "EVENTBRIDGE_SCHEDULER_TARGET_ARN is not set".to_string())?;
+            .expect("EVENTBRIDGE_SCHEDULER_TARGET_ARN is not set");
         let role_arn = std::env::var("EVENTBRIDGE_SCHEDULER_ROLE_ARN")
-            .map_err(|_| "EVENTBRIDGE_SCHEDULER_ROLE_ARN is not set".to_string())?;
+            .expect("EVENTBRIDGE_SCHEDULER_ROLE_ARN is not set");
         let group_name = std::env::var("EVENTBRIDGE_SCHEDULER_GROUP_NAME")
             .unwrap_or_else(|_| "default".to_string());
 
-        Ok(Self {
+        Self {
             scheduler_client: scheduler_client.client().clone(),
             target_arn,
             role_arn,
             group_name,
-        })
+        }
     }
 
     /// テストやDI向けに各依存を明示して生成する。
@@ -112,7 +112,7 @@ impl ScheduleMaker for EventBridgeScheduleMaker {
 
         self.scheduler_client
             .create_schedule()
-            .name(schedule_name)
+            .name(&schedule_name)
             .group_name(&self.group_name)
             .schedule_expression(schedule_expression)
             .flexible_time_window(flexible_time_window)
@@ -120,7 +120,12 @@ impl ScheduleMaker for EventBridgeScheduleMaker {
             .action_after_completion(ActionAfterCompletion::Delete)
             .send()
             .await
-            .map_err(|e| format!("failed to create schedule event: {}", e))?;
+            .map_err(|e| {
+                format!(
+                    "failed to create schedule event. schedule_name={}, group_name={}, error={:?}",
+                    schedule_name, self.group_name, e
+                )
+            })?;
 
         Ok(())
     }

@@ -1,13 +1,16 @@
 #[cfg(test)]
 mod tests {
-    use super::super::current_turn_number::current_turn_number::CurrentTurnNumber;
     use super::super::game::Game;
     use super::super::game_id::game_id::GameId;
+    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::action::action::Action;
     use crate::domain::triggergame_simulator::models::action::action_type::action_type::{
         ActionType, ActionTypeValue,
     };
     use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+    use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
+    use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
+    use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use crate::domain::triggergame_simulator::models::step::step::Step;
     use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
     use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
@@ -16,8 +19,6 @@ mod tests {
         having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
         trigger_id::trigger_id::TriggerId, unit_type_id::unit_type_id::UnitTypeId, Unit,
     };
-    use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
-    use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use chrono::Utc;
     use uuid::Uuid;
 
@@ -106,13 +107,15 @@ mod tests {
     #[test]
     fn test_advance_turn_when_game_finished() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let current_turn_number = CurrentTurnNumber::new(6);
+        let current_turn_number = TurnNumber::new(6);
+        let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
         let player2_id = create_player_id();
         let visibility = Visibility::create();
         let mut game = Game::reconstruct(
             game_id,
             current_turn_number,
+            motion_lab_end_time,
             player1_id,
             player2_id,
             visibility,
@@ -127,7 +130,8 @@ mod tests {
     #[test]
     fn test_reconstruct_game() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let current_turn_number = CurrentTurnNumber::new(3);
+        let current_turn_number = TurnNumber::new(3);
+        let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
         let player2_id = create_player_id();
         let visibility = Visibility::create();
@@ -135,6 +139,7 @@ mod tests {
         let game = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
+            motion_lab_end_time,
             player1_id.clone(),
             player2_id.clone(),
             visibility,
@@ -147,7 +152,8 @@ mod tests {
     #[test]
     fn test_game_equality() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let current_turn_number = CurrentTurnNumber::new(1);
+        let current_turn_number = TurnNumber::new(1);
+        let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
         let player2_id = create_player_id();
         let visibility = Visibility::create();
@@ -155,6 +161,7 @@ mod tests {
         let game1 = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
+            motion_lab_end_time.clone(),
             player1_id.clone(),
             player2_id.clone(),
             visibility.clone(),
@@ -162,6 +169,7 @@ mod tests {
         let game2 = Game::reconstruct(
             game_id.clone(),
             current_turn_number.clone(),
+            motion_lab_end_time.clone(),
             player1_id.clone(),
             player2_id.clone(),
             visibility.clone(),
@@ -219,7 +227,8 @@ mod tests {
         );
         p2_turn.set_steps(vec![create_step(p2_action)]);
 
-        game.turn_start(&mut p1_turn, &mut p2_turn, &mut units).unwrap();
+        game.turn_start(&mut p1_turn, &mut p2_turn, &mut units)
+            .unwrap();
 
         assert_eq!(units[0].position(), &Position::new(3, 2));
         assert_eq!(units[1].position(), &Position::new(5, 2));

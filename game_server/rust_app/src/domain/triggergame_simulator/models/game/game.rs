@@ -1,12 +1,17 @@
-use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::models::step::step::Step;
 use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
+use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
 use crate::domain::triggergame_simulator::models::turn::Turn;
 use crate::domain::unit_management::models::unit::Unit;
+use crate::domain::{
+    player_management::models::player::player_id::player_id::PlayerId,
+    triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime,
+};
 
-use super::current_turn_number::current_turn_number::CurrentTurnNumber;
 use super::game_id::game_id::GameId;
+use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use uuid::Uuid;
 
@@ -15,7 +20,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Game {
     game_id: GameId,
-    current_turn_number: CurrentTurnNumber,
+    current_turn_number: TurnNumber,
+    motion_lab_end_time: MotionLabEndTime,
     player1_id: PlayerId,
     player2_id: PlayerId,
     visibility: Visibility,
@@ -27,7 +33,8 @@ impl Game {
     // privateなコンストラクタ
     pub fn new(
         game_id: GameId,
-        current_turn_number: CurrentTurnNumber,
+        current_turn_number: TurnNumber,
+        motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
         player2_id: PlayerId,
     ) -> Self {
@@ -38,16 +45,18 @@ impl Game {
             player1_id,
             player2_id,
             visibility,
+            motion_lab_end_time,
         }
     }
 
     /// 新規ゲームの生成
     pub fn create(game_id: GameId, player1_id: &PlayerId, player2_id: &PlayerId) -> Self {
-        let current_turn_number = CurrentTurnNumber::initial();
-
+        let current_turn_number = TurnNumber::initial();
+        let motion_lab_end_time = MotionLabEndTime::initial();
         Self::new(
             game_id,
             current_turn_number,
+            motion_lab_end_time,
             player1_id.clone(),
             player2_id.clone(),
         )
@@ -56,7 +65,8 @@ impl Game {
     /// ゲームの再構築（リポジトリから取得時に使用）
     pub fn reconstruct(
         game_id: GameId,
-        current_turn_number: CurrentTurnNumber,
+        current_turn_number: TurnNumber,
+        motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
         player2_id: PlayerId,
         visibility: Visibility,
@@ -64,6 +74,7 @@ impl Game {
         Self {
             game_id,
             current_turn_number,
+            motion_lab_end_time,
             player1_id,
             player2_id,
             visibility,
@@ -141,13 +152,13 @@ impl Game {
         }
 
         let next_turn_value = self.current_turn_number.value() + 1;
-        self.current_turn_number = CurrentTurnNumber::new(next_turn_value);
+        self.current_turn_number = TurnNumber::new(next_turn_value);
         Ok(())
     }
 
     /// ゲームが終了しているかどうか（最終ターンに達しているか）
     pub fn is_game_finished(&self) -> bool {
-        self.current_turn_number.value() > Self::MAX_TURNS
+        self.current_turn_number.value() >= Self::MAX_TURNS
     }
 
     // ゲッター
@@ -155,8 +166,12 @@ impl Game {
         &self.game_id
     }
 
-    pub fn current_turn_number(&self) -> &CurrentTurnNumber {
+    pub fn current_turn_number(&self) -> &TurnNumber {
         &self.current_turn_number
+    }
+
+    pub fn motion_lab_end_time(&self) -> &MotionLabEndTime {
+        &self.motion_lab_end_time
     }
 
     pub fn player1_id(&self) -> &PlayerId {

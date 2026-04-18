@@ -1,10 +1,14 @@
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::{
     application::game::{enemy_unit_dto::EnemyUnitDto, friend_unit_dto::FriendUnitDto},
     domain::{
         matching_management::models::matching::MatchingStatusValue,
-        triggergame_simulator::models::turn::Turn,
+        triggergame_simulator::models::{
+            game::motion_lab_end_time::MotionLabEndTime,
+            turn::{turn_number::turn_number::TurnNumber, Turn},
+        },
     },
 };
 
@@ -22,6 +26,8 @@ pub enum WebSocketResponse {
         status: MatchingStatusValue,
         /// ゲームID
         game_id: Option<String>,
+        /// 動きの設定の終了時間
+        motion_lab_end_time: Option<MotionLabEndTime>,
         /// 敵ユニット情報
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報
@@ -33,7 +39,9 @@ pub enum WebSocketResponse {
     /// ゲーム状態取得結果
     GetGameStateResult {
         // ゲームのターン番号
-        current_turn_number: u32,
+        current_turn_number: TurnNumber,
+        /// 動きの設定の終了時間
+        motion_lab_end_time: MotionLabEndTime,
         /// 敵ユニット情報
         enemy_units: Vec<EnemyUnitDto>,
         /// 味方ユニット情報
@@ -48,6 +56,8 @@ pub enum WebSocketResponse {
     TurnExecutionResult {
         /// ターン情報
         turn: Turn,
+        /// 次ターンの動きの設定提出時間
+        motion_lab_end_time: MotionLabEndTime,
     },
 
     /// エラーレスポンス

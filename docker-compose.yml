@@ -44,6 +44,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
+    environment:
+      LAMBDA_INVOKE_URL: http://game-server:9000/2015-03-31/functions/game_server/invocations
     volumes:
       - ./local-eventbridge-scheduler:/app  # ソースコードをマウント
     networks:
@@ -62,6 +64,9 @@ services:
       DYNAMODB_ENDPOINT: http://dynamodb-local:8000
       WEBSOCKET_GATEWAY_ENDPOINT: http://websocket-apigateway:8080
       EVENTBRIDGE_SCHEDULER_ENDPOINT: http://eventbridge-scheduler:8081
+      EVENTBRIDGE_SCHEDULER_TARGET_ARN: "arn:aws:lambda:us-east-1:123456789012:function:trigger-game-lambda"  # ダミーARN
+      EVENTBRIDGE_SCHEDULER_ROLE_ARN: "arn:aws:iam::123456789012:role/trigger-game-scheduler-role"  # ダミーARN
+      EVENTBRIDGE_SCHEDULER_GROUP_NAME: "triggergame-motionlab-timer"
     networks:
       - trigger-game-network
 

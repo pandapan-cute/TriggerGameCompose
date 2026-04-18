@@ -2,10 +2,11 @@
 
 use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
-use crate::domain::triggergame_simulator::models::game::current_turn_number::current_turn_number::CurrentTurnNumber;
 use crate::domain::triggergame_simulator::models::game::game::Game;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
+use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
 use crate::domain::triggergame_simulator::repositories::game_repository::GameRepository;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -37,6 +38,10 @@ impl DynamoDbGameRepository {
         item.insert(
             "current_turn_number".to_string(),
             AttributeValue::N(game.current_turn_number().value().to_string()),
+        );
+        item.insert(
+            "motion_lab_end_time".to_string(),
+            AttributeValue::S(game.motion_lab_end_time().value().to_rfc3339()),
         );
         item.insert(
             "player1_id".to_string(),
@@ -136,6 +141,10 @@ impl GameRepository for DynamoDbGameRepository {
             .get("current_turn_number")
             .and_then(|v| v.as_n().ok())
             .ok_or("現在のターン番号が見つかりませんでした。")?;
+        let motion_lab_end_time_str = game_item
+            .get("motion_lab_end_time")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("動きの設定の終了時間が見つかりませんでした。")?;
         let player1_id_str = game_item
             .get("player1_id")
             .and_then(|v| v.as_s().ok())
@@ -177,11 +186,15 @@ impl GameRepository for DynamoDbGameRepository {
 
         Ok(Game::reconstruct(
             GameId::new(game_id_str.to_string()),
-            CurrentTurnNumber::new(
+            TurnNumber::new(
                 current_turn_number_str
                     .parse::<i32>()
                     .map_err(|e| format!("現在のターン番号の解析に失敗しました: {}", e))?,
             ),
+            motion_lab_end_time_str
+                .parse::<chrono::DateTime<chrono::Utc>>()
+                .map_err(|e| format!("動きの設定の終了時間の解析に失敗しました: {}", e))
+                .map(MotionLabEndTime::new)?,
             PlayerId::new(player1_id_str.to_string()),
             PlayerId::new(player2_id_str.to_string()),
             visibility,

@@ -10,12 +10,18 @@ import { EnemyUnit } from "../types/EnemyUnit";
 import { Step } from "./models/Step";
 import { Turn } from "./models/Turn";
 import { GameResult } from "@/types/GameTypes";
+import MotionLabDialog, { MotionLabDialogHandle } from "@/components/dialogs/MotionMode/MotionLabDialog";
+import MotionExecuteDialog, { MotionExecuteDialogHandle } from "@/components/dialogs/MotionMode/MotionExecuteDialog";
+import TurnStateMotionLabPanel from "@/components/panels/TurnStatePanel/MotionLab";
+import TurnStateMotionExecutePanel from "@/components/panels/TurnStatePanel/MotionExecute";
+import { MAX_TURN } from "./config/game-config";
 
 interface GameGridProps {
   friendUnits: FriendUnit[];
   enemyUnits: EnemyUnit[];
   fieldSteps: number[][];
   visibility: boolean[][];
+  motionLabEndTime: Date;
   setGameResult: (result: GameResult) => void;
 }
 
@@ -23,7 +29,7 @@ interface GameGridProps {
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility, setGameResult }) => {
+const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, setGameResult }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -34,8 +40,11 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
   const resultDialogRef = useRef<HTMLDialogElement>(null);
 
   // ゲームモードの状態管理
-  const [gameMode, setGameMode] = useState<"setup" | "action">("setup");
+  const [gameMode, setGameMode] = useState<"lab" | "execute">("lab");
   const [currentTurn, setCurrentTurn] = useState<number>(1);
+  const [motionLabEndTimeState, setMotionLabEndTimeState] = useState<Date>(motionLabEndTime);
+  const motionLabDialogRef = useRef<MotionLabDialogHandle>(null);
+  const motionExecuteDialogRef = useRef<MotionExecuteDialogHandle>(null);
 
   // WebSocketコンテキストを使用
   const {
@@ -96,6 +105,13 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     setGameResult(result);
   };
 
+  /** ユニットの行動終了処理 */
+  const handleFinishMotionExecute = () => {
+    console.log("ユニットの行動終了処理を実行します。");
+    setGameMode("lab");
+    motionLabDialogRef.current?.show();
+  };
+
   // WebSocketでターン実行結果を受信したときの処理
   useEffect(() => {
     /** ターンの実行 */
@@ -118,8 +134,10 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
 
         const hydratedTurn = Turn.fromJSON(data.turn);
         targetScene.executeTurn(hydratedTurn); // Phaserシーンにターン情報を渡して実行
-        setGameMode("action");
-        setCurrentTurn(data.turn.getTurnNumber());
+        setGameMode("execute");
+        motionExecuteDialogRef.current?.show();
+        setCurrentTurn(data.turn.getTurnNumber() + 1);
+        setMotionLabEndTimeState(new Date(data.motionLabEndTime));
       }
     };
 
@@ -157,7 +175,7 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame);
+        const gridScene = new GridCellsScene(friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame, handleFinishMotionExecute,);
         gridSceneRef.current = gridScene;
 
         // Phaserゲームの設定（画面サイズに合わせて調整）
@@ -190,6 +208,9 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
     // Phaser読み込みを実行
     loadPhaser();
 
+    // 動きの設定の開始
+    motionLabDialogRef.current?.show();
+
     // コンポーネントのクリーンアップ関数
     return () => {
       if (gameRef.current) {
@@ -206,13 +227,12 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
       <GridLeftNav />
 
       {/* ゲームモード表示 */}
-      <div className="absolute top-2 right-2 bg-black bg-opacity-80 text-white p-2 rounded-lg shadow-lg text-sm z-50">
-        <div className="text-center">
-          <h3 className="font-bold mb-2">
-            {gameMode === "setup" ? "動きの設定モード" : "ユニットの行動モード"}
-          </h3>
-          <p className="text-xs text-gray-300">ターン {currentTurn}</p>
-        </div>
+      <div className="absolute top-2 right-2 text-white p-2 rounded-lg shadow-lg text-sm z-50">
+        {gameMode === "lab" ? (
+          <TurnStateMotionLabPanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
+        ) : (
+          <TurnStateMotionExecutePanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
+        )}
       </div>
 
       {/* Phaserゲームが表示されるコンテナ */}
@@ -221,6 +241,10 @@ const GameGrid: React.FC<GameGridProps> = ({ friendUnits, enemyUnits, fieldSteps
         className="w-full h-full border border-gray-300 rounded-lg overflow-hidden"
         style={{ maxWidth: "100vw", maxHeight: "100vh" }}
       />
+
+      {/* 動きの設定とユニットの行動のダイアログ表示 */}
+      <MotionLabDialog ref={motionLabDialogRef} turn={currentTurn}></MotionLabDialog>
+      <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurn}></MotionExecuteDialog>
     </div>
   );
 };

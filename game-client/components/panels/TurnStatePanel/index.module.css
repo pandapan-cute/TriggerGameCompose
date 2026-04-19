@@ -1,0 +1,35 @@
+.container {
+  position: relative;
+  width: 64vh;
+}
+
+.motionState {
+  font-family: 'michroma', sans-serif;
+  font-style: italic;
+  font-size: 4.8vh;
+  white-space: nowrap;
+}
+
+.remainingTime{
+  font-family: 'michroma', sans-serif;
+  font-size: 6vh;
+  margin-left: 24px;
+}
+
+.turnInfo {
+  position: absolute;
+  font-family: 'michroma', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 2.8vh;
+  line-height: 4vh;
+  right: 24px;
+  bottom: 16px;
+}
+
+.currentTurn {
+  font-size: 3.6vh;
+  font-weight: bold;
+  color: #13a9b7ff;
+}

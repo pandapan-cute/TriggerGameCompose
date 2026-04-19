@@ -10,6 +10,7 @@ export interface MatchmakingResponse {
   action: "matchmakingResult";
   status: MatchingStatus;
   gameId?: string;
+  motionLabEndTime?: string;
 }
 
 /**
@@ -22,6 +23,7 @@ export interface GetGameStateResponse {
   fieldSteps: number[][];
   visibility: boolean[][];
   currentTurnNumber: number;
+  motionLabEndTime: string;
 }
 
 
@@ -29,6 +31,7 @@ export interface GetGameStateResponse {
 export interface TurnActionsResponse {
   action: "turnExecutionResult";
   turn: Turn;
+  motionLabEndTime: string;
 }
 
 /** ゲームのキャンセルを受信 */

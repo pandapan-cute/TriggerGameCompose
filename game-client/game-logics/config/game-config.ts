@@ -1,0 +1,1 @@
+export const MAX_TURN = 6;

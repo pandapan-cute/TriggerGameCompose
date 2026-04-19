@@ -36,6 +36,7 @@ export default function GamePage() {
   const [visibility, setVisibility] = useState<boolean[][]>([]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [currentTurn, setCurrentTurn] = useState<number>(1);
+  const [motionLabEndTime, setMotionLabEndTime] = useState<Date>(new Date());
   const resultDialogRef = useRef<HTMLDialogElement>(null);
 
   const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[]) => {
@@ -64,6 +65,7 @@ export default function GamePage() {
         setFieldSteps(data.fieldSteps);
         setVisibility(data.visibility);
         setCurrentTurn(data.currentTurnNumber);
+        setMotionLabEndTime(new Date(data.motionLabEndTime));
         checkGameState(data.friendUnits, data.enemyUnits);
       }
     };
@@ -113,7 +115,7 @@ export default function GamePage() {
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && (
         <div className="w-full h-full">
-          <GameGrid friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} setGameResult={setGameResult} />
+          <GameGrid friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} setGameResult={setGameResult} />
         </div>
       )}
     </div>

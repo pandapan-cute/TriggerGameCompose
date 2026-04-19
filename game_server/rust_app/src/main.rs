@@ -3,6 +3,7 @@ use std::sync::Arc;
 use aws_sdk_apigatewaymanagement::primitives::Blob;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use infrastructure::aws::{
     apigateway_client::create_apigateway_client, dynamodb_client::create_dynamodb_client,
@@ -14,7 +15,9 @@ use crate::{
             get_game_state_usecase::GetGameStateUseCase, process_turn_usecase::ProcessTurnUseCase,
         },
         matchmaking::matchmaking_application_service::MatchmakingApplicationService,
-        schedule::schedule_maker::ScheduleMaker,
+        schedule::{
+            motion_lab_limit_usecase::MotionLabLimitUseCase, schedule_maker::ScheduleMaker,
+        },
         websocket::{
             websocket_request::WebSocketRequest, websocket_response::WebSocketResponse,
             websocket_sender::WebSocketSender,
@@ -73,13 +76,53 @@ struct Response {
     body: String,
 }
 
-async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> {
+/// WebSocketイベントかどうかを判定する。
+fn is_websocket_event(event: &Value) -> bool {
+    event
+        .get("requestContext")
+        .and_then(|request_context| request_context.get("routeKey"))
+        .is_some()
+}
+
+/// スケジュールイベントかどうかを判定する。
+fn is_scheduler_event(event: &Value) -> bool {
+    matches!(
+        event
+            .get("eventType")
+            .and_then(|event_type| event_type.as_str()),
+        Some("turnTimeout")
+    )
+}
+
+/// Lambda関数のエントリーポイント。
+/// WebSocketイベントとスケジュールイベントの判定はこの関数内で行い、各イベントタイプに応じた処理関数を呼び出す。
+async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
     println!("Received event");
     let (event, _context) = event.into_parts();
 
+    if is_websocket_event(&event) {
+        let websocket_event: WebSocketEvent = serde_json::from_value(event)?;
+        return handle_websocket_event(websocket_event).await;
+    }
+
+    if is_scheduler_event(&event) {
+        let scheduler_event: SchedulerEvent = serde_json::from_value(event)?;
+        return handle_scheduler_event(scheduler_event).await;
+    }
+
+    println!("Unsupported event payload: {}", event);
+
+    Ok(Response {
+        status_code: 400,
+        body: "Unsupported event payload".to_string(),
+    })
+}
+
+/// WebSocketイベントの処理関数。ルートごとの処理やアクションごとの処理を実装する。
+async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error> {
     let apigateway_client = create_apigateway_client(
-        &event.request_context.domain_name,
-        &event.request_context.stage,
+        Some(&event.request_context.domain_name),
+        Some(&event.request_context.stage),
     )
     .await;
 
@@ -219,6 +262,55 @@ async fn handler(event: LambdaEvent<WebSocketEvent>) -> Result<Response, Error> 
     Ok(Response {
         status_code: 200,
         body: "OK".to_string(),
+    })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SchedulerEvent {
+    game_id: String,
+    turn_number: i32,
+    event_type: String,
+}
+
+/// スケジュールイベントの処理関数。EventBridge Scheduler からのイベントを受け取り、ターンタイムアウト処理を実装する。
+async fn handle_scheduler_event(event: SchedulerEvent) -> Result<Response, Error> {
+    println!(
+        "Received scheduler event: event_type={}, game_id={}, turn_number={}",
+        event.event_type, event.game_id, event.turn_number
+    );
+
+    let apigateway_client = create_apigateway_client(None, None).await;
+
+    // DynamoDBクライアントの作成
+    let dynamo_client = create_dynamodb_client().await;
+    // コネクションIDを保存するリポジトリ
+    let connection_repository = DynamoDbConnectionRepository::new(dynamo_client.clone());
+    // ユニット情報を保存するリポジトリ
+    let unit_repository = DynamoDbUnitRepository::new(dynamo_client.clone());
+    // ゲーム情報を保存するリポジトリ
+    let game_repository = DynamoDbGameRepository::new(dynamo_client.clone());
+    // ターン情報を保存するリポジトリ
+    let turn_repository = DynamoDbTurnRepository::new(dynamo_client.clone());
+
+    let usecase = MotionLabLimitUseCase::new(
+        Arc::new(connection_repository),
+        Arc::new(game_repository),
+        Arc::new(turn_repository),
+        Arc::new(WebSocketapiSender::new(apigateway_client)),
+    );
+
+    usecase
+        .execute(event.game_id, event.turn_number)
+        .await
+        .map_err(|e| {
+            println!("スケジューライベントの実行に失敗しました: {}", e);
+            Error::from(e)
+        })?;
+
+    Ok(Response {
+        status_code: 200,
+        body: "Scheduler event accepted".to_string(),
     })
 }
 

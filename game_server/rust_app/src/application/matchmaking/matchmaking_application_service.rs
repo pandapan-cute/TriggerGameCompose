@@ -20,8 +20,8 @@ use crate::{
             configs::game_config::GameConfig,
             models::{
                 game::{
-                    game::Game, game_id::game_id::GameId, motion_lab_end_time::MotionLabEndTime,
-                    visibility,
+                    game::Game, game_id::game_id::GameId, game_state::GameState,
+                    motion_lab_end_time::MotionLabEndTime, visibility,
                 },
                 turn::turn_number::turn_number::TurnNumber,
             },
@@ -127,6 +127,7 @@ impl MatchmakingApplicationService {
                 let game_id = GameId::new(matching.matching_id().value().to_string());
                 let game = Game::new(
                     game_id.clone(),
+                    GameState::initial(),
                     TurnNumber::initial(),
                     MotionLabEndTime::initial(),
                     matching.player1_id().clone(),

@@ -4,6 +4,7 @@ use crate::domain::matching_management::repositories::matching_repository::Match
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game::Game;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+use crate::domain::triggergame_simulator::models::game::game_state::GameState;
 use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
@@ -34,6 +35,10 @@ impl DynamoDbGameRepository {
         item.insert(
             "game_id".to_string(),
             AttributeValue::S(game.game_id().value().to_string()),
+        );
+        item.insert(
+            "game_state".to_string(),
+            AttributeValue::S(game.game_state().value().to_string()),
         );
         item.insert(
             "current_turn_number".to_string(),
@@ -137,6 +142,10 @@ impl GameRepository for DynamoDbGameRepository {
             .get("game_id")
             .and_then(|v| v.as_s().ok())
             .ok_or("ゲームIDが見つかりませんでした。")?;
+        let game_state_str = game_item
+            .get("game_state")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("ゲームステートが見つかりませんでした。")?;
         let current_turn_number_str = game_item
             .get("current_turn_number")
             .and_then(|v| v.as_n().ok())
@@ -186,6 +195,7 @@ impl GameRepository for DynamoDbGameRepository {
 
         Ok(Game::reconstruct(
             GameId::new(game_id_str.to_string()),
+            GameState::new_string(game_state_str.to_string()),
             TurnNumber::new(
                 current_turn_number_str
                     .parse::<i32>()

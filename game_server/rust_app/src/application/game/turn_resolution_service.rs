@@ -234,6 +234,10 @@ impl TurnResolutionService {
         game_id: &GameId,
         turn_number: &TurnNumber,
     ) -> Result<(), String> {
+        if turn_number.is_complete() {
+            // ゲームが終了している場合はタイマーをセットしない
+            return Ok(());
+        }
         // 次の動きの設定の提出時間を作成
         let game_config = GameConfig::get_game_config();
         let motion_lab_limit_time = Utc::now()

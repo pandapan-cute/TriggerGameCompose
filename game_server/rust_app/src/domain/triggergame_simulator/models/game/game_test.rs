@@ -2,12 +2,14 @@
 mod tests {
     use super::super::game::Game;
     use super::super::game_id::game_id::GameId;
+    use crate::application::game;
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::action::action::Action;
     use crate::domain::triggergame_simulator::models::action::action_type::action_type::{
         ActionType, ActionTypeValue,
     };
     use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+    use crate::domain::triggergame_simulator::models::game::game_state::GameState;
     use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
     use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
     use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
@@ -107,6 +109,7 @@ mod tests {
     #[test]
     fn test_advance_turn_when_game_finished() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
+        let game_state = GameState::initial();
         let current_turn_number = TurnNumber::new(6);
         let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
@@ -114,6 +117,7 @@ mod tests {
         let visibility = Visibility::create();
         let mut game = Game::reconstruct(
             game_id,
+            game_state,
             current_turn_number,
             motion_lab_end_time,
             player1_id,
@@ -130,6 +134,7 @@ mod tests {
     #[test]
     fn test_reconstruct_game() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
+        let game_state = GameState::initial();
         let current_turn_number = TurnNumber::new(3);
         let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
@@ -138,6 +143,7 @@ mod tests {
 
         let game = Game::reconstruct(
             game_id.clone(),
+            game_state,
             current_turn_number.clone(),
             motion_lab_end_time,
             player1_id.clone(),
@@ -152,6 +158,7 @@ mod tests {
     #[test]
     fn test_game_equality() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
+        let game_state = GameState::initial();
         let current_turn_number = TurnNumber::new(1);
         let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
@@ -160,6 +167,7 @@ mod tests {
 
         let game1 = Game::reconstruct(
             game_id.clone(),
+            game_state.clone(),
             current_turn_number.clone(),
             motion_lab_end_time.clone(),
             player1_id.clone(),
@@ -168,6 +176,7 @@ mod tests {
         );
         let game2 = Game::reconstruct(
             game_id.clone(),
+            game_state,
             current_turn_number.clone(),
             motion_lab_end_time.clone(),
             player1_id.clone(),

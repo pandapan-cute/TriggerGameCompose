@@ -90,7 +90,7 @@ impl ScheduleMaker for EventBridgeScheduleMaker {
         let schedule_name = self.build_schedule_name(game_id, turn_number);
         let schedule_expression = self.build_schedule_expression(time);
 
-        // スケジュール起動先Lambdaへ渡すペイロード。
+        // EventBridge Scheduler から Lambda へ直接渡される通常イベントペイロード。
         let payload = json!({
             "gameId": game_id.value(),
             "turnNumber": turn_number.value(),

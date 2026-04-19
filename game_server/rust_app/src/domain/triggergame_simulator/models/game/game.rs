@@ -1,3 +1,5 @@
+use crate::application::game;
+use crate::domain::triggergame_simulator::models::game::game_state::{GameState, GameStateValue};
 use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::models::step::step::Step;
@@ -20,6 +22,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Game {
     game_id: GameId,
+    game_state: GameState,
     current_turn_number: TurnNumber,
     motion_lab_end_time: MotionLabEndTime,
     player1_id: PlayerId,
@@ -33,6 +36,7 @@ impl Game {
     // privateなコンストラクタ
     pub fn new(
         game_id: GameId,
+        game_state: GameState,
         current_turn_number: TurnNumber,
         motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
@@ -41,6 +45,7 @@ impl Game {
         let visibility = Visibility::create();
         Self {
             game_id,
+            game_state,
             current_turn_number,
             player1_id,
             player2_id,
@@ -51,10 +56,12 @@ impl Game {
 
     /// 新規ゲームの生成
     pub fn create(game_id: GameId, player1_id: &PlayerId, player2_id: &PlayerId) -> Self {
+        let game_state = GameState::initial();
         let current_turn_number = TurnNumber::initial();
         let motion_lab_end_time = MotionLabEndTime::initial();
         Self::new(
             game_id,
+            game_state,
             current_turn_number,
             motion_lab_end_time,
             player1_id.clone(),
@@ -65,6 +72,7 @@ impl Game {
     /// ゲームの再構築（リポジトリから取得時に使用）
     pub fn reconstruct(
         game_id: GameId,
+        game_state: GameState,
         current_turn_number: TurnNumber,
         motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
@@ -73,6 +81,7 @@ impl Game {
     ) -> Self {
         Self {
             game_id,
+            game_state,
             current_turn_number,
             motion_lab_end_time,
             player1_id,
@@ -166,6 +175,10 @@ impl Game {
         &self.game_id
     }
 
+    pub fn game_state(&self) -> &GameState {
+        &self.game_state
+    }
+
     pub fn current_turn_number(&self) -> &TurnNumber {
         &self.current_turn_number
     }
@@ -195,6 +208,10 @@ impl Game {
         } else {
             Err("指定されたプレイヤーIDはこのゲームの参加者ではありません".to_string())
         }
+    }
+
+    pub fn complete_game_state(&mut self) {
+        self.game_state.set_completed();
     }
 }
 

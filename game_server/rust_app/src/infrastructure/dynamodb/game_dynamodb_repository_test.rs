@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+    use crate::domain::triggergame_simulator::models::game::game_state::GameState;
     use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
     use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
     use crate::domain::triggergame_simulator::repositories::game_repository::GameRepository;
@@ -42,6 +43,7 @@ mod tests {
     async fn test_save_game() {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
+            GameState::initial(),
             TurnNumber::new(1),
             MotionLabEndTime::initial(),
             PlayerId::new(Uuid::new_v4().to_string()),
@@ -63,6 +65,7 @@ mod tests {
     async fn test_update_game() {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
+            GameState::initial(),
             TurnNumber::new(2),
             MotionLabEndTime::initial(),
             PlayerId::new(Uuid::new_v4().to_string()),
@@ -88,6 +91,10 @@ mod tests {
         item.insert(
             "game_id".to_string(),
             AttributeValue::S(game_id.value().to_string()),
+        );
+        item.insert(
+            "game_state".to_string(),
+            AttributeValue::S(GameState::initial().fmt_value()),
         );
         item.insert(
             "current_turn_number".to_string(),

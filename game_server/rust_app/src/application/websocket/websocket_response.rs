@@ -6,7 +6,10 @@ use crate::{
     domain::{
         matching_management::models::matching::MatchingStatusValue,
         triggergame_simulator::models::{
-            game::motion_lab_end_time::MotionLabEndTime,
+            game::{
+                game_state::{GameState, GameStateValue},
+                motion_lab_end_time::MotionLabEndTime,
+            },
             turn::{turn_number::turn_number::TurnNumber, Turn},
         },
     },
@@ -60,6 +63,16 @@ pub enum WebSocketResponse {
         motion_lab_end_time: MotionLabEndTime,
     },
 
+    /// ゲーム状態の通知
+    NotifyGameState {
+        /// ゲーム状態のメッセージ
+        message: String,
+        /// ゲーム状態の値
+        state: GameStateValue,
+        /// 勝敗
+        outcome: Option<OutcomeValue>,
+    },
+
     /// エラーレスポンス
     Error { message: String },
 
@@ -71,4 +84,12 @@ impl WebSocketResponse {
     pub fn to_json(&self) -> Result<String, String> {
         serde_json::to_string(self).map_err(|e| format!("Serialization error: {}", e))
     }
+}
+
+/// 勝敗の値
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum OutcomeValue {
+    Win,
+    Lose,
+    Draw,
 }

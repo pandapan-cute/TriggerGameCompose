@@ -362,44 +362,10 @@ func postToTarget(targetURL string, payload json.RawMessage) error {
 	return nil
 }
 
-// buildTargetRequestBody は Lambda Runtime API 向けの呼び出し時に
-// requestContext/body を含むイベント形式へラップする。
-func buildTargetRequestBody(targetURL string, payload json.RawMessage) []byte {
-	if !strings.Contains(targetURL, "/2015-03-31/functions/") {
-		return payload
-	}
-
-	bodyPayload := payload
-	var payloadMap map[string]any
-	if err := json.Unmarshal(payload, &payloadMap); err == nil {
-		if eventType, ok := payloadMap["eventType"].(string); ok {
-			if _, exists := payloadMap["action"]; !exists {
-				payloadMap["action"] = eventType
-				delete(payloadMap, "eventType")
-				if converted, marshalErr := json.Marshal(payloadMap); marshalErr == nil {
-					bodyPayload = converted
-				}
-			}
-		}
-	}
-
-	wrapped := map[string]any{
-		"requestContext": map[string]any{
-			"connectionId": "scheduler-local",
-			"routeKey":     "$default",
-			"domainName":   "eventbridge-scheduler",
-			"stage":        "local",
-		},
-		"body": string(bodyPayload),
-	}
-
-	encoded, err := json.Marshal(wrapped)
-	if err != nil {
-		log.Printf("[scheduler] failed to wrap lambda payload: %v", err)
-		return payload
-	}
-
-	return encoded
+// buildTargetRequestBody は EventBridge Scheduler と同じく、
+// Target.Input をそのまま Lambda のイベント本文として渡す。
+func buildTargetRequestBody(_ string, payload json.RawMessage) []byte {
+	return payload
 }
 
 func validateCreateScheduleRequest(req createScheduleRequest) error {

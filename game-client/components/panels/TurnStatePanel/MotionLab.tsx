@@ -51,8 +51,9 @@ export default function TurnStateMotionLabPanel(props: MotionLabProps) {
         <LonghexOutline>
           <div>
             <p className={`${styles.motionState} text-lime-400`}>Motion Lab</p>
+            <p className={`${styles.motionStateJa} text-lime-400`}>- 動きの設定 -</p>
             <p className={styles.remainingTime} style={{ color: timerColor }}>
-              {(remainingCentiseconds / 100).toFixed(2)}
+              {(remainingCentiseconds / 100).toFixed(1)}
             </p>
           </div>
           <div className={styles.turnInfo}>

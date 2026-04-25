@@ -40,8 +40,9 @@ export default function TurnStateMotionExecutePanel(props: MotionExecuteProps) {
       <div className={styles.container}>
         <LonghexOutline>
           <div>
-            <p className={`${styles.motionState} text-lime-400`}>Motion Execute</p>
-            <p className={styles.remainingTime} style={{ color: timerColor }}>
+            <p className={`${styles.motionState} text-orange-400`}>Motion Exec</p>
+            <p className={`${styles.motionStateJa} text-orange-400`}>- ユニットの行動 -</p>
+            <p className={styles.remainingTime} style={{ color: 'white' }}>
               {remainingSeconds}
             </p>
           </div>

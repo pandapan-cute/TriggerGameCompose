@@ -17,7 +17,7 @@ const NormalFullDialog = forwardRef<HTMLDialogElement, NormalFullDialogProps>(
     return (
       <dialog
         ref={ref}
-        className={`fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none overflow-hidden border-none bg-transparent p-0 backdrop:bg-black/80 ${className ?? ""}`}
+        className={`fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none overflow-hidden border-none bg-transparent p-0 backdrop:bg-black/50 ${className ?? ""}`}
         onCancel={(event) => {
           event.preventDefault();
           onCancel?.(event);

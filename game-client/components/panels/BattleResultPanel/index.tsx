@@ -136,7 +136,7 @@ const BattleResultPanel = ({
 			<section className="relative z-40 flex h-full w-full flex-col items-center justify-center overflow-hidden">
 				<LonghexOutline>
 					{/* 左側の対戦結果・ユニット結果表示 */}
-					<div className="w-[70%]">
+					<div className="w-[70%] my-8">
 						{/* 上段: 敵ユニット */}
 						<TeamRow units={enemyUnits} isPlayer={false} />
 
@@ -158,7 +158,7 @@ const BattleResultPanel = ({
 						<TeamRow units={friendUnits} isPlayer={true} />
 					</div>
 					{/* 右側のターン・経過時間表示 */}
-					<div className={`${styles.crossCaptionArea} flex flex-col justify-center w-[30%] text-slate-100`}>
+					<div className={`${styles.crossCaptionArea} flex flex-col justify-center w-[30%] text-slate-100 my-8 mr-8`}>
 						<div className={styles.crossCaptionStart}></div>
 						<p className="text-2xl leading-none font-michroma">Turn {turn}</p>
 						<div className={styles.crossCaptionEnd}></div>

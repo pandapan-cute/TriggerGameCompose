@@ -6,13 +6,13 @@ import Image from "next/image";
  */
 const LonghexOutline = ({ children }: { children?: React.ReactNode; }) => {
   return (
-    <div className="relative w-full max-w-5xl p-1 bg-white" style={{
+    <div className="relative w-full max-w-5xl p-1" style={{
       clipPath:
         "polygon(5% 0, 100% 0, 100% 90%, 95% 100%, 0 100%, 0 10%)",
     }}>
       {/* 外枠 */}
       <div
-        className="relative flex flex-row bg-gradient-to-b from-[#222f39]/85 to-[#222f39] px-5 py-8 md:px-10 md:py-10 gap-4"
+        className="relative flex flex-row bg-gradient-to-b from-[#2c3942] to-[#222f39] px-3 py-3 ms:px-6 ms:py-5 gap-4"
         style={{
           clipPath:
             "polygon(5% 0, 100% 0, 100% 90%, 95% 100%, 0 100%, 0 10%)",

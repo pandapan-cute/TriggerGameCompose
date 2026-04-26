@@ -1,6 +1,6 @@
 .container {
   position: relative;
-  width: 32vh;
+  width: 34vh;
 }
 
 .motionState {
@@ -11,15 +11,16 @@
 }
 
 .motionStateJa {
-  font-family: 'michroma', sans-serif;
   font-size: 1.8vh;
   text-align: center;
   white-space: nowrap;
 }
 
-.remainingTime{
-  font-family: 'michroma', sans-serif;
-  font-size: 4vh;
+.remainingTime {
+  font-family: var(--font-share-tech-mono), monospace;
+  font-size: 5vh;
+  line-height: 5vh;
+  margin-top: 4%;
   text-align: center;
 }
 

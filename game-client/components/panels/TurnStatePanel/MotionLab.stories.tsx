@@ -16,7 +16,7 @@ export default meta;
 
 type Story = StoryObj<typeof TurnStateMotionLabPanel>;
 
-const remainingDateTime = new Date(Date.now() + 60000);
+const remainingDateTime = new Date(Date.now() + 200000);
 
 export const Normal: Story = {
 	args: {

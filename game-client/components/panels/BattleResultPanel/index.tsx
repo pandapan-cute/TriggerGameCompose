@@ -78,9 +78,9 @@ const getCharacterImagePath = (unitTypeId: UnitType): string => {
  */
 const StatusCard = ({ unit, isPlayer }: { unit: FriendUnit | EnemyUnit; isPlayer?: boolean; }) => {
 	return (
-		<div className={`flex flex-col items-center gap-2 border-2 rounded-lg py-3 w-28 ${isPlayer ? "border-blue-400" : "border-red-400"}`}>
+		<div className={`flex flex-col items-center gap-2 border-2 rounded-lg py-3 w-20 md:w-28 ${isPlayer ? "border-blue-400" : "border-red-400"}`}>
 			<div
-				className={`relative h-20 w-20 ${unitLiveBgColorMap[unit.isBailout ? "bailout" : "alive"]}`}
+				className={`relative h-10 w-10 md:h-20 md:w-20 ${unitLiveBgColorMap[unit.isBailout ? "bailout" : "alive"]}`}
 				style={{ clipPath: "polygon(14% 0, 0 14%, 0 100%, 86% 100%, 100% 86%, 100% 0)" }}
 			>
 				<Image
@@ -93,12 +93,12 @@ const StatusCard = ({ unit, isPlayer }: { unit: FriendUnit | EnemyUnit; isPlayer
 				{/* Bailout時はXマークを重ねて状態を強調 */}
 				{unit.isBailout && (
 					<>
-						<span className="absolute left-2 top-10 h-1 w-16 rotate-45 bg-slate-500" />
-						<span className="absolute left-2 top-10 h-1 w-16 -rotate-45 bg-slate-500" />
+						<span className="absolute left-2 top-2 md:top-10 h-1 w-6 md:w-16 rotate-45 bg-slate-500" />
+						<span className="absolute left-2 top-2 md:top-10 h-1 w-6 md:w-16 -rotate-45 bg-slate-500" />
 					</>
 				)}
 			</div>
-			<span className={`text-[20px] leading-none font-michroma ${unitLiveColorMap[unit.isBailout ? "bailout" : "alive"]}`}>
+			<span className={`text-[14px] md:text-[20px] leading-none font-michroma ${unitLiveColorMap[unit.isBailout ? "bailout" : "alive"]}`}>
 				{unit.isBailout ? "Bailout" : "Alive"}
 			</span>
 		</div>
@@ -112,7 +112,7 @@ const StatusCard = ({ unit, isPlayer }: { unit: FriendUnit | EnemyUnit; isPlayer
  */
 const TeamRow = ({ units, isPlayer }: { units: (FriendUnit | EnemyUnit)[]; isPlayer?: boolean; }) => {
 	return (
-		<div className="flex flex-wrap items-start justify-center gap-4 md:gap-6">
+		<div className="flex flex-wrap items-start justify-center gap-2 md:gap-6">
 			{units.map((unit) => (
 				<StatusCard key={unit.unitId} unit={unit} isPlayer={isPlayer} />
 			))}
@@ -143,15 +143,15 @@ const BattleResultPanel = ({
 						{/* 中段: YOU/ENEMYラベル + 結果テキスト + ターン情報 */}
 						<div className="flex flex-row justify-center items-center gap-4 my-8">
 							{/* 左側: YOUラベル */}
-							<span className={`h-[3px] w-20 ${resultBarColorMap[result].left} ${styles.leftBarYou}`} />
+							<span className={`h-[3px] w-10 md:w-20 ${resultBarColorMap[result].left} ${styles.leftBarYou}`} />
 
 							<h2
-								className={`inline-block bg-clip-text text-3xl text-transparent md:text-5xl ${resultColorMap[result]} font-michroma italic -skew-x-8 tracking-wider`}
+								className={`inline-block bg-clip-text text-3xl text-transparent lg:text-5xl ${resultColorMap[result]} font-michroma italic -skew-x-8 tracking-wider`}
 							>
 								{resultTextMap[result]}
 							</h2>
 							{/* 右側: ENEMYラベル */}
-							<span className={`h-[3px] w-20 ${resultBarColorMap[result].right} ${styles.rightBarEnemy}`} />
+							<span className={`h-[3px] w-10 md:w-20 ${resultBarColorMap[result].right} ${styles.rightBarEnemy}`} />
 						</div>
 
 						{/* 下段: 味方ユニット */}

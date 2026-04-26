@@ -131,7 +131,7 @@ impl GameRepository for DynamoDbGameRepository {
             .await
             .map_err(|e| format!("ゲーム情報の取得に失敗しました: {}", e))?;
 
-        println!("GetItem result: {:?}", result);
+        // println!("GetItem result: {:?}", result);
 
         let game_item = result
             .item()

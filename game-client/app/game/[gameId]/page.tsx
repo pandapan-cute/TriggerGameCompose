@@ -1,6 +1,7 @@
 'use client';
 import NormalFullDialog from "@/components/dialogs/NormalFullDialog";
 import BattleResultPanel from "@/components/panels/BattleResultPanel";
+import RotateView from "@/components/views/RotateView";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { EnemyUnit } from "@/types/EnemyUnit";
@@ -102,6 +103,9 @@ export default function GamePage() {
   }, [isConnected, playerId, gameId, sendMessage, gameResult]);
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      {/* 画面回転を推奨するコンポーネント */}
+      <RotateView />
+
       <NormalFullDialog ref={resultDialogRef}>
         {gameResult && (
           <BattleResultPanel
@@ -115,7 +119,7 @@ export default function GamePage() {
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && (
         <div className="w-full h-full">
-          <GameGrid friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} setGameResult={setGameResult} />
+          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} setGameResult={setGameResult} />
         </div>
       )}
     </div>

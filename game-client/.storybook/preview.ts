@@ -1,6 +1,6 @@
 import "../app/globals.css";
 import type { Preview } from '@storybook/nextjs-vite';
-import { Geist, Geist_Mono, Michroma } from "next/font/google";
+import { Geist, Geist_Mono, Michroma, Share_Tech_Mono } from "next/font/google";
 import { createElement } from "react";
 
 const geistSans = Geist({
@@ -19,11 +19,17 @@ const michroma = Michroma({
   weight: "400",
 });
 
+const shareTechMono = Share_Tech_Mono({
+  variable: "--font-share-tech-mono",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 const preview: Preview = {
   decorators: [
     (Story) => createElement(
       "div",
-      { className: `${geistSans.variable} ${geistMono.variable} ${michroma.variable} antialiased` },
+      { className: `${geistSans.variable} ${geistMono.variable} ${michroma.variable} ${shareTechMono.variable} antialiased` },
       createElement(Story)
     ),
   ],

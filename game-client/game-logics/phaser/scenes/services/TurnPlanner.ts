@@ -25,6 +25,9 @@ export interface TurnPlannerDeps {
  * プレイヤーの行動計画（Step構築）と AP 管理を扱う。
  */
 export class TurnPlanner {
+  /** 動きの設定の締切時間のタイマー */
+  private motionLabEndTimeout: NodeJS.Timeout | null = null;
+
   constructor(private readonly deps: TurnPlannerDeps) { }
 
   /**
@@ -124,6 +127,11 @@ export class TurnPlanner {
         "全キャラクターの行動が完了しました！行動履歴を送信します..."
       );
       this.deps.sendServerTurn(this.deps.turn.getSteps());
+      // タイマーが設定されている場合はクリアする。
+      if (this.motionLabEndTimeout) {
+        clearTimeout(this.motionLabEndTimeout);
+        this.motionLabEndTimeout = null;
+      }
     }
   }
 
@@ -237,5 +245,29 @@ export class TurnPlanner {
    */
   public getPlannedTurn(): Turn {
     return this.deps.turn;
+  }
+
+  /** 計画ターンの締切時間を設定する */
+  public setMotionLabEnd(endTime: Date): void {
+    if (this.motionLabEndTimeout) {
+      clearTimeout(this.motionLabEndTimeout);
+      this.motionLabEndTimeout = null;
+    }
+    this.motionLabEndTimeout = this.runAt(endTime, () => this.deps.sendServerTurn(this.deps.turn.getSteps()));
+  }
+
+  /** 指定時刻にタスクを実行する */
+  private runAt(targetDate: Date, task: () => void): NodeJS.Timeout | null {
+    const now = Date.now();
+    const target = targetDate.getTime();
+    const delay = target - now;
+
+    if (delay <= 0) {
+      // すでに時刻を過ぎていたら即実行
+      task();
+      return null;
+    }
+
+    return setTimeout(task, delay);
   }
 }

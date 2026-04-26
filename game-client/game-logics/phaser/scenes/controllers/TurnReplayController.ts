@@ -49,21 +49,23 @@ export class TurnReplayController {
     const steps = turn.getSteps();
     console.log(`=== ステップ ${stepIndex + 1} 実行開始 ===`);
 
-    this.replayActions(turn, stepIndex);
-    this.replayCombats(turn, stepIndex);
+    this.deps.scene.time.delayedCall(2000, () => {
+      this.replayActions(turn, stepIndex);
+      this.replayCombats(turn, stepIndex);
 
-    // ステップ再生後に視界情報を更新する。
-    const visibilityMap = this.deps.updateFieldViewVisibility();
+      // ステップ再生後に視界情報を更新する。
+      this.deps.updateFieldViewVisibility();
+    });
 
     // デバッグ用: サーバーからのステップ情報に含まれる視界マップとクライアントの視界マップを照合する。
-    const step = steps[stepIndex];
-    const clientVisibilityMap = step.getVisibilityCells();
-    if (clientVisibilityMap && visibilityMap) {
-      this.checkVisibilityDiscrepancy(clientVisibilityMap, visibilityMap);
-    }
+    // const step = steps[stepIndex];
+    // const clientVisibilityMap = step.getVisibilityCells();
+    // if (clientVisibilityMap && visibilityMap) {
+    //   this.checkVisibilityDiscrepancy(clientVisibilityMap, visibilityMap);
+    // }
 
     const nextStepIndex = stepIndex + 1;
-    this.deps.scene.time.delayedCall(1500, () => {
+    this.deps.scene.time.delayedCall(1000, () => {
       // ゲーム終了判定を行う。
       const gameResult = this.checkGameIsCompleted();
       if (gameResult !== "draw") {

@@ -55,7 +55,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (result: GameResult, playerCharacterStates: PlayerCharacterState[], enemyCharacterStates: EnemyCharacterState[]) => void, private handleFinishMotionExecute: () => void) {
+  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (result: GameResult, playerCharacterStates: PlayerCharacterState[], enemyCharacterStates: EnemyCharacterState[]) => void, private handleFinishMotionExecute: () => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -153,11 +153,12 @@ export class GridCellsScene extends Phaser.Scene {
     this.createCharacters(); // キャラクターを配置
     this.setupSceneControllers(); // SelectionService / TriggerSettingController を初期化
     this.setupInputController(); // InputController を初期化してイベントをバインドする
-    if (this.pendingTurn) {
-      const queuedTurn = this.pendingTurn;
-      this.pendingTurn = null;
-      this.executeTurn(queuedTurn);
-    }
+    // これはいらんのでは？
+    // if (this.pendingTurn) {
+    //   const queuedTurn = this.pendingTurn;
+    //   this.pendingTurn = null;
+    //   this.executeTurn(queuedTurn);
+    // }
     // this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
   }
 
@@ -183,6 +184,9 @@ export class GridCellsScene extends Phaser.Scene {
 
     if (!this.turnPlanner) {
       this.turnPlanner = new TurnPlanner(this.createTurnPlannerDeps());
+      // ターンプランナーに最初の動きの設定終了時間をセット
+      // 次ターンからはサーバーから送られてくるターン情報の中の時間をセットしていく
+      this.turnPlanner.setMotionLabEnd(this.firstMotionLabEndtime);
     }
 
     if (!this.turnReplayController) {
@@ -484,9 +488,10 @@ export class GridCellsScene extends Phaser.Scene {
   /**
    * 指定されたステップの行動を実行
    */
-  executeTurn(turn: Turn) {
-    if (this.turnReplayController) {
+  executeTurn(turn: Turn, motionLabEndTime: Date): void {
+    if (this.turnReplayController && this.turnPlanner) {
       this.turnReplayController.executeTurn(turn);
+      this.turnPlanner.setMotionLabEnd(motionLabEndTime);
       return;
     }
 

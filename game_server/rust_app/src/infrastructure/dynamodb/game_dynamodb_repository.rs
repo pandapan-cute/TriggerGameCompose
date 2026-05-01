@@ -91,7 +91,7 @@ impl GameRepository for DynamoDbGameRepository {
     }
 
     async fn update_current_turn(&self, game: &Game) -> Result<(), String> {
-        let update_expression = "SET current_turn_number = :current_turn_number";
+        let update_expression = "SET current_turn_number = :current_turn_number, game_state = :game_state";
 
         self.client
             .update_item()
@@ -104,6 +104,10 @@ impl GameRepository for DynamoDbGameRepository {
             .expression_attribute_values(
                 ":current_turn_number",
                 AttributeValue::N(game.current_turn_number().value().to_string()),
+            )
+            .expression_attribute_values(
+                ":game_state",
+                AttributeValue::S(game.game_state().value().to_string()),
             )
             .send()
             .await

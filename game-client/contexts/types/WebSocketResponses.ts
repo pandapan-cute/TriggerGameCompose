@@ -2,6 +2,7 @@ import { FriendUnit } from "@/types/FriendUnit";
 import { Turn } from "@/game-logics/models/Turn";
 import { MatchingStatus } from "@/types/MatchingTypes";
 import { EnemyUnit } from "@/types/EnemyUnit";
+import { GameState } from "@/types/GameTypes";
 
 /**
  * マッチメイキングレスポンスの型定義
@@ -18,6 +19,7 @@ export interface MatchmakingResponse {
  */
 export interface GetGameStateResponse {
   action: "getGameStateResult";
+  gameState: GameState;
   enemyUnits: EnemyUnit[];
   friendUnits: FriendUnit[];
   fieldSteps: number[][];

@@ -23,6 +23,7 @@ interface GameGridProps {
   fieldSteps: number[][];
   visibility: boolean[][];
   motionLabEndTime: Date;
+  gameResult: GameResult | null;
   setGameResult: (result: GameResult) => void;
 }
 
@@ -30,7 +31,7 @@ interface GameGridProps {
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, setGameResult }) => {
+const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -109,9 +110,13 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
   /** ユニットの行動終了処理 */
   const handleFinishMotionExecute = () => {
-    console.log("ユニットの行動終了処理を実行します。");
-    setGameMode("lab");
-    motionLabDialogRef.current?.show();
+    console.log("ユニットの行動終了処理を実行します。,現在のターン状態:", currentTurnState);
+    if (currentTurnState < MAX_TURN) {
+      // 次のターンの動きの設定フェーズへ移行
+      setGameMode("lab");
+      motionLabDialogRef.current?.show();
+      setCurrentTurnState((prev => prev + 1));
+    }
   };
 
   // WebSocketでターン実行結果を受信したときの処理
@@ -138,7 +143,6 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         targetScene.executeTurn(hydratedTurn, new Date(data.motionLabEndTime)); // Phaserシーンにターン情報を渡して実行
         setGameMode("execute");
         motionExecuteDialogRef.current?.show();
-        setCurrentTurnState(data.turn.getTurnNumber() + 1);
         setMotionExecuteEndTimeState(new Date(Date.now() + 15000));
         setMotionLabEndTimeState(new Date(data.motionLabEndTime));
       }
@@ -212,7 +216,9 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     loadPhaser();
 
     // 動きの設定の開始
-    motionLabDialogRef.current?.show();
+    if (gameResult === "inProgress") {
+      motionLabDialogRef.current?.show();
+    }
 
     // コンポーネントのクリーンアップ関数
     return () => {
@@ -232,9 +238,9 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       {/* ゲームモード表示 */}
       <div className="absolute top-2 right-2 p-2 z-50">
         {gameMode === "lab" ? (
-          <TurnStateMotionLabPanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
+          <TurnStateMotionLabPanel turn={currentTurnState} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
         ) : (
-          <TurnStateMotionExecutePanel turn={currentTurn} endtime={motionExecuteEndTimeState} maxTurn={MAX_TURN} />
+          <TurnStateMotionExecutePanel turn={currentTurnState} endtime={motionExecuteEndTimeState} maxTurn={MAX_TURN} />
         )}
       </div>
 
@@ -246,8 +252,8 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       />
 
       {/* 動きの設定とユニットの行動のダイアログ表示 */}
-      <MotionLabDialog ref={motionLabDialogRef} turn={currentTurn}></MotionLabDialog>
-      <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurn}></MotionExecuteDialog>
+      <MotionLabDialog ref={motionLabDialogRef} turn={currentTurnState}></MotionLabDialog>
+      <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurnState}></MotionExecuteDialog>
     </div>
   );
 };

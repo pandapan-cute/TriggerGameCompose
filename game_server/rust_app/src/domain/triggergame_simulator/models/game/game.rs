@@ -1,4 +1,5 @@
 use crate::application::game;
+use crate::domain::triggergame_simulator::configs::game_config::GameConfig;
 use crate::domain::triggergame_simulator::models::game::game_state::{GameState, GameStateValue};
 use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
@@ -112,11 +113,16 @@ impl Game {
         let mut player2_result_steps = Vec::new();
 
         // 各ステップの戦闘演算を開始
-        for step in player1_turn
+        for (idx, step) in player1_turn
             .steps()
             .iter()
             .zip_longest(player2_turn.steps().iter())
+            .enumerate()
         {
+            if idx >= GameConfig::get_game_config().motion_execute_seconds() as usize {
+                // ユニットの行動モードでの秒数を超えたらスキップ
+                break;
+            }
             // stepをマージして、両プレイヤーの行動を反映させたステップを作成
             let mut merge_step = Step::new(
                 StepId::new(Uuid::new_v4().to_string()),
@@ -157,7 +163,9 @@ impl Game {
     /// 次のターンへ進める
     pub fn advance_to_next_turn(&mut self) -> Result<(), String> {
         if self.is_game_finished() {
-            return Err("ゲームは既に最終ターンに達しています".to_string());
+            // ゲーム終了処理
+            self.complete_game_state();
+            return Ok(());
         }
 
         let next_turn_value = self.current_turn_number.value() + 1;

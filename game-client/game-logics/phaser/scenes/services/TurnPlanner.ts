@@ -253,7 +253,10 @@ export class TurnPlanner {
       clearTimeout(this.motionLabEndTimeout);
       this.motionLabEndTimeout = null;
     }
-    this.motionLabEndTimeout = this.runAt(endTime, () => this.deps.sendServerTurn(this.deps.turn.getSteps()));
+    this.motionLabEndTimeout = this.runAt(endTime, () => {
+      this.fillIncompleteActions();
+      this.deps.sendServerTurn(this.deps.turn.getSteps());
+    });
   }
 
   /** 指定時刻にタスクを実行する */
@@ -269,5 +272,36 @@ export class TurnPlanner {
     }
 
     return setTimeout(task, delay);
+  }
+
+  /**
+   * 行動の設定が未完了のユニットの行動を埋める
+   */
+  private fillIncompleteActions(): void {
+    // 行動の設定が未完了のキャラクターを取得する。
+    const incompleteCharacters = this.deps.characterManager.playerCharacters.filter(
+      (character) => {
+        if (character.getIsBailedOut()) {
+          return false;
+        }
+        const actionPoints =
+          this.deps.characterManager.findPlayerCharacterByImage(character.image)
+            ?.getActionPoints() || 0;
+        return actionPoints > 0;
+      }
+    );
+
+    // 行動力が残っているユニットごとにループ
+    for (const character of incompleteCharacters) {
+      // キャラクターを選択状態にする。
+      this.deps.characterManager.selectedCharacter = character;
+      // 残りの行動力分ループ
+      for (let i = 0; i < character.getActionPoints(); i++) {
+        // 現在の位置を取得
+        const currentPosition = character.position;
+        // 行動の設定が未完了のキャラクターに対して、現在位置での待機アクションを追加する。
+        this.pushActionHistory(currentPosition.col, currentPosition.row);
+      }
+    }
   }
 }

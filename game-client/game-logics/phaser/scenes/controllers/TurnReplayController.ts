@@ -1,4 +1,5 @@
 import { CharacterManager } from "@/game-logics/characterManager";
+import { MAX_TURN } from "@/game-logics/config/game-config";
 import { Turn } from "@/game-logics/models/Turn";
 import { GameResult } from "@/types/GameTypes";
 
@@ -36,7 +37,10 @@ export class TurnReplayController {
    */
   public executeTurn(turn: Turn): void {
     this.deps.characterManager.setAllActionPointsTextToNull();
-    this.executeStep(turn, 0);
+
+    this.deps.scene.time.delayedCall(2000, () => {
+      this.executeStep(turn, 0);
+    });
   }
 
   /**
@@ -49,13 +53,11 @@ export class TurnReplayController {
     const steps = turn.getSteps();
     console.log(`=== ステップ ${stepIndex + 1} 実行開始 ===`);
 
-    this.deps.scene.time.delayedCall(2000, () => {
-      this.replayActions(turn, stepIndex);
-      this.replayCombats(turn, stepIndex);
+    this.replayActions(turn, stepIndex);
+    this.replayCombats(turn, stepIndex);
 
-      // ステップ再生後に視界情報を更新する。
-      this.deps.updateFieldViewVisibility();
-    });
+    // ステップ再生後に視界情報を更新する。
+    this.deps.updateFieldViewVisibility();
 
     // デバッグ用: サーバーからのステップ情報に含まれる視界マップとクライアントの視界マップを照合する。
     // const step = steps[stepIndex];
@@ -66,15 +68,6 @@ export class TurnReplayController {
 
     const nextStepIndex = stepIndex + 1;
     this.deps.scene.time.delayedCall(1000, () => {
-      // ゲーム終了判定を行う。
-      const gameResult = this.checkGameIsCompleted();
-      if (gameResult !== "draw") {
-        console.log("ゲーム終了判定: 結果 =", gameResult);
-        // ゲーム終了処理をここに追加する（例: 結果画面への遷移）
-        this.deps.completeGame?.(gameResult);
-        return;
-      }
-
       // 次ステップが存在するかを判定する。
       if (nextStepIndex < steps.length) {
         // 未再生ステップが残っている場合: 次ステップ再生へ進む。
@@ -83,6 +76,14 @@ export class TurnReplayController {
         // 全ステップ再生済みの場合: フェーズ完了処理へ進む。
         this.completeUnitActionPhase(turn.getTurnNumber());
         console.log("=== 全ステップ実行完了 ===");
+        // ゲーム終了判定を行う。
+        const gameResult = this.checkGameIsCompleted(turn.getTurnNumber());
+        if (gameResult !== "inProgress") {
+          console.log("ゲーム終了判定: 結果 =", gameResult);
+          // ゲーム終了処理をここに追加する（例: 結果画面への遷移）
+          this.deps.completeGame?.(gameResult);
+          return;
+        }
       }
     });
   }
@@ -95,7 +96,7 @@ export class TurnReplayController {
    */
   private replayActions(turn: Turn, stepIndex: number): void {
     const step = turn.getSteps()[stepIndex];
-    for (const [actionIndex, action] of step.getActions().entries()) {
+    for (const [actionIndex, action] of step?.getActions().entries() ?? []) {
       const character = this.deps.characterManager.findCharacterByUnitId(
         action.getUnitId()
       );
@@ -160,9 +161,10 @@ export class TurnReplayController {
 
   /**
    * ゲームの終了判定を行う。
+   * @param currentTurn 現在のターン番号
    * @returns {{ isPlayerDefeated: boolean; isEnemyDefeated: boolean; }} プレイヤーと敵の敗北状態を含むオブジェクト
    */
-  private checkGameIsCompleted(): GameResult {
+  private checkGameIsCompleted(currentTurn: number): GameResult {
     const playerAliveCharacters = this.deps.characterManager.playerCharacters.filter(char => char.getIsBailedOut() === false);
     const enemyAliveCharacters = this.deps.characterManager.enemyCharacters.filter(char => char.getIsBailedOut() === false);
 
@@ -175,8 +177,11 @@ export class TurnReplayController {
       return "lose";
     } else if (isEnemyDefeated) {
       return "win";
+    } else if (currentTurn >= MAX_TURN) {
+      // ターン数上限に達した場合は引き分けとする
+      return "draw";
     } else {
-      return "draw"; // デフォルトは引き分けとする
+      return "inProgress"; // デフォルトは進行中とする
     }
   }
 

@@ -41,7 +41,9 @@ pub enum WebSocketResponse {
 
     /// ゲーム状態取得結果
     GetGameStateResult {
-        // ゲームのターン番号
+        /// ゲームの進行状態
+        game_state: GameStateValue,
+        /// ゲームのターン番号
         current_turn_number: TurnNumber,
         /// 動きの設定の終了時間
         motion_lab_end_time: MotionLabEndTime,

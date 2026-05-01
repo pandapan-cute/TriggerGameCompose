@@ -490,6 +490,9 @@ export class GridCellsScene extends Phaser.Scene {
    */
   executeTurn(turn: Turn, motionLabEndTime: Date): void {
     if (this.turnReplayController && this.turnPlanner) {
+      // 行動可能なセルのハイライトを消す
+      this.selectionService?.clearSelection();
+      this.triggerSettingController?.clearTriggerDisplay();
       this.turnReplayController.executeTurn(turn);
       this.turnPlanner.setMotionLabEnd(motionLabEndTime);
       return;

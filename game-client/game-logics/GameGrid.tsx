@@ -25,13 +25,14 @@ interface GameGridProps {
   motionLabEndTime: Date;
   gameResult: GameResult | null;
   setGameResult: (result: GameResult) => void;
+  checkGameState: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number) => void;
 }
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult }) => {
+const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult, checkGameState }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -106,6 +107,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   const handleCompleteGame = (result: GameResult) => {
     console.log("ゲーム終了処理を実行します。結果:", result);
     setGameResult(result);
+    checkGameState(friendUnits, enemyUnits, currentTurn);
   };
 
   /** ユニットの行動終了処理 */
@@ -216,7 +218,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     loadPhaser();
 
     // 動きの設定の開始
-    if (gameResult === "inProgress") {
+    if (gameResult === "InProgress") {
       motionLabDialogRef.current?.show();
     }
 

@@ -2,7 +2,7 @@ import { FriendUnit } from "@/types/FriendUnit";
 import { Turn } from "@/game-logics/models/Turn";
 import { MatchingStatus } from "@/types/MatchingTypes";
 import { EnemyUnit } from "@/types/EnemyUnit";
-import { GameState } from "@/types/GameTypes";
+import { GameResult, GameState } from "@/types/GameTypes";
 
 /**
  * マッチメイキングレスポンスの型定義
@@ -29,6 +29,17 @@ export interface GetGameStateResponse {
 }
 
 
+/**
+ * ゲーム結果通知レスポンスの型定義
+ */
+export interface NotifyGameStateResponse {
+  action: "notifyGameState";
+  message: string;
+  state: GameState;
+  outcome: GameResult;
+}
+
+
 /** ターンの実行結果を受信 */
 export interface TurnActionsResponse {
   action: "turnExecutionResult";
@@ -52,4 +63,4 @@ export interface ErrorResponse {
 }
 
 /** WebSocketレスポンスの型 */
-export type WebSocketResponseType = MatchmakingResponse | GetGameStateResponse | TurnActionsResponse | CancelGameResponse | ErrorResponse;
+export type WebSocketResponseType = MatchmakingResponse | GetGameStateResponse | TurnActionsResponse | CancelGameResponse | NotifyGameStateResponse | ErrorResponse;

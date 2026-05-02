@@ -14,36 +14,37 @@ interface BattleResultPanelProps {
 	friendUnits: FriendUnit[];
 	enemyUnits: EnemyUnit[];
 	turn: number;
+	message?: string | null;
 }
 
 /**
  * 結果種別ごとの中央表示テキスト。
  */
 const resultTextMap: Record<GameResult, string> = {
-	win: "YOU WIN",
-	lose: "YOU LOSE",
-	draw: "DRAW",
-	inProgress: "IN PROGRESS",
+	Win: "YOU WIN",
+	Lose: "YOU LOSE",
+	Draw: "DRAW",
+	InProgress: "IN PROGRESS",
 };
 
 /**
  * 結果種別ごとの強調色クラス。
  */
 const resultColorMap: Record<GameResult, string> = {
-	win: "bg-gradient-to-l from-amber-300 via-yellow-400 to-orange-400",
-	lose: "bg-gradient-to-l from-cyan-200 via-sky-400 to-blue-500",
-	draw: "bg-gradient-to-l from-gray-400 via-gray-500 to-gray-600",
-	inProgress: "",
+	Win: "bg-gradient-to-l from-amber-300 via-yellow-400 to-orange-400",
+	Lose: "bg-gradient-to-l from-cyan-200 via-sky-400 to-blue-500",
+	Draw: "bg-gradient-to-l from-gray-400 via-gray-500 to-gray-600",
+	InProgress: "",
 };
 
 /**
  * 結果種別ごとのバーカラー強調色クラス。
  */
 const resultBarColorMap: Record<GameResult, { left: string; right: string; }> = {
-	win: { left: "bg-orange-400", right: "bg-amber-300" },
-	lose: { left: "bg-blue-500", right: "bg-cyan-200" },
-	draw: { left: "bg-gray-500", right: "bg-gray-400" },
-	inProgress: { left: "", right: "" },
+	Win: { left: "bg-orange-400", right: "bg-amber-300" },
+	Lose: { left: "bg-blue-500", right: "bg-cyan-200" },
+	Draw: { left: "bg-gray-500", right: "bg-gray-400" },
+	InProgress: { left: "", right: "" },
 };
 
 /**
@@ -96,8 +97,8 @@ const StatusCard = ({ unit, isPlayer }: { unit: FriendUnit | EnemyUnit; isPlayer
 				{/* Bailout時はXマークを重ねて状態を強調 */}
 				{unit.isBailout && (
 					<>
-						<span className="absolute left-2 top-2 lg:top-10 h-1 w-6 lg:w-16 rotate-45 bg-slate-500" />
-						<span className="absolute left-2 top-2 lg:top-10 h-1 w-6 lg:w-16 -rotate-45 bg-slate-500" />
+						<span className="absolute lg:left-2 top-6 lg:top-10 h-1 w-16 rotate-45 bg-slate-500" />
+						<span className="absolute lg:left-2 top-6 lg:top-10 h-1 w-16 -rotate-45 bg-slate-500" />
 					</>
 				)}
 			</div>
@@ -132,6 +133,7 @@ const BattleResultPanel = ({
 	friendUnits,
 	enemyUnits,
 	turn,
+	message,
 }: BattleResultPanelProps) => {
 
 	return (
@@ -164,6 +166,7 @@ const BattleResultPanel = ({
 					<div className={`${styles.crossCaptionArea} flex-col justify-center w-[30%] text-slate-100 my-8 mr-8 flex`}>
 						<div className={styles.crossCaptionStart}></div>
 						<p className="lg:text-2xl leading-none font-michroma">Turn {turn}</p>
+						{message && <p className="text-sm lg:text-xl mt-4">{message}</p>}
 						<div className={styles.crossCaptionEnd}></div>
 					</div>
 				</LonghexOutline>

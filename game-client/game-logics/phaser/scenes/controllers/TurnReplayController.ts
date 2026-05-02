@@ -78,7 +78,7 @@ export class TurnReplayController {
         console.log("=== 全ステップ実行完了 ===");
         // ゲーム終了判定を行う。
         const gameResult = this.checkGameIsCompleted(turn.getTurnNumber());
-        if (gameResult !== "inProgress") {
+        if (gameResult !== "InProgress") {
           console.log("ゲーム終了判定: 結果 =", gameResult);
           // ゲーム終了処理をここに追加する（例: 結果画面への遷移）
           this.deps.completeGame?.(gameResult);
@@ -172,16 +172,16 @@ export class TurnReplayController {
     const isEnemyDefeated = enemyAliveCharacters.length === 0;
 
     if (isPlayerDefeated && isEnemyDefeated) {
-      return "draw";
+      return "Draw";
     } else if (isPlayerDefeated) {
-      return "lose";
+      return "Lose";
     } else if (isEnemyDefeated) {
-      return "win";
+      return "Win";
     } else if (currentTurn >= MAX_TURN) {
       // ターン数上限に達した場合は引き分けとする
-      return "draw";
+      return "Draw";
     } else {
-      return "inProgress"; // デフォルトは進行中とする
+      return "InProgress"; // デフォルトは進行中とする
     }
   }
 

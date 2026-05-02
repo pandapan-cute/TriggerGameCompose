@@ -129,7 +129,7 @@ impl MatchmakingApplicationService {
                     game_id.clone(),
                     GameState::initial(),
                     TurnNumber::initial(),
-                    MotionLabEndTime::initial(),
+                    MotionLabEndTime::initial_matching(),
                     matching.player1_id().clone(),
                     PlayerId::new(player_id.to_string()),
                 );
@@ -253,11 +253,10 @@ impl MatchmakingApplicationService {
     ) -> Result<(), String> {
         // 次の動きの設定の提出時間を作成
         let game_config = GameConfig::get_game_config();
+        // マッチング時は動きの設定時間+通信待機時間、2ターン目以降は動きの設定時間+ユニットの行動時間+通信待機時間を加算する
         let motion_lab_limit_time = Utc::now()
             + chrono::Duration::seconds(
-                game_config.motion_lab_seconds()
-                    + game_config.motion_execute_seconds()
-                    + game_config.communication_wait_seconds(),
+                game_config.motion_lab_seconds() + game_config.communication_wait_seconds(),
             );
 
         self.schedule_maker

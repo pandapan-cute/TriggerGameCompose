@@ -14,6 +14,16 @@ impl MotionLabEndTime {
     pub fn new(value: DateTime<Utc>) -> Self {
         Self { value }
     }
+    /// マッチング後の最初の動きの設定の提出時間を生成する。
+    pub fn initial_matching() -> Self {
+        // 次の動きの設定の提出時間を作成
+        let game_config = GameConfig::get_game_config();
+        let motion_lab_limit_time =
+            Utc::now() + chrono::Duration::seconds(game_config.motion_lab_seconds());
+        Self {
+            value: motion_lab_limit_time,
+        }
+    }
     /// 動きの設定の提出時間を生成する。
     pub fn initial() -> Self {
         // 次の動きの設定の提出時間を作成

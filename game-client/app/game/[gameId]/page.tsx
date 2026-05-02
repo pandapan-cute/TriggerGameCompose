@@ -7,7 +7,7 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { MAX_TURN } from "@/game-logics/config/game-config";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { FriendUnit } from "@/types/FriendUnit";
-import { GameResult } from "@/types/GameTypes";
+import { GameResult, GameState } from "@/types/GameTypes";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -36,38 +36,40 @@ export default function GamePage() {
   const [enemyUnits, setEnemyUnits] = useState<EnemyUnit[]>([]);
   const [fieldSteps, setFieldSteps] = useState<number[][]>([]);
   const [visibility, setVisibility] = useState<boolean[][]>([]);
-  const [gameResult, setGameResult] = useState<GameResult>("inProgress");
+  const [gameResult, setGameResult] = useState<GameResult>("InProgress");
+  const [gameResultMsg, setGameResultMsg] = useState<string | null>(null);
   const [currentTurn, setCurrentTurn] = useState<number>(1);
   const [motionLabEndTime, setMotionLabEndTime] = useState<Date>(new Date());
   const resultDialogRef = useRef<HTMLDialogElement>(null);
 
-  const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number) => {
+  const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState: GameState) => {
     if (isConnected && playerId) {
       const aliveFriendUnits = friendUnits.filter(unit => !unit.isBailout);
       const aliveEnemyUnits = enemyUnits.filter(unit => !unit.isBailout);
       if (aliveFriendUnits.length === 0 && aliveEnemyUnits.length === 0) {
         resultDialogRef.current?.showModal();
-        setGameResult("draw");
+        setGameResult("Draw");
       } else if (aliveFriendUnits.length === 0) {
         resultDialogRef.current?.showModal();
-        setGameResult("lose");
+        setGameResult("Lose");
       } else if (aliveEnemyUnits.length === 0) {
         resultDialogRef.current?.showModal();
-        setGameResult("win");
-      } else if (currentTurn >= MAX_TURN) {
+        setGameResult("Win");
+      } else if (currentTurn >= MAX_TURN || gameState === "Completed") {
         console.log("最大ターン数に到達: 引き分け");
         resultDialogRef.current?.showModal();
-        setGameResult("draw");
+        setGameResult("Draw");
       }
     }
   };
 
   useEffect(() => {
+    /** ゲーム状態の受信処理 */
     const handleGameStateResult = (data: WebSocketResponseType) => {
       if (data.action === "getGameStateResult") {
         console.log("ゲーム状態を受信:", data);
-        if (data.gameState === "inProgress") {
-          setGameResult("inProgress");
+        if (data.gameState === "InProgress") {
+          setGameResult("InProgress");
         }
         setFriendUnits(data.friendUnits);
         setEnemyUnits(data.enemyUnits);
@@ -75,15 +77,29 @@ export default function GamePage() {
         setVisibility(data.visibility);
         setCurrentTurn(data.currentTurnNumber);
         setMotionLabEndTime(new Date(data.motionLabEndTime));
-        checkGameState(data.friendUnits, data.enemyUnits, data.currentTurnNumber);
+        checkGameState(data.friendUnits, data.enemyUnits, data.currentTurnNumber, data.gameState);
       }
     };
-
     addMessageListener("getGameStateResult", handleGameStateResult);
+
+    /** ゲーム結果の通知受信 */
+    const handleNotifyGameState = (data: WebSocketResponseType) => {
+      if (data.action === "notifyGameState") {
+        console.log("ゲーム結果を受信:", data);
+        if (data.state === "Completed") {
+          // ゲーム終了の通知を受け取った場合、結果を設定してダイアログを表示する
+          setGameResult(data.outcome);
+          setGameResultMsg(data.message || null);
+          resultDialogRef.current?.showModal();
+        }
+      }
+    };
+    addMessageListener("notifyGameState", handleNotifyGameState);
 
     return () => {
       // クリーンアップでリスナーを削除
       removeMessageListener("getGameStateResult", handleGameStateResult);
+      removeMessageListener("notifyGameState", handleNotifyGameState);
     };
   }, [addMessageListener, removeMessageListener]);
 
@@ -108,7 +124,7 @@ export default function GamePage() {
         gameId: gameId,
       });
     }
-  }, [isConnected, playerId, gameId, sendMessage, gameResult]);
+  }, [isConnected, playerId, gameId, sendMessage]);
 
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -116,19 +132,20 @@ export default function GamePage() {
       <RotateView />
 
       <NormalFullDialog ref={resultDialogRef}>
-        {gameResult && gameResult !== "inProgress" && (
+        {gameResult && gameResult !== "InProgress" && (
           <BattleResultPanel
             friendUnits={friendUnits}
             enemyUnits={enemyUnits}
             result={gameResult}
             turn={currentTurn}
+            message={gameResultMsg}
           />
         )}
       </NormalFullDialog>
       {/* ゲーム画面 */}
-      {friendUnits.length > 0 && enemyUnits.length > 0 && gameResult === "inProgress" && (
+      {friendUnits.length > 0 && enemyUnits.length > 0 && gameResult === "InProgress" && (
         <div className="w-full h-full">
-          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} setGameResult={setGameResult} />
+          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} setGameResult={setGameResult} checkGameState={checkGameState} />
         </div>
       )}
     </div>

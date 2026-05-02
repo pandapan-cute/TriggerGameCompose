@@ -128,7 +128,10 @@ impl MotionLabLimitUseCase {
             state: game.game_state().value().clone(),
             outcome: Some(OutcomeValue::Win),
         };
-        self.response_message(player_id, response).await
+        if let Err(e) = self.response_message(player_id, response).await {
+            eprintln!("WebSocketメッセージの送信に失敗しました: {}", e);
+        }
+        Ok(())
     }
 
     /// 敗北を通知するためのWebSocketレスポンスを送信する関数
@@ -150,7 +153,10 @@ impl MotionLabLimitUseCase {
             state: game.game_state().value().clone(),
             outcome: Some(OutcomeValue::Lose),
         };
-        self.response_message(player_id, response).await
+        if let Err(e) = self.response_message(player_id, response).await {
+            eprintln!("WebSocketメッセージの送信に失敗しました: {}", e);
+        }
+        Ok(())
     }
 
     /// WebSocketレスポンスを送信する共通関数

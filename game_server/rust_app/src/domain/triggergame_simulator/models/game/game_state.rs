@@ -4,7 +4,7 @@ pub enum GameStateValue {
     Completed,  // ゲーム完了
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GameState {
     value: GameStateValue,
 }

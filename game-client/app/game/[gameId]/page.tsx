@@ -42,7 +42,7 @@ export default function GamePage() {
   const [motionLabEndTime, setMotionLabEndTime] = useState<Date>(new Date());
   const resultDialogRef = useRef<HTMLDialogElement>(null);
 
-  const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState: GameState) => {
+  const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState?: GameState) => {
     if (isConnected && playerId) {
       const aliveFriendUnits = friendUnits.filter(unit => !unit.isBailout);
       const aliveEnemyUnits = enemyUnits.filter(unit => !unit.isBailout);

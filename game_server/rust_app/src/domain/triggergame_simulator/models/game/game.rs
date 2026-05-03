@@ -128,7 +128,6 @@ impl Game {
                 StepId::new(Uuid::new_v4().to_string()),
                 Vec::new(),
                 Vec::new(),
-                Vec::new(),
             );
             match step {
                 itertools::EitherOrBoth::Both(step1, step2) => {

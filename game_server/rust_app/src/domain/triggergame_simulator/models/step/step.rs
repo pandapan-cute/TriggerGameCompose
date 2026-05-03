@@ -17,33 +17,21 @@ pub struct Step {
     step_id: StepId,
     actions: Vec<Action>,
     combats: Vec<Combat>,
-    visibility_cells: Vec<Vec<bool>>,
 }
 
 impl Step {
     // privateなコンストラクタ
-    pub fn new(
-        step_id: StepId,
-        actions: Vec<Action>,
-        combats: Vec<Combat>,
-        visibility_cells: Vec<Vec<bool>>,
-    ) -> Self {
+    pub fn new(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
         Self {
             step_id,
             actions,
             combats,
-            visibility_cells,
         }
     }
 
     /// 新規ステップの生成
-    pub fn create(
-        step_id: StepId,
-        actions: Vec<Action>,
-        combats: Vec<Combat>,
-        visibility_cells: Vec<Vec<bool>>,
-    ) -> Self {
-        Self::new(step_id, actions, combats, visibility_cells)
+    pub fn create(step_id: StepId, actions: Vec<Action>, combats: Vec<Combat>) -> Self {
+        Self::new(step_id, actions, combats)
     }
 
     /// 戦闘演算の開始
@@ -81,10 +69,6 @@ impl Step {
 
     pub fn push_combat(&mut self, combat: Combat) {
         self.combats.push(combat);
-    }
-
-    pub fn set_visibility_cells(&mut self, visibility_cells: Vec<Vec<bool>>) {
-        self.visibility_cells = visibility_cells;
     }
 
     // セッター的なもの

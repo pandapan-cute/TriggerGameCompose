@@ -66,7 +66,7 @@ impl MotionLabLimitUseCase {
         } else {
             // ゲーム状態をcompletedに更新する
             game.complete_game_state();
-            self.game_repository.update_current_turn(&game).await?;
+            self.game_repository.update(&game).await?;
         }
 
         let turn_data_1 = self

@@ -383,12 +383,7 @@ impl TurnRepository for DynamoDbTurnRepository {
                     }
                 }
 
-                let step = Step::new(
-                    StepId::new(step_id_str.to_string()),
-                    actions,
-                    vec![],
-                    vec![],
-                );
+                let step = Step::new(StepId::new(step_id_str.to_string()), actions, vec![]);
                 steps.push(step);
             }
         }

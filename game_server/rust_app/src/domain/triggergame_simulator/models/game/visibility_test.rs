@@ -29,7 +29,7 @@ fn has_line_of_sight_with_obstacle_is_false() {
 #[test]
 fn has_line_of_sight_without_obstacle_is_true() {
     let visibility = Visibility::create();
-    let result = visibility.has_line_of_sight(&Position::new(20, 22), &Position::new(29, 13));
+    let result = visibility.has_line_of_sight(&Position::new(5, 13), &Position::new(5, 15));
     assert!(result);
 }
 

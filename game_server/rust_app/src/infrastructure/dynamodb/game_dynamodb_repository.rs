@@ -90,8 +90,9 @@ impl GameRepository for DynamoDbGameRepository {
         Ok(())
     }
 
-    async fn update_current_turn(&self, game: &Game) -> Result<(), String> {
-        let update_expression = "SET current_turn_number = :current_turn_number, game_state = :game_state";
+    async fn update(&self, game: &Game) -> Result<(), String> {
+        let update_expression =
+            "SET current_turn_number = :current_turn_number, game_state = :game_state";
 
         self.client
             .update_item()

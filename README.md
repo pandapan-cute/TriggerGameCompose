@@ -42,6 +42,7 @@ TriggerGameCompose/
 ├── game-client/                 # フロントエンド (Next.js + Phaser)
 ├── game_server/                 # バックエンド (Rust + AWS SAM)
 ├── local-dynamodb-initialize/   # ローカル DynamoDB 初期化ツール (Go)
+├── local-eventbridge-scheduler/ # ローカル EventBridge スケジューラ (Go)
 ├── local-websocket-apigateway/  # ローカル WebSocket API Gateway 代替 (Go)
 ├── docker-compose.yml           # ローカル起動用 Compose 定義
 ├── CONTRIBUTING.md              # コントリビュートルール

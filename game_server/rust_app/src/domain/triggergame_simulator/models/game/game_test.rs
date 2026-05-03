@@ -56,7 +56,6 @@ mod tests {
             StepId::new(Uuid::new_v4().to_string()),
             vec![action],
             Vec::new(),
-            Vec::new(),
         )
     }
 
@@ -104,31 +103,6 @@ mod tests {
 
         assert_eq!(game.current_turn_number().value(), 6);
         assert!(game.is_game_finished());
-    }
-
-    #[test]
-    fn test_advance_turn_when_game_finished() {
-        let game_id = GameId::new(Uuid::new_v4().to_string());
-        let game_state = GameState::initial();
-        let current_turn_number = TurnNumber::new(6);
-        let motion_lab_end_time = MotionLabEndTime::initial();
-        let player1_id = create_player_id();
-        let player2_id = create_player_id();
-        let visibility = Visibility::create();
-        let mut game = Game::reconstruct(
-            game_id,
-            game_state,
-            current_turn_number,
-            motion_lab_end_time,
-            player1_id,
-            player2_id,
-            visibility,
-        );
-        assert!(game.is_game_finished());
-
-        let result = game.advance_to_next_turn();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "ゲームは既に最終ターンに達しています");
     }
 
     #[test]

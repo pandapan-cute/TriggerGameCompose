@@ -285,7 +285,6 @@ mod tests {
             StepId::new(Uuid::new_v4().to_string()),
             vec![action],
             Vec::new(),
-            Vec::new(),
         )
     }
 

@@ -165,7 +165,7 @@ impl TurnResolutionService {
     /// - `Err(String)`: 更新失敗。
     async fn persist_game_turn(&self, game: &Game) -> Result<(), String> {
         self.game_repository
-            .update_current_turn(game)
+            .update(game)
             .await
             .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))
     }

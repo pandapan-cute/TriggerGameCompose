@@ -179,6 +179,10 @@ components:
             enum: [InProgress, Interrupted, Completed]
           gameId:
             type: string
+          motionLabEndTime:
+            type: string
+            format: date-time
+            description: 動きの設定モードの終了時間。クライアント側でこの時間に合わせて動きの設定を完了・リクエスト送信させるために使用。
           enemyUnits:
             type: array
             items:
@@ -201,7 +205,9 @@ components:
         type: object
         required:
           - action
+          - gameState
           - currentTurnNumber
+          - motionLabEndTime
           - enemyUnits
           - friendUnits
           - fieldSteps
@@ -213,6 +219,11 @@ components:
           currentTurnNumber:
             type: integer
             minimum: 1
+            maximum: 6
+          motionLabEndTime:
+            type: string
+            format: date-time
+            description: 動きの設定モードの終了時間。クライアント側でこの時間に合わせて動きの設定を完了・リクエスト送信させるために使用。
           enemyUnits:
             type: array
             items:

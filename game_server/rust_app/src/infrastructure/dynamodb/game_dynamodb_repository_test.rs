@@ -1,9 +1,14 @@
 #[cfg(test)]
 mod tests {
-    use crate::domain::{player_management::models::player::player_id::player_id::PlayerId, triggergame_simulator::models::game::game::Game};
-	use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
-	use crate::domain::triggergame_simulator::models::game::current_turn_number::current_turn_number::CurrentTurnNumber;
+    use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
+    use crate::domain::triggergame_simulator::models::game::game_state::GameState;
+    use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
+    use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
     use crate::domain::triggergame_simulator::repositories::game_repository::GameRepository;
+    use crate::domain::{
+        player_management::models::player::player_id::player_id::PlayerId,
+        triggergame_simulator::models::game::game::Game,
+    };
 
     use super::super::game_dynamodb_repository::DynamoDbGameRepository;
     use aws_sdk_dynamodb::{
@@ -38,7 +43,9 @@ mod tests {
     async fn test_save_game() {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
-            CurrentTurnNumber::new(1),
+            GameState::initial(),
+            TurnNumber::new(1),
+            MotionLabEndTime::initial(),
             PlayerId::new(Uuid::new_v4().to_string()),
             PlayerId::new(Uuid::new_v4().to_string()),
         );
@@ -58,7 +65,9 @@ mod tests {
     async fn test_update_game() {
         let game = Game::new(
             GameId::new(Uuid::new_v4().to_string()),
-            CurrentTurnNumber::new(2),
+            GameState::initial(),
+            TurnNumber::new(2),
+            MotionLabEndTime::initial(),
             PlayerId::new(Uuid::new_v4().to_string()),
             PlayerId::new(Uuid::new_v4().to_string()),
         );
@@ -70,7 +79,7 @@ mod tests {
         let client = setup_mock_client(update_item_rule);
         let repo = DynamoDbGameRepository::new(client);
 
-        let result = repo.update_current_turn(&game).await;
+        let result = repo.update(&game).await;
         assert!(result.is_ok(), "Failed to update game: {:?}", result.err());
     }
 
@@ -84,8 +93,16 @@ mod tests {
             AttributeValue::S(game_id.value().to_string()),
         );
         item.insert(
+            "game_state".to_string(),
+            AttributeValue::S(GameState::initial().fmt_value()),
+        );
+        item.insert(
             "current_turn_number".to_string(),
             AttributeValue::N("3".to_string()),
+        );
+        item.insert(
+            "motion_lab_end_time".to_string(),
+            AttributeValue::S(MotionLabEndTime::initial().value().to_rfc3339()),
         );
         item.insert(
             "player1_id".to_string(),

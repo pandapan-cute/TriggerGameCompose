@@ -3,6 +3,11 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   trigger_game_game_server
 
+Parameters:
+  TriggerGameFunctionName:
+    Type: String
+    Default: triggergame-function
+
 Globals:
   Function:
     Timeout: 30
@@ -15,6 +20,7 @@ Resources:
       BuildMethod: rust-cargolambda
     Properties:
       CodeUri: ./rust_app
+      FunctionName: !Ref TriggerGameFunctionName
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
@@ -23,6 +29,9 @@ Resources:
         Variables:
           # 本番環境用の環境変数
           APP_ENV: prod
+          EVENTBRIDGE_SCHEDULER_TARGET_ARN: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${TriggerGameFunctionName}'
+          EVENTBRIDGE_SCHEDULER_ROLE_ARN: !GetAtt EventBridgeSchedulerInvokeRole.Arn
+          EVENTBRIDGE_SCHEDULER_GROUP_NAME: !Ref TriggerGameSchedulerGroup
       Policies:
         - Statement:
           - Effect: Allow
@@ -47,6 +56,49 @@ Resources:
               - !Sub '${UnitsTable.Arn}/index/*'
               - !GetAtt GamesTable.Arn
               - !GetAtt TurnsTable.Arn
+          - Effect: Allow
+            Action:
+              - scheduler:CreateSchedule
+              - scheduler:DeleteSchedule
+              - scheduler:GetSchedule
+            Resource:
+              - !Sub 'arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${TriggerGameSchedulerGroup}/*'
+              - !GetAtt TriggerGameSchedulerGroup.Arn
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: !GetAtt EventBridgeSchedulerInvokeRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: scheduler.amazonaws.com
+
+  # EventBridge Scheduler のスケジュールグループ
+  TriggerGameSchedulerGroup:
+    Type: AWS::Scheduler::ScheduleGroup
+    Properties:
+      Name: triggergame-motionlab-timer
+
+  # EventBridge Scheduler がターゲット Lambda を呼び出すためのロール
+  EventBridgeSchedulerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowInvokeTriggerGameFunction
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${TriggerGameFunctionName}'
 
   # WebSocket API
   TriggerGameWebSocketApi:

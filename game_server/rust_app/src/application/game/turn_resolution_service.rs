@@ -1,15 +1,21 @@
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
+
 use crate::{
-    application::websocket::{
-        websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
+    application::{
+        schedule::schedule_maker::ScheduleMaker,
+        websocket::{websocket_response::WebSocketResponse, websocket_sender::WebSocketSender},
     },
     domain::{
         player_management::repositories::connection_repository::ConnectionRepository,
         triggergame_simulator::{
+            configs::game_config::GameConfig,
             models::{
-                game::{game::Game, game_id::game_id::GameId},
-                turn::Turn,
+                game::{
+                    game::Game, game_id::game_id::GameId, motion_lab_end_time::MotionLabEndTime,
+                },
+                turn::{turn_number::turn_number::TurnNumber, Turn},
             },
             repositories::game_repository::GameRepository,
         },
@@ -23,6 +29,7 @@ pub struct TurnResolutionService {
     game_repository: Arc<dyn GameRepository>,
     unit_repository: Arc<dyn UnitRepository>,
     websocket_sender: Arc<dyn WebSocketSender>,
+    schedule_maker: Arc<dyn ScheduleMaker>,
 }
 
 impl TurnResolutionService {
@@ -38,12 +45,14 @@ impl TurnResolutionService {
         game_repository: Arc<dyn GameRepository>,
         unit_repository: Arc<dyn UnitRepository>,
         websocket_sender: Arc<dyn WebSocketSender>,
+        schedule_maker: Arc<dyn ScheduleMaker>,
     ) -> Self {
         Self {
             connection_repository,
             game_repository,
             unit_repository,
             websocket_sender,
+            schedule_maker,
         }
     }
 
@@ -79,6 +88,9 @@ impl TurnResolutionService {
         self.persist_game_turn(&game).await?;
 
         self.notify_turn_result(&player1_turn, &player2_turn)
+            .await?;
+
+        self.set_motion_lab_timer(&game_id, game.current_turn_number())
             .await?;
 
         Ok(())
@@ -153,7 +165,7 @@ impl TurnResolutionService {
     /// - `Err(String)`: 更新失敗。
     async fn persist_game_turn(&self, game: &Game) -> Result<(), String> {
         self.game_repository
-            .update_current_turn(game)
+            .update(game)
             .await
             .map_err(|e| format!("ゲーム情報の更新に失敗しました: {}", e))
     }
@@ -184,11 +196,17 @@ impl TurnResolutionService {
             .await
             .map_err(|e| format!("コネクションIDの取得に失敗しました: {}", e))?;
 
+        // 次の動きの設定の提出時間を作成
+        let game_config = GameConfig::get_game_config();
+        let motion_lab_end_time = MotionLabEndTime::initial();
+
         let response_player_1 = WebSocketResponse::TurnExecutionResult {
             turn: player1_turn.clone(),
+            motion_lab_end_time: motion_lab_end_time.clone(),
         };
         let response_player_2 = WebSocketResponse::TurnExecutionResult {
             turn: player2_turn.clone(),
+            motion_lab_end_time: motion_lab_end_time.clone(),
         };
 
         self.websocket_sender
@@ -199,6 +217,39 @@ impl TurnResolutionService {
             .send_message(&player2_connection_id, &response_player_2)
             .await?;
 
+        Ok(())
+    }
+
+    /// 次ターンの動きの設定締切タイマーをセットする。
+    ///
+    /// # Arguments
+    /// - `game_id`: ゲームID
+    /// - `turn_number`: ターン番号
+    ///
+    /// # Returns
+    /// - `Ok(())`: 通知成功。
+    /// - `Err(String)`: 通知失敗。
+    async fn set_motion_lab_timer(
+        &self,
+        game_id: &GameId,
+        turn_number: &TurnNumber,
+    ) -> Result<(), String> {
+        if turn_number.is_complete() {
+            // ゲームが終了している場合はタイマーをセットしない
+            return Ok(());
+        }
+        // 次の動きの設定の提出時間を作成
+        let game_config = GameConfig::get_game_config();
+        let motion_lab_limit_time = Utc::now()
+            + chrono::Duration::seconds(
+                game_config.motion_lab_seconds()
+                    + game_config.motion_execute_seconds()
+                    + game_config.communication_wait_seconds(),
+            );
+
+        self.schedule_maker
+            .make_schedule_event(game_id, turn_number, &motion_lab_limit_time)
+            .await?;
         Ok(())
     }
 }

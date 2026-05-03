@@ -1,4 +1,5 @@
 "use client";
+import RotateView from '@/components/views/RotateView';
 import { useManageMatching } from './useManageMatching';
 import Link from 'next/link';
 
@@ -12,6 +13,9 @@ export default function LobbyPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+      {/* 画面回転を推奨するコンポーネント */}
+      <RotateView />
+
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full text-center border border-white/20">
         {/* ヘッダー */}
         <h1 className="text-3xl font-bold text-white mb-8">マッチング</h1>

@@ -1,7 +1,10 @@
+use chrono::Utc;
+
 use crate::{
     application::{
         game::{enemy_unit_dto::EnemyUnitDto, friend_unit_dto::FriendUnitDto},
         matchmaking::matchmaking_dto::CreateUnitDto,
+        schedule::schedule_maker::ScheduleMaker,
         websocket::{websocket_response::WebSocketResponse, websocket_sender::WebSocketSender},
     },
     domain::{
@@ -14,9 +17,13 @@ use crate::{
             repositories::connection_repository::ConnectionRepository,
         },
         triggergame_simulator::{
-            models::game::{
-                current_turn_number::current_turn_number::CurrentTurnNumber, game::Game,
-                game_id::game_id::GameId, visibility,
+            configs::game_config::GameConfig,
+            models::{
+                game::{
+                    game::Game, game_id::game_id::GameId, game_state::GameState,
+                    motion_lab_end_time::MotionLabEndTime, visibility,
+                },
+                turn::turn_number::turn_number::TurnNumber,
             },
             repositories::game_repository::GameRepository,
         },
@@ -35,6 +42,7 @@ pub struct MatchmakingApplicationService {
     unit_repository: Arc<dyn UnitRepository>,
     game_repository: Arc<dyn GameRepository>,
     websocket_sender: Arc<dyn WebSocketSender>,
+    schedule_maker: Arc<dyn ScheduleMaker>,
 }
 
 /// マッチメイキングアプリケーションサービスの実装
@@ -46,6 +54,7 @@ impl MatchmakingApplicationService {
         unit_repository: Arc<dyn UnitRepository>,
         game_repository: Arc<dyn GameRepository>,
         websocket_sender: Arc<dyn WebSocketSender>,
+        schedule_maker: Arc<dyn ScheduleMaker>,
     ) -> Self {
         Self {
             matching_repository,
@@ -53,6 +62,7 @@ impl MatchmakingApplicationService {
             unit_repository,
             game_repository,
             websocket_sender,
+            schedule_maker,
         }
     }
 
@@ -84,6 +94,7 @@ impl MatchmakingApplicationService {
                     let response = WebSocketResponse::MatchmakingResult {
                         status: MatchingStatusValue::InProgress,
                         game_id: None,
+                        motion_lab_end_time: None,
                         enemy_units: vec![],
                         friend_units: vec![],
                         field_steps: vec![],
@@ -116,7 +127,9 @@ impl MatchmakingApplicationService {
                 let game_id = GameId::new(matching.matching_id().value().to_string());
                 let game = Game::new(
                     game_id.clone(),
-                    CurrentTurnNumber::new(1),
+                    GameState::initial(),
+                    TurnNumber::initial(),
+                    MotionLabEndTime::initial_matching(),
                     matching.player1_id().clone(),
                     PlayerId::new(player_id.to_string()),
                 );
@@ -144,6 +157,7 @@ impl MatchmakingApplicationService {
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
                     game_id: Some(game_id.value().to_string()),
+                    motion_lab_end_time: Some(game.motion_lab_end_time().clone()),
                     enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&unit_entities),
                     field_steps: game.visibility().field_steps().to_vec(),
@@ -163,12 +177,16 @@ impl MatchmakingApplicationService {
                 let opponent_response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::Completed,
                     game_id: Some(game_id.value().to_string()),
+                    motion_lab_end_time: Some(game.motion_lab_end_time().clone()),
                     enemy_units: EnemyUnitDto::from_units(&enemy_units, &unit_entities, visibility),
                     friend_units: FriendUnitDto::from_units(&enemy_units),
                     field_steps: game.visibility().field_steps().to_vec(),
                 };
                 self.websocket_sender
                     .send_message(&opponent_connection_id, &opponent_response)
+                    .await?;
+                // 次の動きの設定の締切タイマーをセット
+                self.set_motion_lab_timer(&game_id, &TurnNumber::initial())
                     .await?;
             }
             None => {
@@ -192,6 +210,7 @@ impl MatchmakingApplicationService {
                 let response = WebSocketResponse::MatchmakingResult {
                     status: MatchingStatusValue::InProgress,
                     game_id: None,
+                    motion_lab_end_time: None,
                     enemy_units: vec![],
                     friend_units: vec![],
                     field_steps: vec![],
@@ -214,6 +233,35 @@ impl MatchmakingApplicationService {
                 return Err(result.err().unwrap());
             }
         }
+        Ok(())
+    }
+
+    /// 次ターンの動きの設定締切タイマーをセットする。
+    /// NOTE: turn_resolution_service.rsにも同様の処理があるので同期に注意
+    ///
+    /// # Arguments
+    /// - `game_id`: ゲームID
+    /// - `turn_number`: ターン番号
+    ///
+    /// # Returns
+    /// - `Ok(())`: 通知成功。
+    /// - `Err(String)`: 通知失敗。
+    async fn set_motion_lab_timer(
+        &self,
+        game_id: &GameId,
+        turn_number: &TurnNumber,
+    ) -> Result<(), String> {
+        // 次の動きの設定の提出時間を作成
+        let game_config = GameConfig::get_game_config();
+        // マッチング時は動きの設定時間+通信待機時間、2ターン目以降は動きの設定時間+ユニットの行動時間+通信待機時間を加算する
+        let motion_lab_limit_time = Utc::now()
+            + chrono::Duration::seconds(
+                game_config.motion_lab_seconds() + game_config.communication_wait_seconds(),
+            );
+
+        self.schedule_maker
+            .make_schedule_event(game_id, turn_number, &motion_lab_limit_time)
+            .await?;
         Ok(())
     }
 }

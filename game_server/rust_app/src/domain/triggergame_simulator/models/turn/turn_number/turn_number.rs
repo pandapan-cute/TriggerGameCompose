@@ -19,6 +19,14 @@ impl TurnNumber {
         self.value
     }
 
+    pub fn initial() -> Self {
+        Self { value: 1 }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.value == Self::MAX
+    }
+
     fn validate(value: i32) {
         if value < Self::MIN {
             panic!("TurnNumberは{}以上である必要があります", Self::MIN);

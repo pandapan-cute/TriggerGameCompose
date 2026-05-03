@@ -2,7 +2,7 @@ use aws_config::BehaviorVersion;
 use aws_sdk_apigatewaymanagement::Client;
 
 /// API Gateway Management API クライアントを作成
-pub async fn create_apigateway_client(domain_name: &str, stage: &str) -> Client {
+pub async fn create_apigateway_client(domain_name: Option<&str>, stage: Option<&str>) -> Client {
     let mut config_loader = aws_config::defaults(BehaviorVersion::latest());
 
     if std::env::var("DYNAMODB_ENDPOINT").is_ok() {
@@ -24,7 +24,11 @@ pub async fn create_apigateway_client(domain_name: &str, stage: &str) -> Client 
         ws_endpoint
     } else {
         println!("Using production WebSocket Gateway");
-        format!("https://{}/{}", domain_name, stage)
+        format!(
+            "https://{}/{}",
+            domain_name.unwrap_or("example.com"),
+            stage.unwrap_or("prod")
+        )
     };
 
     let api_config = aws_sdk_apigatewaymanagement::config::Builder::from(&config)

@@ -9,7 +9,7 @@ import { Combat } from "./Combat";
 export class Step {
 
   private stepId: string;
-  private actions: Action[];
+  private actions?: Action[];
   private combats: Combat[];
   private visibilityCells: boolean[][];
 
@@ -48,12 +48,12 @@ export class Step {
   }
 
   addAction(action: Action) {
-    this.actions.push(action);
+    this.actions?.push(action);
   }
 
   // ゲッター
   getActions(): Action[] {
-    return this.actions;
+    return this.actions ?? [];
   }
 
   getCombats(): Combat[] {

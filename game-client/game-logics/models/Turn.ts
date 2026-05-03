@@ -14,6 +14,7 @@ export class Turn {
   private turnStatus: string;
   private turnNumber: number;
   private steps: Step[];
+  private motionLabEndTime: string;
 
   constructor() {
     this.turnNumber = 1;
@@ -22,6 +23,7 @@ export class Turn {
     this.turnId = "";
     this.turnStartDatetime = "";
     this.turnStatus = "";
+    this.motionLabEndTime = "";
   }
 
   static fromJSON(rawTurn: unknown): Turn {
@@ -67,5 +69,9 @@ export class Turn {
 
   getTurnNumber(): number {
     return this.turnNumber;
+  }
+
+  getMotionLabEndTime(): Date {
+    return new Date(this.motionLabEndTime);
   }
 }

@@ -25,6 +25,9 @@ export interface TurnPlannerDeps {
  * プレイヤーの行動計画（Step構築）と AP 管理を扱う。
  */
 export class TurnPlanner {
+  /** 動きの設定の締切時間のタイマー */
+  private motionLabEndTimeout: NodeJS.Timeout | null = null;
+
   constructor(private readonly deps: TurnPlannerDeps) { }
 
   /**
@@ -124,6 +127,11 @@ export class TurnPlanner {
         "全キャラクターの行動が完了しました！行動履歴を送信します..."
       );
       this.deps.sendServerTurn(this.deps.turn.getSteps());
+      // タイマーが設定されている場合はクリアする。
+      if (this.motionLabEndTimeout) {
+        clearTimeout(this.motionLabEndTimeout);
+        this.motionLabEndTimeout = null;
+      }
     }
   }
 
@@ -237,5 +245,63 @@ export class TurnPlanner {
    */
   public getPlannedTurn(): Turn {
     return this.deps.turn;
+  }
+
+  /** 計画ターンの締切時間を設定する */
+  public setMotionLabEnd(endTime: Date): void {
+    if (this.motionLabEndTimeout) {
+      clearTimeout(this.motionLabEndTimeout);
+      this.motionLabEndTimeout = null;
+    }
+    this.motionLabEndTimeout = this.runAt(endTime, () => {
+      this.fillIncompleteActions();
+      this.deps.sendServerTurn(this.deps.turn.getSteps());
+    });
+  }
+
+  /** 指定時刻にタスクを実行する */
+  private runAt(targetDate: Date, task: () => void): NodeJS.Timeout | null {
+    const now = Date.now();
+    const target = targetDate.getTime();
+    const delay = target - now;
+
+    if (delay <= 0) {
+      // すでに時刻を過ぎていたら即実行
+      task();
+      return null;
+    }
+
+    return setTimeout(task, delay);
+  }
+
+  /**
+   * 行動の設定が未完了のユニットの行動を埋める
+   */
+  private fillIncompleteActions(): void {
+    // 行動の設定が未完了のキャラクターを取得する。
+    const incompleteCharacters = this.deps.characterManager.playerCharacters.filter(
+      (character) => {
+        if (character.getIsBailedOut()) {
+          return false;
+        }
+        const actionPoints =
+          this.deps.characterManager.findPlayerCharacterByImage(character.image)
+            ?.getActionPoints() || 0;
+        return actionPoints > 0;
+      }
+    );
+
+    // 行動力が残っているユニットごとにループ
+    for (const character of incompleteCharacters) {
+      // キャラクターを選択状態にする。
+      this.deps.characterManager.selectedCharacter = character;
+      // 残りの行動力分ループ
+      for (let i = 0; i < character.getActionPoints(); i++) {
+        // 現在の位置を取得
+        const currentPosition = character.position;
+        // 行動の設定が未完了のキャラクターに対して、現在位置での待機アクションを追加する。
+        this.pushActionHistory(currentPosition.col, currentPosition.row);
+      }
+    }
   }
 }

@@ -254,7 +254,7 @@ mod tests {
             Ok(())
         }
 
-        async fn update_current_turn(&self, _game: &Game) -> Result<(), String> {
+        async fn update(&self, _game: &Game) -> Result<(), String> {
             Ok(())
         }
 

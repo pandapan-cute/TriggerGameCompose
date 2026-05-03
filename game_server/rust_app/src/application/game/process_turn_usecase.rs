@@ -6,6 +6,7 @@ use crate::{
             turn_resolution_service::TurnResolutionService,
             turn_submission_service::{SubmissionResult, TurnSubmissionService},
         },
+        schedule::schedule_maker::ScheduleMaker,
         websocket::websocket_sender::WebSocketSender,
     },
     domain::{
@@ -24,6 +25,7 @@ pub struct ProcessTurnUseCase {
     turn_repository: Arc<dyn TurnRepository>,
     unit_repository: Arc<dyn UnitRepository>,
     websocket_sender: Arc<dyn WebSocketSender>,
+    schedule_maker: Arc<dyn ScheduleMaker>,
 }
 
 impl ProcessTurnUseCase {
@@ -33,6 +35,7 @@ impl ProcessTurnUseCase {
         turn_repository: Arc<dyn TurnRepository>,
         unit_repository: Arc<dyn UnitRepository>,
         websocket_sender: Arc<dyn WebSocketSender>,
+        schedule_maker: Arc<dyn ScheduleMaker>,
     ) -> Self {
         Self {
             connection_repository,
@@ -40,6 +43,7 @@ impl ProcessTurnUseCase {
             turn_repository,
             unit_repository,
             websocket_sender,
+            schedule_maker,
         }
     }
 
@@ -56,6 +60,7 @@ impl ProcessTurnUseCase {
             self.game_repository.clone(),
             self.unit_repository.clone(),
             self.websocket_sender.clone(),
+            self.schedule_maker.clone(),
         );
 
         match submission_service

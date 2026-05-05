@@ -30,9 +30,7 @@ impl MotionLabEndTime {
         let game_config = GameConfig::get_game_config();
         let motion_lab_limit_time = Utc::now()
             + chrono::Duration::seconds(
-                game_config.motion_lab_seconds()
-                    + game_config.motion_execute_seconds()
-                    + game_config.communication_wait_seconds(),
+                game_config.motion_lab_seconds() + game_config.motion_execute_seconds(),
             );
         Self {
             value: motion_lab_limit_time,

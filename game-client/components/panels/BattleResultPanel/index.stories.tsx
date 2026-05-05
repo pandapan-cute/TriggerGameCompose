@@ -37,7 +37,7 @@ type Story = StoryObj<typeof BattleResultPanel>;
 
 export const YouWin: Story = {
 	args: {
-		result: "win",
+		result: "Win",
 		friendUnits,
 		enemyUnits,
 	},
@@ -45,7 +45,7 @@ export const YouWin: Story = {
 
 export const YouLose: Story = {
 	args: {
-		result: "lose",
+		result: "Lose",
 		friendUnits,
 		enemyUnits,
 	},
@@ -53,7 +53,7 @@ export const YouLose: Story = {
 
 export const Draw: Story = {
 	args: {
-		result: "draw",
+		result: "Draw",
 		friendUnits,
 		enemyUnits,
 	},

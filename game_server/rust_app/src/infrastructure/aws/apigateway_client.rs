@@ -22,12 +22,18 @@ pub async fn create_apigateway_client(domain_name: Option<&str>, stage: Option<&
     let endpoint = if let Ok(ws_endpoint) = std::env::var("WEBSOCKET_GATEWAY_ENDPOINT") {
         println!("Using local WebSocket Gateway: {}", ws_endpoint);
         ws_endpoint
+    } else if let Ok(ws_management_endpoint) = std::env::var("WEBSOCKET_MANAGEMENT_ENDPOINT") {
+        println!(
+            "Using deployed WebSocket Management endpoint: {}",
+            ws_management_endpoint
+        );
+        ws_management_endpoint
+    } else if let (Some(domain), Some(stage_name)) = (domain_name, stage) {
+        println!("Using WebSocket endpoint from request context");
+        format!("https://{}/{}", domain, stage_name)
     } else {
-        println!("Using production WebSocket Gateway");
-        format!(
-            "https://{}/{}",
-            domain_name.unwrap_or("example.com"),
-            stage.unwrap_or("prod")
+        panic!(
+            "WebSocket endpoint could not be resolved. Set WEBSOCKET_MANAGEMENT_ENDPOINT or pass request context domain/stage."
         )
     };
 

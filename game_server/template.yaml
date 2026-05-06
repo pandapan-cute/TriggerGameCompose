@@ -34,6 +34,7 @@ Resources:
       Environment:
         Variables:
           APP_ENV: !Ref EnvironmentName
+          WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${TriggerGameWebSocketApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${EnvironmentName}'
           EVENTBRIDGE_SCHEDULER_TARGET_ARN: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${TriggerGameFunctionName}-${EnvironmentName}'
           EVENTBRIDGE_SCHEDULER_ROLE_ARN: !GetAtt EventBridgeSchedulerInvokeRole.Arn
           EVENTBRIDGE_SCHEDULER_GROUP_NAME: !Ref TriggerGameSchedulerGroup

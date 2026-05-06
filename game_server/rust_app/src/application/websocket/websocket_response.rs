@@ -72,7 +72,7 @@ pub enum WebSocketResponse {
         /// ゲーム状態の値
         state: GameStateValue,
         /// 勝敗
-        outcome: Option<OutcomeValue>,
+        outcome: OutcomeValue,
     },
 
     /// エラーレスポンス
@@ -94,4 +94,5 @@ pub enum OutcomeValue {
     Win,
     Lose,
     Draw,
+    InProgress,
 }

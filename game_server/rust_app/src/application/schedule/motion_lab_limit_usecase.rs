@@ -126,7 +126,7 @@ impl MotionLabLimitUseCase {
         let response = WebSocketResponse::NotifyGameState {
             message: "対戦相手がリタイアしました。あなたの勝利です。".to_string(),
             state: game.game_state().value().clone(),
-            outcome: Some(OutcomeValue::Win),
+            outcome: OutcomeValue::Win,
         };
         if let Err(e) = self.response_message(player_id, response).await {
             eprintln!("WebSocketメッセージの送信に失敗しました: {}", e);
@@ -151,7 +151,7 @@ impl MotionLabLimitUseCase {
         let response = WebSocketResponse::NotifyGameState {
             message: "ゲームは終了しました。通信状況を確認してください。".to_string(),
             state: game.game_state().value().clone(),
-            outcome: Some(OutcomeValue::Lose),
+            outcome: OutcomeValue::Lose,
         };
         if let Err(e) = self.response_message(player_id, response).await {
             eprintln!("WebSocketメッセージの送信に失敗しました: {}", e);
@@ -182,7 +182,12 @@ impl MotionLabLimitUseCase {
         self.websocket_sender
             .send_message(&connection_id, &response)
             .await
-            .map_err(|e| format!("WebSocketメッセージの送信に失敗しました: {}", e))?;
+            .map_err(|e| {
+                format!(
+                    "WebSocketメッセージの送信に失敗しました: {}, response: {:?}",
+                    e, response
+                )
+            })?;
         Ok(())
     }
 }

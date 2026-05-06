@@ -14,7 +14,7 @@ impl AppEnv {
                 "local" => Ok(Self::Local),
                 "dev" => Ok(Self::Dev),
                 "stg" | "stage" => Ok(Self::Stg),
-                "prod" | "production" => Ok(Self::Prod),
+                "prd" | "prod" | "production" => Ok(Self::Prod),
                 other => Err(format!("invalid APP_ENV: {}", other)),
             };
         }
@@ -26,5 +26,23 @@ impl AppEnv {
     }
     pub fn is_prod(self) -> bool {
         self == Self::Prod
+    }
+}
+
+pub fn resolve_env_suffix() -> String {
+    match AppEnv::from_env() {
+        Ok(AppEnv::Dev) => "dev".to_string(),
+        Ok(AppEnv::Stg) => "stg".to_string(),
+        Ok(AppEnv::Prod) => "prd".to_string(),
+        Ok(AppEnv::Local) | Err(_) => "".to_string(),
+    }
+}
+
+pub fn resolve_table_name(base_name: &str) -> String {
+    let suffix = resolve_env_suffix();
+    if suffix.is_empty() {
+        base_name.to_string()
+    } else {
+        format!("{}-{}", base_name, suffix)
     }
 }

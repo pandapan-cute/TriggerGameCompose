@@ -1,5 +1,6 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
+use crate::config::env::resolve_table_name;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
@@ -28,16 +29,14 @@ use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::Un
 
 pub struct DynamoDbTurnRepository {
     client: DynamoDbClient,
-    turns_table: &'static str,
+    turns_table: String,
 }
 
 impl DynamoDbTurnRepository {
     pub fn new(client: DynamoDbClient) -> Self {
-        // テーブル名
-        const TURNS_TABLE_NAME: &str = "Turns";
         Self {
-            client: client,
-            turns_table: TURNS_TABLE_NAME,
+            client,
+            turns_table: resolve_table_name("Turns"),
         }
     }
 
@@ -182,9 +181,9 @@ impl TurnRepository for DynamoDbTurnRepository {
     async fn save(&self, turn: &Turn) -> Result<(), String> {
         // Turnアイテムを保存
         let turn_item = self.turn_to_item(turn);
-        self.client
-            .put_item()
-            .table_name(self.turns_table)
+            self.client
+                .put_item()
+                .table_name(self.turns_table.as_str())
             .set_item(Some(turn_item))
             .send()
             .await
@@ -205,7 +204,7 @@ impl TurnRepository for DynamoDbTurnRepository {
         let request = self
             .client
             .update_item()
-            .table_name(self.turns_table)
+                .table_name(self.turns_table.as_str())
             .key(
                 "turn_id",
                 AttributeValue::S(turn.turn_id().value().to_string()),
@@ -243,7 +242,7 @@ impl TurnRepository for DynamoDbTurnRepository {
         let result = self
             .client
             .get_item()
-            .table_name(self.turns_table)
+            .table_name(self.turns_table.as_str())
             .key(
                 "turn_id",
                 AttributeValue::S(

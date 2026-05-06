@@ -1,5 +1,6 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
+use crate::config::env::resolve_table_name;
 use crate::domain::matching_management::models::matching::{
     Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
     MatchingStatusValue,
@@ -13,16 +14,14 @@ use std::collections::HashMap;
 
 pub struct DynamoDbMatchingRepository {
     client: DynamoDbClient,
-    matchings_table: &'static str,
+    matchings_table: String,
 }
 
 impl DynamoDbMatchingRepository {
     pub fn new(client: DynamoDbClient) -> Self {
-        // テーブル名
-        const MATCHINGS_TABLE_NAME: &str = "Matchings";
         Self {
-            client: client,
-            matchings_table: MATCHINGS_TABLE_NAME,
+            client,
+            matchings_table: resolve_table_name("Matchings"),
         }
     }
 
@@ -69,7 +68,7 @@ impl MatchingRepository for DynamoDbMatchingRepository {
         let matching_item = self.matching_to_item(matching);
         self.client
             .put_item()
-            .table_name(self.matchings_table)
+            .table_name(self.matchings_table.as_str())
             .set_item(Some(matching_item))
             .send()
             .await
@@ -101,7 +100,7 @@ impl MatchingRepository for DynamoDbMatchingRepository {
         let mut request = self
             .client
             .update_item()
-            .table_name(self.matchings_table)
+            .table_name(self.matchings_table.as_str())
             .key(
                 "matching_id",
                 AttributeValue::S(matching.matching_id().value().to_string()),
@@ -156,7 +155,7 @@ impl MatchingRepository for DynamoDbMatchingRepository {
         let result = self
             .client
             .query()
-            .table_name(self.matchings_table)
+            .table_name(self.matchings_table.as_str())
             .index_name("MatchingStatusIndex") // GSI名
             .key_condition_expression("matching_status = :status")
             .expression_attribute_values(

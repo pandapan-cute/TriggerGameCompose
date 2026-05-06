@@ -20,6 +20,10 @@ cargo test
 cd game_server
 # SAM CLIを使ったビルド
 sam build --beta-features
-# SAM CLIを使ったデプロイ
-sam deploy
+
+# SAM CLIを使った検証環境デプロイ
+sam deploy --config-env dev
+
+# SAM CLIを使った本番環境デプロイ
+sam deploy --config-env prd
 ```

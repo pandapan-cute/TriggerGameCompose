@@ -28,3 +28,21 @@ warm_containers = "EAGER"
 
 [default.local_start_lambda.parameters]
 warm_containers = "EAGER"
+
+[dev.global.parameters]
+stack_name = "trigger-game-lambda-server-dev"
+
+[dev.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+parameter_overrides = "EnvironmentName=dev TriggerGameFunctionName=triggergame-function"
+
+[prd.global.parameters]
+stack_name = "trigger-game-lambda-server-prd"
+
+[prd.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+parameter_overrides = "EnvironmentName=prd TriggerGameFunctionName=triggergame-function"

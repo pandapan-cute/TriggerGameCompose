@@ -1,5 +1,6 @@
 // infrastructure/dynamodb/game_dynamodb_repository.rs
 
+use crate::config::env::resolve_table_name;
 use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game::Game;
@@ -16,16 +17,14 @@ use std::collections::HashMap;
 
 pub struct DynamoDbGameRepository {
     client: DynamoDbClient,
-    games_table: &'static str,
+    games_table: String,
 }
 
 impl DynamoDbGameRepository {
     pub fn new(client: DynamoDbClient) -> Self {
-        // テーブル名
-        const GAMES_TABLE_NAME: &str = "Games";
         Self {
-            client: client,
-            games_table: GAMES_TABLE_NAME,
+            client,
+            games_table: resolve_table_name("Games"),
         }
     }
 
@@ -82,7 +81,7 @@ impl GameRepository for DynamoDbGameRepository {
         let game_item = self.game_to_item(game);
         self.client
             .put_item()
-            .table_name(self.games_table)
+            .table_name(self.games_table.as_str())
             .set_item(Some(game_item))
             .send()
             .await
@@ -96,7 +95,7 @@ impl GameRepository for DynamoDbGameRepository {
 
         self.client
             .update_item()
-            .table_name(self.games_table)
+            .table_name(self.games_table.as_str())
             .key(
                 "game_id",
                 AttributeValue::S(game.game_id().value().to_string()),
@@ -130,7 +129,7 @@ impl GameRepository for DynamoDbGameRepository {
         let result = self
             .client
             .get_item()
-            .table_name(self.games_table)
+            .table_name(self.games_table.as_str())
             .key("game_id", AttributeValue::S(game_id.value().to_string()))
             .send()
             .await

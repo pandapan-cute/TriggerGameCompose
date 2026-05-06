@@ -1,5 +1,6 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
+use crate::config::env::resolve_table_name;
 use crate::domain::player_management::models::player::Player;
 use crate::domain::player_management::repositories::connection_repository::ConnectionRepository;
 use crate::domain::player_management::repositories::player_repository::PlayerRepository;
@@ -13,16 +14,14 @@ use std::collections::HashMap;
 /// Lambdaでの特有のコネクション管理処理を担当します
 pub struct DynamoDbConnectionRepository {
     client: DynamoDbClient,
-    connections_table: &'static str,
+    connections_table: String,
 }
 
 impl DynamoDbConnectionRepository {
     pub fn new(client: DynamoDbClient) -> Self {
-        // テーブル名
-        const CONNECTIONS_TABLE_NAME: &str = "Connections";
         Self {
             client,
-            connections_table: CONNECTIONS_TABLE_NAME,
+            connections_table: resolve_table_name("Connections"),
         }
     }
 
@@ -53,7 +52,7 @@ impl ConnectionRepository for DynamoDbConnectionRepository {
         let connection_item = self.connection_to_item(player_id, connection_id);
         self.client
             .put_item()
-            .table_name(self.connections_table)
+            .table_name(self.connections_table.as_str())
             .set_item(Some(connection_item))
             .send()
             .await
@@ -68,7 +67,7 @@ impl ConnectionRepository for DynamoDbConnectionRepository {
         let result = self
             .client
             .get_item()
-            .table_name(self.connections_table)
+            .table_name(self.connections_table.as_str())
             .key("player_id", AttributeValue::S(player_id.to_string()))
             .send()
             .await

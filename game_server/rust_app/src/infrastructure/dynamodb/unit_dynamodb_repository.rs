@@ -1,5 +1,6 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
+use crate::config::env::resolve_table_name;
 use crate::domain::matching_management::models::matching::{
     matching_id, Matching, MatchingEndDatetime, MatchingId, MatchingStartDatetime, MatchingStatus,
     MatchingStatusValue,
@@ -27,16 +28,14 @@ use std::collections::HashMap;
 
 pub struct DynamoDbUnitRepository {
     client: DynamoDbClient,
-    units_table: &'static str,
+    units_table: String,
 }
 
 impl DynamoDbUnitRepository {
     pub fn new(client: DynamoDbClient) -> Self {
-        // テーブル名
-        const UNITS_TABLE_NAME: &str = "Units";
         Self {
-            client: client,
-            units_table: UNITS_TABLE_NAME,
+            client,
+            units_table: resolve_table_name("Units"),
         }
     }
 
@@ -278,7 +277,7 @@ impl UnitRepository for DynamoDbUnitRepository {
         let unit_item = self.unit_to_item(unit);
         self.client
             .put_item()
-            .table_name(self.units_table)
+            .table_name(self.units_table.as_str())
             .set_item(Some(unit_item))
             .send()
             .await
@@ -315,7 +314,7 @@ impl UnitRepository for DynamoDbUnitRepository {
 
         self.client
             .update_item()
-            .table_name(self.units_table)
+            .table_name(self.units_table.as_str())
             .key(
                 "unit_id",
                 AttributeValue::S(unit.unit_id().value().to_string()),
@@ -370,7 +369,7 @@ impl UnitRepository for DynamoDbUnitRepository {
         let result = self
             .client
             .query()
-            .table_name(self.units_table)
+            .table_name(self.units_table.as_str())
             .index_name("GameIdIndex") // GSI名
             .key_condition_expression("game_id = :game_id")
             .expression_attribute_values(":game_id", AttributeValue::S(game_id.value().to_string()))

@@ -59,9 +59,11 @@ impl VisibilityProjectionService {
         // - src/domain/triggergame_simulator/models/step/step.rs
         // - Step::to_player_step の `self.actions.iter_mut().for_each(...)` 周辺
 
+        let active_viewer_units = self.collect_active_viewer_units(player_id, units);
+
         // アクションを走査し、プレイヤー視点のフィルタリングを適用する。
         step.actions_mut().iter_mut().for_each(|action| {
-            action.to_player_action(player_id, units, visibility);
+            action.to_player_action(player_id, units, &active_viewer_units, visibility);
         });
     }
 
@@ -85,13 +87,18 @@ impl VisibilityProjectionService {
         // - Step::to_player_step の
         //   `let player_units ... visibility.calculate_visibility(&player_units)` 周辺
 
-        // 所有ユニットを抽出し、プレイヤー向け可視セルを計算する。
-        let player_units: Vec<Unit> = units
+        let active_viewer_units = self.collect_active_viewer_units(player_id, units);
+        visibility.calculate_visibility(&active_viewer_units)
+    }
+
+    /// 閲覧プレイヤーに属するアクティブなユニットのみを抽出する。
+    fn collect_active_viewer_units(&self, player_id: &PlayerId, units: &Vec<Unit>) -> Vec<Unit> {
+        units
             .iter()
             .filter(|u| u.owner_player_id() == player_id)
+            .filter(|u| !u.is_bailout_value().value())
             .cloned()
-            .collect();
-        visibility.calculate_visibility(&player_units)
+            .collect()
     }
 }
 
@@ -99,8 +106,16 @@ impl VisibilityProjectionService {
 mod tests {
     use super::VisibilityProjectionService;
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+    use crate::domain::triggergame_simulator::models::action::{
+        action::Action,
+        action_type::action_type::{ActionType, ActionTypeValue},
+        trigger_azimuth::trigger_azimuth::TriggerAzimuth,
+    };
     use crate::domain::triggergame_simulator::models::game::{
         game_id::game_id::GameId, visibility::Visibility,
+    };
+    use crate::domain::triggergame_simulator::models::step::{
+        step::Step, step_id::step_id::StepId,
     };
     use crate::domain::unit_management::models::unit::{
         having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
@@ -121,6 +136,20 @@ mod tests {
             100,
             8,
             10,
+        )
+    }
+
+    /// Bagworm 装備の敵アクションを生成する。
+    fn create_enemy_action(enemy_unit: &Unit, position: Position) -> Action {
+        Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            enemy_unit.unit_id().clone(),
+            enemy_unit.unit_type_id().clone(),
+            position,
+            TriggerId::new("BAGWORM".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
         )
     }
 
@@ -174,5 +203,59 @@ mod tests {
             service.calculate_player_visibility_cells(&player_id, &turn2_units, &visibility);
 
         assert_ne!(turn1_map, turn2_map);
+    }
+
+    /// ベイルアウト済みユニットが可視セル計算に寄与しないことを検証する。
+    #[test]
+    fn test_calculate_player_visibility_cells_excludes_bailed_out_units() {
+        let player_id = PlayerId::new("550e8400-e29b-41d4-a716-446655440404".to_string());
+        let mut active_unit = create_unit(&player_id, Position::new(1, 1));
+        let mut bailed_out_unit = create_unit(&player_id, Position::new(10, 10));
+        active_unit.set_position(Position::new(1, 1));
+        bailed_out_unit.bailout();
+
+        let units = vec![active_unit, bailed_out_unit];
+        let visibility = Visibility::create();
+
+        let map = VisibilityProjectionService::new().calculate_player_visibility_cells(
+            &player_id,
+            &units,
+            &visibility,
+        );
+
+        assert!(map[1][1]);
+        assert!(!map[10][10]);
+    }
+
+    /// 全 viewer がベイルアウト済みなら、敵アクションがマスクされることを検証する。
+    #[test]
+    fn test_project_actions_for_player_hides_enemy_action_when_all_viewers_bailout() {
+        let player_id = PlayerId::new("550e8400-e29b-41d4-a716-446655440405".to_string());
+        let enemy_player_id = PlayerId::new("550e8400-e29b-41d4-a716-446655440406".to_string());
+
+        let mut viewer_unit = create_unit(&player_id, Position::new(5, 5));
+        viewer_unit.bailout();
+        let enemy_unit = create_unit(&enemy_player_id, Position::new(30, 30));
+
+        let action = create_enemy_action(&enemy_unit, Position::new(30, 30));
+        let mut step = Step::create(
+            StepId::new("550e8400-e29b-41d4-a716-446655440407".to_string()),
+            vec![action],
+            vec![],
+        );
+        let units = vec![viewer_unit, enemy_unit];
+        let visibility = Visibility::create();
+
+        VisibilityProjectionService::new().project_actions_for_player(
+            &mut step,
+            &player_id,
+            &units,
+            &visibility,
+        );
+
+        let projected_action = &step.actions()[0];
+        assert_eq!(projected_action.unit_type_id().value(), "UNKNOWN");
+        assert_eq!(projected_action.position().col(), -1);
+        assert_eq!(projected_action.position().row(), -1);
     }
 }

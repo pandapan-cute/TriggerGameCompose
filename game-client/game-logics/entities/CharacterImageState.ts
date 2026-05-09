@@ -56,6 +56,7 @@ export class CharacterImageState {
       action.getPosition().col,
       action.getPosition().row
     );
+    const duration = this.position.col !== 36 ? 750 : 0; // バッグワーム状態なら移動アニメなし
     this.position = action.getPosition(); // キャラクターの座標を更新
     console.log(`キャラクター${this.unitId}の移動先: マス(${action.getPosition().col}, ${action.getPosition().row}) -> ピクセル(${targetPixelPos.x}, ${targetPixelPos.y})`);
     this.setDirection({ main: action.getMainTriggerAzimuth(), sub: action.getSubTriggerAzimuth() });
@@ -64,7 +65,7 @@ export class CharacterImageState {
     this.image.updateUnitImage(action.getUnitTypeId());
     this.image.setVisible(action.getPosition().col !== 36 && action.getPosition().row !== 36); // 座標が範囲外でない場合のみ表示
     // 移動アニメーションを実行
-    this.image.moveUnitTween(targetPixelPos.x, targetPixelPos.y, () => {
+    this.image.moveUnitTween(targetPixelPos.x, targetPixelPos.y, duration, () => {
       // 移動完了後にトリガー表示を更新
       this.updateTriggerPositionsForCharacter(action);
     }, onStepComplete);
@@ -89,28 +90,6 @@ export class CharacterImageState {
     // サブトリガーの表示を更新
     this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey, visible);
   }
-
-  /**
-   * 攻撃を与えた際の攻撃の表示を行う
-   * @param combat - 戦闘情報
-   */
-  executeCharacterAttack(
-    combat: Combat
-  ) {
-    // 攻撃先(防御したユニット)の座標を取得
-    const targetPosition = combat.getDefenderPosition();
-    const invertedTargetPosition = this.hexUtils.invertPosition(targetPosition);
-    const targetPixelPos = this.hexUtils.getHexPosition(invertedTargetPosition.col, invertedTargetPosition.row);
-
-    // 攻撃エフェクトを表示
-    this.image.drawAnimatedArrowBetweenCharacters(
-      {
-        x: targetPixelPos.x,
-        y: targetPixelPos.y,
-      }
-    );
-  }
-
 
   /**
    * 攻撃を受けた際の防御・回避の表示を行う

@@ -1,7 +1,12 @@
 import { CharacterManager } from "@/game-logics/characterManager";
 import { MAX_TURN } from "@/game-logics/config/game-config";
+import { HexUtils } from "@/game-logics/hexUtils";
+import { Combat } from "@/game-logics/models/Combat";
 import { Turn } from "@/game-logics/models/Turn";
 import { GameResult } from "@/types/GameTypes";
+import { AttackArrow } from "../../game-objects/graphics/AttackArrow";
+import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
+import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 
 /**
  * TurnReplayController が参照する依存関係。
@@ -11,6 +16,7 @@ import { GameResult } from "@/types/GameTypes";
  */
 export interface TurnReplayControllerDeps {
   scene: Phaser.Scene;
+  hexUtils: HexUtils;
   characterManager: CharacterManager;
   onReplayCompleted: (turnNumber: number) => void;
   clearTriggerArrows?: () => void;
@@ -127,7 +133,7 @@ export class TurnReplayController {
       if (attackingCharacter) {
         // 攻撃側が存在する場合: 攻撃演出を再生する。
         console.log(`--- コンバット ${combatIndex + 1} 開始 ---`);
-        attackingCharacter.executeCharacterAttack(combat);
+        this.replayCharacterAttack(combat);
       }
 
       const defendingCharacter = this.deps.characterManager.findCharacterByUnitId(
@@ -196,6 +202,56 @@ export class TurnReplayController {
           console.warn(`視界の不一致を検出: (${col}, ${row}) - サーバー: ${serverVisibilityMap[row][col]}, クライアント: ${clientVisibilityMap[row][col]}`);
         }
       }
+    }
+  }
+
+  /**
+   * 攻撃を与えた際の攻撃の表示を行う
+   * @param combat - 戦闘情報
+   */
+  private replayCharacterAttack(
+    combat: Combat
+  ) {
+    const attackingCharacter = this.deps.characterManager.findCharacterByUnitId(combat.getAttackingUnitId());
+
+    const drawArrow = (attacker: { x: number; y: number; }, target: { x: number; y: number; }) => {
+      // 攻撃エフェクトを表示
+      const attackArrow = new AttackArrow(
+        this.deps.scene,
+        attacker.x,
+        attacker.y,
+        target.x,
+        target.y
+      );
+      // アニメーション付きの矢印を描画
+      attackArrow.drawAnimatedArrow();
+    };
+
+    if (attackingCharacter instanceof PlayerCharacterState) {
+      // 攻撃元の座標を取得
+      const attackerPosition = combat.getAttackerPosition();
+      const attackerPixelPos = this.deps.hexUtils.getHexPosition(attackerPosition.col, attackerPosition.row);
+
+      // 攻撃先(防御したユニット)の座標を取得
+      const targetPosition = combat.getDefenderPosition();
+      const invertedTargetPosition = this.deps.hexUtils.invertPosition(targetPosition);
+      const targetPixelPos = this.deps.hexUtils.getHexPosition(invertedTargetPosition.col, invertedTargetPosition.row);
+
+      // 攻撃エフェクトを表示
+      drawArrow(attackerPixelPos, targetPixelPos);
+
+    } else if (attackingCharacter instanceof EnemyCharacterState) {
+      // 攻撃元の座標を取得
+      const attackerPosition = combat.getAttackerPosition();
+      const invertedAttackerPosition = this.deps.hexUtils.invertPosition(attackerPosition);
+      const attackerPixelPos = this.deps.hexUtils.getHexPosition(invertedAttackerPosition.col, invertedAttackerPosition.row);
+
+      // 攻撃先(防御したユニット)の座標を取得
+      const targetPosition = combat.getDefenderPosition();
+      const targetPixelPos = this.deps.hexUtils.getHexPosition(targetPosition.col, targetPosition.row);
+
+      // 攻撃エフェクトを表示
+      drawArrow(attackerPixelPos, targetPixelPos);
     }
   }
 }

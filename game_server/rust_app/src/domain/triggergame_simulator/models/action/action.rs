@@ -160,8 +160,9 @@ impl Action {
     /// プレイヤーごとに見せるべき情報をフィルタリングする処理
     /// ただし、combatが発生しなかった場合はNoneを返す
     ///
-    /// * player_id: actionを実行したプレイヤーID(攻撃側)
-    /// * units: 防御側ユニット情報
+    /// * player_id: 閲覧プレイヤーID
+    /// * all_units: 行動者特定に使う全ユニット情報
+    /// * viewer_units: 可視性計算に使う、閲覧プレイヤーのアクティブなユニット情報
     /// * visibility: 視界情報
     ///
     /// ユニット表示パターン
@@ -175,17 +176,21 @@ impl Action {
     pub fn to_player_action(
         &mut self,
         player_id: &PlayerId,
-        units: &Vec<Unit>,
+        all_units: &Vec<Unit>,
+        viewer_units: &Vec<Unit>,
         visibility: &Visibility,
     ) {
         // プレイヤーから見て敵のユニットの行動は、位置とトリガーの向き以外は見えないようにする
-        let attack_unit = units.iter().find(|u| u.unit_id() == &self.unit_id).unwrap();
+        let attack_unit = all_units
+            .iter()
+            .find(|u| u.unit_id() == &self.unit_id)
+            .unwrap();
         if attack_unit.owner_player_id() == player_id {
             // 自分のユニットの行動はそのまま返す
             return;
         }
 
-        let visibility_data = visibility.calculate_visibility(units);
+        let visibility_data = visibility.calculate_visibility(viewer_units);
         let action_visible = visibility_data[self.position.get_enemy_position().row() as usize]
             [self.position.get_enemy_position().col() as usize];
         if action_visible {

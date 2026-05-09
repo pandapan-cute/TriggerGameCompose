@@ -40,12 +40,12 @@ export class UnitImage extends Phaser.GameObjects.Image {
   }
 
   /** ユニットを移動させるアニメーション */
-  moveUnitTween(targetX: number, targetY: number, onUpdate: () => void, onComplete: () => void) {
+  moveUnitTween(targetX: number, targetY: number, duration: number = 750, onUpdate: () => void, onComplete: () => void) {
     this.scene.tweens.add({
       targets: this,
       x: targetX,
       y: targetY,
-      duration: 750,
+      duration: duration,
       ease: "Power2",
       onUpdate: onUpdate,
       onComplete: onComplete
@@ -95,79 +95,6 @@ export class UnitImage extends Phaser.GameObjects.Image {
         shieldImage.destroy();
       },
     });
-  }
-
-  /**
-   * アニメーション付きの矢印を描画
-   * @param fromCharacter - 矢印の始点となるキャラクターのImageオブジェクト
-   * @param toCharacter - 矢印の終点となるキャラクターのImageオブジェクト
-   * @param color - 矢印の色（デフォルトは赤色0xff0000）
-   * @returns 描画した矢印のGraphicsオブジェクト
-   */
-  drawAnimatedArrowBetweenCharacters(
-    defenderPos: { x: number; y: number; },
-  ): Phaser.GameObjects.Graphics {
-    const fromX = this.x;
-    const fromY = this.y;
-    const toX = defenderPos.x;
-    const toY = defenderPos.y;
-    const arrowGraphics = this.drawArrow(this.scene, fromX, fromY, toX, toY);
-    arrowGraphics.setAlpha(0);
-
-    // キャラクターを徐々に透明にして削除
-    this.scene.tweens.add({
-      targets: arrowGraphics,
-      alpha: 1,
-      duration: 250,
-      delay: 0,
-      ease: "Power2",
-      onComplete: () => {
-        arrowGraphics.destroy();
-      },
-    });
-    return arrowGraphics;
-  }
-
-
-  /**
-   * 2点間に矢印を描画する関数
-   * @param {Phaser.Scene} scene - シーンオブジェクト
-   * @param {number} x1 - 始点のX座標
-   * @param {number} y1 - 始点のY座標
-   * @param {number} x2 - 終点のX座標
-   * @param {number} y2 - 終点のY座標
-   * @returns {Phaser.GameObjects.Graphics} Graphicsオブジェクト
-   */
-  private drawArrow(scene: Phaser.Scene, x1: number, y1: number, x2: number, y2: number): Phaser.GameObjects.Graphics {
-    const graphics = scene.add.graphics({
-      lineStyle: { width: 4, color: 0x0091EA },
-      fillStyle: { color: 0x0091EA }
-    });
-
-    const arrowSize = 15; // 矢印の先端の大きさ
-
-    // 線の描画
-    graphics.beginPath();
-    graphics.moveTo(x1, y1);
-    graphics.lineTo(x2, y2);
-    graphics.stroke();
-    graphics.setDepth(1); // トリガー扇形より前面に表示
-
-    // 矢印の角度を計算 (ラジアン)
-    const angle = Phaser.Math.Angle.Between(x1, y1, x2, y2);
-
-    // 先端の三角形を描画
-    // 角度から少しずらした3点を計算し、終点に配置
-    graphics.fillTriangle(
-      x2,
-      y2,
-      x2 - Math.cos(angle - Math.PI / 6) * arrowSize,
-      y2 - Math.sin(angle - Math.PI / 6) * arrowSize,
-      x2 - Math.cos(angle + Math.PI / 6) * arrowSize,
-      y2 - Math.sin(angle + Math.PI / 6) * arrowSize
-    );
-
-    return graphics;
   }
 
   /**

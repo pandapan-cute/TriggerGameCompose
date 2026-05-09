@@ -57,6 +57,10 @@ export class Combat {
     return this.attackingUnitId;
   }
 
+  getAttackerPosition(): Position {
+    return this.attackerPosition;
+  }
+
   getDefendingUnitId(): string {
     return this.defendingUnitId;
   }

@@ -340,6 +340,7 @@ export class GridCellsScene extends Phaser.Scene {
   private createTurnReplayControllerDeps(): TurnReplayControllerDeps {
     return {
       scene: this,
+      hexUtils: this.hexUtils,
       characterManager: this.characterManager,
       onReplayCompleted: () => {
         this.handleFinishMotionExecute();

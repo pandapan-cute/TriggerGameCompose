@@ -12,7 +12,7 @@ use crate::{
         },
         triggergame_simulator::{
             models::{
-                game::{game::Game, game_id::game_id::GameId},
+                game::{game::Game, game_id::game_id::GameId, game_state::GameStateValue},
                 turn::turn_number::turn_number::TurnNumber,
             },
             repositories::{game_repository::GameRepository, turn_repository::TurnRepository},
@@ -60,7 +60,9 @@ impl MotionLabLimitUseCase {
             .await
             .map_err(|e| format!("ゲーム情報の取得に失敗しました: {}", e))?;
 
-        if game.current_turn_number().value() > turn_number {
+        if game.current_turn_number().value() > turn_number
+            || game.game_state().value() == &GameStateValue::Completed
+        {
             // すでに処理済みのターンの場合は何もしない
             return Ok(());
         } else {
@@ -124,6 +126,7 @@ impl MotionLabLimitUseCase {
         player_id: &PlayerId,
     ) -> Result<(), String> {
         let response = WebSocketResponse::NotifyGameState {
+            game_id: game.game_id().value().to_string(),
             message: "対戦相手がリタイアしました。あなたの勝利です。".to_string(),
             state: game.game_state().value().clone(),
             outcome: OutcomeValue::Win,
@@ -149,6 +152,7 @@ impl MotionLabLimitUseCase {
         player_id: &PlayerId,
     ) -> Result<(), String> {
         let response = WebSocketResponse::NotifyGameState {
+            game_id: game.game_id().value().to_string(),
             message: "ゲームは終了しました。通信状況を確認してください。".to_string(),
             state: game.game_state().value().clone(),
             outcome: OutcomeValue::Lose,

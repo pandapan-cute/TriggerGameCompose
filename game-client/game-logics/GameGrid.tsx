@@ -26,13 +26,14 @@ interface GameGridProps {
   gameResult: GameResult | null;
   setGameResult: (result: GameResult) => void;
   checkGameState: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number) => void;
+  setCurrentTurn: (turn: number) => void;
 }
 
 /**
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult, checkGameState }) => {
+const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult, checkGameState, setCurrentTurn }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -44,7 +45,6 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"lab" | "execute">("lab");
-  const [currentTurnState, setCurrentTurnState] = useState<number>(currentTurn);
   const [motionLabEndTimeState, setMotionLabEndTimeState] = useState<Date>(motionLabEndTime);
   const [motionExecuteEndTimeState, setMotionExecuteEndTimeState] = useState<Date>(motionLabEndTime);
   const motionLabDialogRef = useRef<MotionLabDialogHandle>(null);
@@ -91,7 +91,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   /** ターン情報の送信 */
   const handleTurnExecution = (steps: Step[]) => {
     console.log("Phaserからターン情報を受け取りました:", steps, isConnected, playerId, gameId);
-    if (isConnected && playerId && gameId) {
+    if (isConnected && playerId && gameId && gameResult === "InProgress") {
       const messageData = {
         action: "turnExecution" as const,
         playerId,
@@ -112,12 +112,11 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
   /** ユニットの行動終了処理 */
   const handleFinishMotionExecute = () => {
-    console.log("ユニットの行動終了処理を実行します。,現在のターン状態:", currentTurnState);
-    if (currentTurnState < MAX_TURN) {
+    console.log("ユニットの行動終了処理を実行します。,現在のターン状態:", currentTurn);
+    if (currentTurn < MAX_TURN) {
       // 次のターンの動きの設定フェーズへ移行
       setGameMode("lab");
       motionLabDialogRef.current?.show();
-      setCurrentTurnState((prev => prev + 1));
     }
   };
 
@@ -144,6 +143,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         const hydratedTurn = Turn.fromJSON(data.turn);
         targetScene.executeTurn(hydratedTurn, new Date(data.motionLabEndTime)); // Phaserシーンにターン情報を渡して実行
         setGameMode("execute");
+        setCurrentTurn(data.turn.getTurnNumber());
         motionExecuteDialogRef.current?.show();
         setMotionExecuteEndTimeState(new Date(Date.now() + 15000));
         setMotionLabEndTimeState(new Date(data.motionLabEndTime));
@@ -240,9 +240,9 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       {/* ゲームモード表示 */}
       <div className="absolute top-2 right-2 p-2 z-50">
         {gameMode === "lab" ? (
-          <TurnStateMotionLabPanel turn={currentTurnState} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
+          <TurnStateMotionLabPanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
         ) : (
-          <TurnStateMotionExecutePanel turn={currentTurnState} endtime={motionExecuteEndTimeState} maxTurn={MAX_TURN} />
+          <TurnStateMotionExecutePanel turn={currentTurn} endtime={motionExecuteEndTimeState} maxTurn={MAX_TURN} />
         )}
       </div>
 
@@ -254,8 +254,8 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       />
 
       {/* 動きの設定とユニットの行動のダイアログ表示 */}
-      <MotionLabDialog ref={motionLabDialogRef} turn={currentTurnState}></MotionLabDialog>
-      <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurnState}></MotionExecuteDialog>
+      <MotionLabDialog ref={motionLabDialogRef} turn={currentTurn}></MotionLabDialog>
+      <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurn}></MotionExecuteDialog>
     </div>
   );
 };

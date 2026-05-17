@@ -67,6 +67,8 @@ pub enum WebSocketResponse {
 
     /// ゲーム状態の通知
     NotifyGameState {
+        // ゲームID
+        game_id: String,
         /// ゲーム状態のメッセージ
         message: String,
         /// ゲーム状態の値

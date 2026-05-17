@@ -34,6 +34,7 @@ export interface GetGameStateResponse {
  */
 export interface NotifyGameStateResponse {
   action: "notifyGameState";
+  gameId: string;
   message: string;
   state: GameState;
   outcome: GameResult;

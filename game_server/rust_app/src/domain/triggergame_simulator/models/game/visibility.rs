@@ -102,9 +102,10 @@ impl Visibility {
         let viewer_height = self.field_steps[viewer_pos.row() as usize][viewer_pos.col() as usize];
         let target_height = self.field_steps[target_pos.row() as usize][target_pos.col() as usize];
 
-        if path.len() <= 2 {
-            return true;
-        }
+        // 2マス以内なら障害物があっても見えるとするか。。。一旦保留。。。
+        // if path.len() <= 2 {
+        //     return true;
+        // }
 
         for (i, path_pos) in path.iter().enumerate().skip(1).take(path.len() - 2) {
             let obstacle_height =

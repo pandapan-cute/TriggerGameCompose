@@ -44,24 +44,30 @@ export default function GamePage() {
 
   const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState?: GameState) => {
     if (isConnected && playerId) {
+      setFriendUnits(friendUnits);
+      setEnemyUnits(enemyUnits);
       const aliveFriendUnits = friendUnits.filter(unit => !unit.isBailout);
       const aliveEnemyUnits = enemyUnits.filter(unit => !unit.isBailout);
       if (aliveFriendUnits.length === 0 && aliveEnemyUnits.length === 0) {
-        resultDialogRef.current?.showModal();
         setGameResult("Draw");
       } else if (aliveFriendUnits.length === 0) {
-        resultDialogRef.current?.showModal();
         setGameResult("Lose");
       } else if (aliveEnemyUnits.length === 0) {
-        resultDialogRef.current?.showModal();
         setGameResult("Win");
       } else if (currentTurn >= MAX_TURN || gameState === "Completed") {
         console.log("最大ターン数に到達: 引き分け");
-        resultDialogRef.current?.showModal();
         setGameResult("Draw");
       }
     }
   };
+
+  useEffect(() => {
+    // ゲーム終了の検知
+    if (gameResult !== "InProgress") {
+      console.log("ゲーム状態が変更されました:", gameResult);
+      resultDialogRef.current?.showModal();
+    }
+  }, [gameResult]);
 
   useEffect(() => {
     /** ゲーム状態の受信処理 */
@@ -86,7 +92,7 @@ export default function GamePage() {
     const handleNotifyGameState = (data: WebSocketResponseType) => {
       if (data.action === "notifyGameState") {
         console.log("ゲーム結果を受信:", data);
-        if (data.state === "Completed") {
+        if (data.state === "Completed" && data.gameId === gameId) {
           // ゲーム終了の通知を受け取った場合、結果を設定してダイアログを表示する
           setGameResult(data.outcome);
           setGameResultMsg(data.message || null);
@@ -132,20 +138,18 @@ export default function GamePage() {
       <RotateView />
 
       <NormalFullDialog ref={resultDialogRef}>
-        {gameResult && gameResult !== "InProgress" && (
-          <BattleResultPanel
-            friendUnits={friendUnits}
-            enemyUnits={enemyUnits}
-            result={gameResult}
-            turn={currentTurn}
-            message={gameResultMsg}
-          />
-        )}
+        <BattleResultPanel
+          friendUnits={friendUnits}
+          enemyUnits={enemyUnits}
+          result={gameResult}
+          turn={currentTurn}
+          message={gameResultMsg}
+        />
       </NormalFullDialog>
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && gameResult === "InProgress" && (
         <div className="w-full h-full">
-          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} setGameResult={setGameResult} checkGameState={checkGameState} />
+          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} setGameResult={setGameResult} checkGameState={checkGameState} setCurrentTurn={setCurrentTurn} />
         </div>
       )}
     </div>

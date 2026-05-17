@@ -151,6 +151,11 @@ impl Game {
 
             player1_result_steps.push(player1_step);
             player2_result_steps.push(player2_step);
+
+            if self.is_any_player_units_destroyed(units) {
+                // どちらかのプレイヤーのユニットが全滅している場合は、残りのステップはスキップする
+                break;
+            }
         }
 
         player1_turn.set_steps(player1_result_steps);
@@ -175,6 +180,21 @@ impl Game {
     /// ゲームが終了しているかどうか（最終ターンに達しているか）
     pub fn is_game_finished(&self) -> bool {
         self.current_turn_number.value() >= Self::MAX_TURNS
+    }
+
+    /// どちらかのプレイヤーのユニットが全滅しているか
+    pub fn is_any_player_units_destroyed(&self, units: &Vec<Unit>) -> bool {
+        let player1_units = units
+            .iter()
+            .filter(|u| u.owner_player_id() == self.player1_id())
+            .collect::<Vec<&Unit>>();
+        let player2_units = units
+            .iter()
+            .filter(|u| u.owner_player_id() == self.player2_id())
+            .collect::<Vec<&Unit>>();
+
+        player1_units.iter().all(|u| u.is_bailed_out())
+            || player2_units.iter().all(|u| u.is_bailed_out())
     }
 
     // ゲッター

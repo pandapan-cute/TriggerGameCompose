@@ -102,8 +102,7 @@ export class CharacterImageState {
       // 撃破状態を表示してキャラクターを削除
       this.image.showBailOutAndRemoveCharacter();
       this.isBailedOut = true;
-      this.hideMainTriggerFan();
-      this.hideSubTriggerFan();
+      this.clearTriggerFans();
     } else if (combat.getIsAvoidedCombat()) {
       // 回避状態を表示
       this.image.showAvoidImage();
@@ -129,6 +128,16 @@ export class CharacterImageState {
   /** サブトリガーの表示をオフにする */
   hideSubTriggerFan() {
     this.subTriggerFan?.setTriggerVisible(false);
+  }
+
+  /** ベイルアウト時にトリガー表示をクリアする */
+  clearTriggerFans() {
+    this.mainTriggerFan?.setTriggerVisible(false);
+    this.mainTriggerFan?.destroy();
+    this.mainTriggerFan = null;
+    this.subTriggerFan?.setTriggerVisible(false);
+    this.subTriggerFan?.destroy();
+    this.subTriggerFan = null;
   }
 
   // ゲッター

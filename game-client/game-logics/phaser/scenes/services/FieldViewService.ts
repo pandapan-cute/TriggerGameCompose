@@ -210,9 +210,9 @@ export class FieldViewService {
    * @returns 丸められたキューブ座標 [x, y, z] (整数)
    */
   private cubeRound(cube: [number, number, number]): [number, number, number] {
-    let rx = Math.round(cube[0]);
-    let ry = Math.round(cube[1]);
-    let rz = Math.round(cube[2]);
+    let rx = this.roundHalfAwayFromZero(cube[0]);
+    let ry = this.roundHalfAwayFromZero(cube[1]);
+    let rz = this.roundHalfAwayFromZero(cube[2]);
 
     const xDiff = Math.abs(rx - cube[0]);
     const yDiff = Math.abs(ry - cube[1]);
@@ -228,6 +228,13 @@ export class FieldViewService {
     }
 
     return [rx, ry, rz];
+  }
+
+  /**
+   * Rust の f64::round と同じく、0.5 を 0 から遠ざける方向に丸める。
+   */
+  private roundHalfAwayFromZero(value: number): number {
+    return value >= 0 ? Math.floor(value + 0.5) : Math.ceil(value - 0.5);
   }
 
   /**

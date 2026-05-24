@@ -67,6 +67,15 @@ describe("FieldViewService visibility checks", () => {
     expect(result).toBe(false);
   });
 
+  it("hasLineOfSight: 障害物があるラインは false", () => {
+    const service = makeService();
+    const result = (service as any).hasLineOfSight(
+      { col: 15, row: 22 },
+      { col: 11, row: 21 }
+    );
+    expect(result).toBe(false);
+  });
+
   it("hasLineOfSight: 遮蔽のないラインは true", () => {
     const service = makeService();
     const result = (service as any).hasLineOfSight(

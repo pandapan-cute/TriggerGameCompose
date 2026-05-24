@@ -33,6 +33,14 @@ fn has_line_of_sight_with_obstacle_is_false() {
     assert!(!result);
 }
 
+/// hasLineOfSight: 障害物があるラインは false
+#[test]
+fn has_line_of_sight_with_obstacle_is_false_2() {
+    let visibility = Visibility::create();
+    let result = visibility.has_line_of_sight(&Position::new(15, 22), &Position::new(11, 21));
+    assert!(!result);
+}
+
 /// hasLineOfSight: 遮蔽のないラインは true
 #[test]
 fn has_line_of_sight_without_obstacle_is_true() {

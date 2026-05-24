@@ -247,7 +247,7 @@ export class HexUtils {
     // 初期化
     openSet.add(startKey);
     gScore.set(startKey, 0);
-    fScore.set(startKey, this.calculateHexDistance(start.col, start.row, end.col, end.row));
+    fScore.set(startKey, this.calculateHexStepDistance(start, end));
 
     while (openSet.size > 0) {
       // fScoreが最小のノードを選択
@@ -290,7 +290,8 @@ export class HexUtils {
           continue;
         }
 
-        const tentativeGScore = (gScore.get(current) || 0) + 1;
+        const tentativeGScore =
+          (gScore.get(current) || 0) + this.getMoveCost({ col: currentCol, row: currentRow }, neighbor);
 
         if (!openSet.has(neighborKey)) {
           openSet.add(neighborKey);
@@ -301,12 +302,54 @@ export class HexUtils {
         // より良い経路を発見
         cameFrom.set(neighborKey, { col: currentCol, row: currentRow });
         gScore.set(neighborKey, tentativeGScore);
-        fScore.set(neighborKey, tentativeGScore + this.calculateHexDistance(neighbor.col, neighbor.row, end.col, end.row));
+        fScore.set(
+          neighborKey,
+          tentativeGScore + this.calculateHexStepDistance(neighbor, end)
+        );
       }
     }
 
     // 経路が見つからない場合
     return [];
+  }
+
+  /**
+   * 1マス移動に必要な行動力コストを計算する
+   */
+  private getMoveCost(
+    from: { col: number; row: number; },
+    to: { col: number; row: number; }
+  ): number {
+    const beforeBuildingHeight = FIELD_STEPS[from.row][from.col];
+    const afterBuildingHeight = FIELD_STEPS[to.row][to.col];
+    return Math.max(0, afterBuildingHeight - beforeBuildingHeight) + 1;
+  }
+
+  /**
+   * 六角形グリッドにおける最小手数距離を返す
+   */
+  private calculateHexStepDistance(
+    start: { col: number; row: number; },
+    end: { col: number; row: number; }
+  ): number {
+    const startCube = this.offsetToCube(start.col, start.row);
+    const endCube = this.offsetToCube(end.col, end.row);
+
+    return Math.max(
+      Math.abs(endCube[0] - startCube[0]),
+      Math.abs(endCube[1] - startCube[1]),
+      Math.abs(endCube[2] - startCube[2])
+    );
+  }
+
+  /**
+   * オフセット座標をキューブ座標に変換する
+   */
+  private offsetToCube(col: number, row: number): [number, number, number] {
+    const x = col;
+    const z = row - (col - (col & 1)) / 2;
+    const y = -x - z;
+    return [x, y, z];
   }
 
   /**

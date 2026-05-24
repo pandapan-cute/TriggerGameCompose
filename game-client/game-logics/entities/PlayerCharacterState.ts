@@ -25,7 +25,7 @@ export class PlayerCharacterState extends CharacterImageState {
     /** Phaserシーンクラス */
     scene: Phaser.Scene,
     /** 味方ユニット情報 */
-    friendUnit: FriendUnit,
+    private friendUnit: FriendUnit,
     /** 座標計算系クラス */
     hexUtils: HexUtils,
     /** グリッド設定 */
@@ -184,6 +184,7 @@ export class PlayerCharacterState extends CharacterImageState {
   ) {
     super.executeCharacterDefense(combat);
     if (combat.getIsDefeatedCombat()) {
+      this.setFriendUnitBailout(true);
       this.setActionPointsText(null);
     }
   }
@@ -210,6 +211,10 @@ export class PlayerCharacterState extends CharacterImageState {
     return this.currentStep;
   }
 
+  getFriendUnit() {
+    return this.friendUnit;
+  }
+
   // セッター
   setActionPoints(points: number) {
     this.actionPoints = points;
@@ -217,5 +222,9 @@ export class PlayerCharacterState extends CharacterImageState {
 
   setCompleteText(text: ActionCompletedText | null) {
     this.completeText = text;
+  }
+
+  private setFriendUnitBailout(isBailout: boolean) {
+    this.friendUnit.isBailout = isBailout;
   }
 }

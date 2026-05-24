@@ -49,6 +49,15 @@ describe("FieldViewService visibility checks", () => {
     expect(result).toBe(false);
   });
 
+  it("checkUnitsVisibility: (20, 24)から(9, 15)は距離が遠いので不可視", () => {
+    const service = makeService();
+    const result = (service as any).checkUnitsVisibility(
+      { col: 20, row: 24 },
+      { col: 9, row: 15 }
+    );
+    expect(result).toBe(false);
+  });
+
   it("hasLineOfSight: 障害物があるラインは false", () => {
     const service = makeService();
     const result = (service as any).hasLineOfSight(

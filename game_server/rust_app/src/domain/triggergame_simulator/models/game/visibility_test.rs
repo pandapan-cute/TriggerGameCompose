@@ -17,6 +17,14 @@ fn check_units_visibility_far_distance_is_false() {
     assert!(!result);
 }
 
+/// checkUnitsVisibility: (20, 24)から(9, 15)は距離が遠いので不可視
+#[test]
+fn check_units_visibility_far_distance_is_false_2() {
+    let visibility = Visibility::create();
+    let result = visibility.check_units_visibility(&Position::new(20, 24), &Position::new(9, 15));
+    assert!(!result);
+}
+
 /// hasLineOfSight: 障害物があるラインは false
 #[test]
 fn has_line_of_sight_with_obstacle_is_false() {

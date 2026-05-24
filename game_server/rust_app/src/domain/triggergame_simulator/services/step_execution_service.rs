@@ -1,5 +1,8 @@
 use crate::domain::triggergame_simulator::models::{
-    game::visibility::Visibility, step::step::Step,
+    action::action::Action,
+    action::action_type::action_type::{ActionType, ActionTypeValue},
+    game::visibility::Visibility,
+    step::step::Step,
 };
 use crate::domain::unit_management::models::unit::Unit;
 
@@ -88,7 +91,7 @@ impl StepExecutionService {
     /// - `Err(String)`: 必須のドメイン更新に失敗した場合。
     pub fn apply_action_movements(
         &self,
-        step: &Step,
+        step: &mut Step,
         units: &mut Vec<Unit>,
         visibility: &mut Visibility,
     ) -> Result<(), String> {
@@ -139,6 +142,36 @@ impl StepExecutionService {
                 );
             }
         }
+
+        // actionが未指定のユニットには待機アクションを補完する。
+        let acted_unit_ids = step
+            .actions()
+            .iter()
+            .map(|a| a.unit_id().clone())
+            .collect::<Vec<_>>();
+
+        let wait_actions = units
+            .iter()
+            .filter(|unit| {
+                acted_unit_ids
+                    .iter()
+                    .all(|acted_id| acted_id != unit.unit_id())
+            })
+            .map(|unit| {
+                Action::create(
+                    ActionType::new(ActionTypeValue::Wait),
+                    unit.unit_id().clone(),
+                    unit.unit_type_id().clone(),
+                    unit.position().clone(),
+                    unit.using_main_trigger_id().clone(),
+                    unit.using_sub_trigger_id().clone(),
+                    unit.main_trigger_azimuth().clone(),
+                    unit.sub_trigger_azimuth().clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        step.actions_mut().extend(wait_actions);
 
         Ok(())
     }
@@ -292,12 +325,12 @@ mod tests {
     fn test_apply_action_movements_updates_trigger_at_ap_boundary() {
         // 仕様: APがちょうど1ならトリガー更新は許可される。
         let unit = create_unit_with_ap(1);
-        let step = create_step_for(&unit);
+        let mut step = create_step_for(&unit);
         let mut units = vec![unit.clone()];
         let mut visibility = Visibility::create();
 
         StepExecutionService::new()
-            .apply_action_movements(&step, &mut units, &mut visibility)
+            .apply_action_movements(&mut step, &mut units, &mut visibility)
             .unwrap();
 
         assert_eq!(
@@ -314,11 +347,11 @@ mod tests {
     fn test_apply_action_movements_does_not_update_trigger_when_ap_is_less_than_boundary() {
         // 仕様: APが1未満ならトリガー更新は拒否される。
         let mut units = vec![create_unit_with_ap(0)];
-        let step = create_step_for(&units[0]);
+        let mut step = create_step_for(&units[0]);
         let mut visibility = Visibility::create();
 
         StepExecutionService::new()
-            .apply_action_movements(&step, &mut units, &mut visibility)
+            .apply_action_movements(&mut step, &mut units, &mut visibility)
             .unwrap();
 
         assert_eq!(

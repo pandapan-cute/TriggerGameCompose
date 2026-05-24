@@ -55,7 +55,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (result: GameResult, playerCharacterStates: PlayerCharacterState[], enemyCharacterStates: EnemyCharacterState[]) => void, private handleFinishMotionExecute: () => void) {
+  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: () => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -366,7 +366,8 @@ export class GridCellsScene extends Phaser.Scene {
       },
       /** ゲームの終了処理を実行する */
       completeGame: (result: GameResult) => {
-        this.completeGame(result, this.characterManager.playerCharacters, this.characterManager.enemyCharacters);
+        const { friendUnits, enemyUnits } = this.characterManager.getUnitsList();
+        this.completeGame(friendUnits, enemyUnits, result);
       }
     };
   }

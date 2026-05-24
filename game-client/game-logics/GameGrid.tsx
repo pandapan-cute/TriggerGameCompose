@@ -104,7 +104,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   };
 
   /** ゲーム終了処理 */
-  const handleCompleteGame = (result: GameResult) => {
+  const handleCompleteGame = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => {
     console.log("ゲーム終了処理を実行します。結果:", result);
     setGameResult(result);
     checkGameState(friendUnits, enemyUnits, currentTurn);

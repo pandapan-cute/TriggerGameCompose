@@ -1,10 +1,12 @@
 'use client';
 
+import { EnemyUnit } from "@/types/EnemyUnit";
 import { CHARACTER_STATUS } from "./config/status";
 import { CharacterImageState } from "./entities/CharacterImageState";
 import { EnemyCharacterState } from "./entities/EnemyCharacterState";
 import { PlayerCharacterState } from "./entities/PlayerCharacterState";
 import { Position } from "./types";
+import { FriendUnit } from "@/types/FriendUnit";
 
 /**
  * キャラクター管理クラス
@@ -232,4 +234,12 @@ export class CharacterManager {
       character.hideSubTriggerFan();
     });
   };
+
+  // ゲッター
+  getUnitsList(): { friendUnits: FriendUnit[]; enemyUnits: EnemyUnit[]; } {
+    return {
+      friendUnits: this.playerCharacters.map(character => (character.getFriendUnit())),
+      enemyUnits: this.enemyCharacters.map(character => (character.getEnemyUnitData())),
+    };
+  }
 }

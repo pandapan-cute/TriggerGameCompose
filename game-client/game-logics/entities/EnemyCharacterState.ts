@@ -8,6 +8,7 @@ import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { GridConfig } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { UnitType } from "@/types/UnitType";
+import { Combat } from "../models/Combat";
 
 /**
  * 敵キャラクターごとの状態管理の型定義
@@ -15,7 +16,7 @@ import { UnitType } from "@/types/UnitType";
 export class EnemyCharacterState extends CharacterImageState {
   constructor(
     scene: Phaser.Scene,
-    enemyUnit: EnemyUnit,
+    private enemyUnit: EnemyUnit,
     hexUtils: HexUtils,
     private gridConfig: GridConfig
   ) {
@@ -65,5 +66,28 @@ export class EnemyCharacterState extends CharacterImageState {
     action.invertPositionForEnemy(this.gridConfig); // エネミー用に座標を反転させる
     action.invertTriggerAngleForEnemy(this.gridConfig); // エネミー用にトリガー角度を反転させる
     this.executeCommonSingleAction(action, onStepComplete);
+  }
+
+  /** 
+   * キャラクターが防御アクションを実行した際の処理
+   * @override CharacterImageStateの同名メソッドをオーバーライドして、エネミーのベイルアウト状態を更新する処理を追加
+   */
+  executeCharacterDefense(
+    combat: Combat
+  ) {
+    super.executeCharacterDefense(combat);
+    if (combat.getIsDefeatedCombat()) {
+      this.setEnemyUnitBailout(true);
+    }
+  }
+
+  // ゲッター
+  getEnemyUnitData() {
+    return this.enemyUnit;
+  }
+
+  // セッター
+  private setEnemyUnitBailout(isBailout: boolean) {
+    this.enemyUnit.isBailout = isBailout;
   }
 }

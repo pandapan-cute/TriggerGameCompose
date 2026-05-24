@@ -15,7 +15,6 @@ use crate::domain::{
 
 use super::game_id::game_id::GameId;
 use chrono::{DateTime, Utc};
-use itertools::Itertools;
 use uuid::Uuid;
 
 /// Game集約
@@ -113,29 +112,24 @@ impl Game {
         let mut player2_result_steps = Vec::new();
 
         // 各ステップの戦闘演算を開始
-        for (idx, step) in player1_turn
-            .steps()
-            .iter()
-            .zip_longest(player2_turn.steps().iter())
-            .enumerate()
-        {
-            if idx >= GameConfig::get_game_config().motion_execute_seconds() as usize {
-                // ユニットの行動モードでの秒数を超えたらスキップ
-                break;
-            }
+        for idx in 0..GameConfig::get_game_config().motion_execute_seconds() as usize {
+            let player1_step = player1_turn.steps().get(idx);
+            let player2_step = player2_turn.steps().get(idx);
+
             // stepをマージして、両プレイヤーの行動を反映させたステップを作成
             let mut merge_step = Step::new(
                 StepId::new(Uuid::new_v4().to_string()),
                 Vec::new(),
                 Vec::new(),
             );
-            match step {
-                itertools::EitherOrBoth::Both(step1, step2) => {
+            match (player1_step, player2_step) {
+                (Some(step1), Some(step2)) => {
                     merge_step.push_actions(step1.actions());
                     merge_step.push_actions(step2.actions());
                 }
-                itertools::EitherOrBoth::Left(step1) => merge_step.push_actions(step1.actions()),
-                itertools::EitherOrBoth::Right(step2) => merge_step.push_actions(step2.actions()),
+                (Some(step1), None) => merge_step.push_actions(step1.actions()),
+                (None, Some(step2)) => merge_step.push_actions(step2.actions()),
+                (None, None) => {}
             }
             // merge_stepの戦闘演算を開始
             merge_step.step_start(units, &mut self.visibility)?;

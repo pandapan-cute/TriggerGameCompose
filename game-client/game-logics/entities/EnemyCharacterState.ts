@@ -65,6 +65,7 @@ export class EnemyCharacterState extends CharacterImageState {
   executeCharacterSingleAction(action: Action, onStepComplete: () => void) {
     action.invertPositionForEnemy(this.gridConfig); // エネミー用に座標を反転させる
     action.invertTriggerAngleForEnemy(this.gridConfig); // エネミー用にトリガー角度を反転させる
+    this.setEnemyUnitTypeId(action.getUnitTypeId()); // 敵のユニット種別を更新
     this.executeCommonSingleAction(action, onStepComplete);
   }
 
@@ -76,6 +77,7 @@ export class EnemyCharacterState extends CharacterImageState {
     combat: Combat
   ) {
     super.executeCharacterDefense(combat);
+    this.setEnemyUnitTypeId(this.getUnitTypeId()); // 敵のユニット種別を更新
     if (combat.getIsDefeatedCombat()) {
       this.setEnemyUnitBailout(true);
     }
@@ -89,5 +91,9 @@ export class EnemyCharacterState extends CharacterImageState {
   // セッター
   private setEnemyUnitBailout(isBailout: boolean) {
     this.enemyUnit.isBailout = isBailout;
+  }
+
+  private setEnemyUnitTypeId(unitTypeId: UnitType) {
+    this.enemyUnit.unitTypeId = unitTypeId;
   }
 }

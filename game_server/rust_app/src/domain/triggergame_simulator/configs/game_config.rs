@@ -37,7 +37,7 @@ impl GameConfig {
             hex_height: (24.0 * (3 as f64).sqrt()) as i32,
             gameboard_width: 36,
             gameboard_height: 36,
-            avoid_weight: 2,
+            avoid_weight: 100,
             damage_weight: 1.0,
             defend_weight: 1.0,
             min_damage: 20,

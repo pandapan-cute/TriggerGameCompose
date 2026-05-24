@@ -145,7 +145,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         setGameMode("execute");
         setCurrentTurn(data.turn.getTurnNumber());
         motionExecuteDialogRef.current?.show();
-        setMotionExecuteEndTimeState(new Date(Date.now() + 15000));
+        setMotionExecuteEndTimeState(new Date(Date.now() + 15000 + 2000)); // 動きの実行時間（15秒）＋αを設定
         setMotionLabEndTimeState(new Date(data.motionLabEndTime));
       }
     };

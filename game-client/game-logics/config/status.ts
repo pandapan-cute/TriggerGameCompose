@@ -3,8 +3,8 @@
  */
 export const CHARACTER_STATUS = {
   MIKUMO_OSAMU: {
-    main: "ASTEROID",
-    sub: "RAYGUST",
+    main: "RAYGUST",
+    sub: "ASTEROID",
     activeCount: 13,
     trion: 2,
     attack: 3,

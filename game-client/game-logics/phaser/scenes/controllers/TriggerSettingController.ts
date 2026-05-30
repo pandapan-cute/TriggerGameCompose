@@ -68,24 +68,15 @@ export class TriggerSettingController {
       return;
     }
 
-    const characterState = this.deps.characterManager.findCharacterByImage(
-      selectedCharacter.image
-    );
-    // キャラクター状態の取得可否を判定する。
-    if (!characterState) {
-      return;
-    }
-
     const characterKey =
-      characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
+      selectedCharacter.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
     const characterStatus = CHARACTER_STATUS[characterKey];
     // キャラクター定義情報の取得可否を判定する。
     if (!characterStatus) {
       return;
     }
 
-    const triggerName =
-      triggerSettingType === "main" ? characterStatus.main : characterStatus.sub;
+    const triggerName = triggerSettingType === "main" ? selectedCharacter.getFriendUnit().usingMainTriggerId : selectedCharacter.getFriendUnit().usingSubTriggerId;
     const triggerStatus =
       TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
     // トリガー定義情報の取得可否を判定する。
@@ -103,8 +94,8 @@ export class TriggerSettingController {
       "扇形をドラッグして角度を調整し、マウスを離すかクリックで確定してください"
     );
 
-    const initialAngle = characterState.direction
-      ? characterState.direction[triggerSettingType]
+    const initialAngle = selectedCharacter.direction
+      ? selectedCharacter.direction[triggerSettingType]
       : 0;
     this.deps.setCurrentTriggerAngle(initialAngle);
 
@@ -150,16 +141,8 @@ export class TriggerSettingController {
       return;
     }
 
-    const characterState = this.deps.characterManager.findCharacterByImage(
-      selectedCharacter.image
-    );
-    // キャラクター状態の取得可否を判定する。
-    if (!characterState) {
-      return;
-    }
-
     const characterKey =
-      characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
+      selectedCharacter.getUnitTypeId() as keyof typeof CHARACTER_STATUS;
     const characterStatus = CHARACTER_STATUS[characterKey];
     // キャラクター定義情報の取得可否を判定する。
     if (!characterStatus) {
@@ -167,7 +150,7 @@ export class TriggerSettingController {
     }
 
     const triggerName =
-      triggerSettingType === "main" ? characterStatus.main : characterStatus.sub;
+      triggerSettingType === "main" ? selectedCharacter.getFriendUnit().usingMainTriggerId : selectedCharacter.getFriendUnit().usingSubTriggerId;
     const triggerStatus =
       TRIGGER_STATUS[triggerName as keyof typeof TRIGGER_STATUS];
     // トリガー定義情報の取得可否を判定する。
@@ -255,19 +238,11 @@ export class TriggerSettingController {
       return;
     }
 
-    const characterState = this.deps.characterManager.findCharacterByImage(
-      selectedCharacter.image
-    );
-    // キャラクター状態の取得可否を判定する。
-    if (!characterState) {
-      return;
-    }
-
-    let directions = characterState.direction;
+    let directions = selectedCharacter.direction;
     // 方向情報が未初期化なら初期化する。
     if (!directions) {
       directions = { main: 0, sub: 0 };
-      characterState.direction = directions;
+      selectedCharacter.direction = directions;
     }
 
     directions[triggerSettingType] = direction;

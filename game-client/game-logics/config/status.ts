@@ -3,8 +3,6 @@
  */
 export const CHARACTER_STATUS = {
   MIKUMO_OSAMU: {
-    main: "RAYGUST",
-    sub: "ASTEROID",
     activeCount: 13,
     trion: 2,
     attack: 3,
@@ -14,8 +12,6 @@ export const CHARACTER_STATUS = {
     technique: 6,
   },
   KUGA_YUMA: {
-    main: "SCORPION",
-    sub: "SHIELD",
     activeCount: 16,
     trion: 7,
     attack: 9,
@@ -25,8 +21,6 @@ export const CHARACTER_STATUS = {
     technique: 8,
   },
   AMATORI_CHIKA: {
-    main: "IBIS",
-    sub: "BAGWORM",
     activeCount: 12,
     trion: 25,
     attack: 2,
@@ -36,8 +30,6 @@ export const CHARACTER_STATUS = {
     technique: 6,
   },
   HYUSE_KURONIN: {
-    main: "KOGETSU",
-    sub: "SHIELD",
     activeCount: 15,
     trion: 18,
     attack: 8,

@@ -177,7 +177,11 @@ impl Combat {
 
         if !is_avoided.value() {
             // ダメージ量の計算
-            if is_defender_facing_attacker_main && is_defender_facing_attacker_sub {
+            if is_defender_facing_attacker_main
+                && defender_main_trigger_status.defense() > 0
+                && is_defender_facing_attacker_sub
+                && defender_sub_trigger_status.defense() > 0
+            {
                 // 両防御の場合
                 let (main_trigger_damage, sub_trigger_damage) = Self::calculate_full_guard_damage(
                     attacker_base_attack,
@@ -197,7 +201,10 @@ impl Combat {
                 if main_trigger_hp <= 0 || sub_trigger_hp <= 0 {
                     is_defeated = true;
                 }
-            } else if is_defender_facing_attacker_main && !is_defender_facing_attacker_sub {
+            } else if is_defender_facing_attacker_main
+                && defender_main_trigger_status.defense() > 0
+                && !is_defender_facing_attacker_sub
+            {
                 // 片方防御の場合（メイントリガーのみ防御）
                 let damage = Self::calculate_partial_guard_damage(
                     attacker_base_attack,
@@ -208,7 +215,10 @@ impl Combat {
                     defender_main_trigger_status.defense(),
                 );
                 main_trigger_hp -= damage;
-            } else if !is_defender_facing_attacker_main && is_defender_facing_attacker_sub {
+            } else if !is_defender_facing_attacker_main
+                && is_defender_facing_attacker_sub
+                && defender_sub_trigger_status.defense() > 0
+            {
                 // 片方防御の場合（サブトリガーのみ防御）
                 let damage = Self::calculate_partial_guard_damage(
                     attacker_base_attack,
@@ -219,6 +229,9 @@ impl Combat {
                     defender_sub_trigger_status.defense(),
                 );
                 sub_trigger_hp -= damage;
+            } else {
+                // 両トリガーが防御トリガーでないときは即撃墜
+                is_defeated = true;
             }
         }
 

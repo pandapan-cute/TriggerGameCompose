@@ -21,7 +21,7 @@
 
 - `feature/123-turn_timeout`
 - `fix/245-invalid_action_order`
-- `refactor/456_code_structure`
+- `refactor/456-code_structure`
 - `docs/contributing_update`
 
 ## 2. コミットメッセージ

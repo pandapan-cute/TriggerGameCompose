@@ -183,23 +183,15 @@ export class TurnPlanner {
       return;
     }
 
-    const characterState = this.deps.characterManager.findPlayerCharacterByImage(
-      this.deps.characterManager.selectedCharacter.image
-    );
-    // 選択キャラクターの状態を取得できたかを判定する。
+    const characterState = this.deps.characterManager.selectedCharacter;
     if (!characterState) {
+      console.error("選択キャラクターの状態が見つかりませんでした");
       return;
     }
 
     const directions = characterState.direction;
-    const mainTrigger =
-      CHARACTER_STATUS[
-        characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS
-      ]?.main ?? null;
-    const subTrigger =
-      CHARACTER_STATUS[
-        characterState.getUnitTypeId() as keyof typeof CHARACTER_STATUS
-      ]?.sub ?? null;
+    const mainTrigger = characterState.getFriendUnit().usingMainTriggerId;
+    const subTrigger = characterState.getFriendUnit().usingSubTriggerId;
 
     // 方向情報とトリガー情報が履歴記録に必要な形で揃っているかを判定する。
     if (!directions || !mainTrigger || !subTrigger) {

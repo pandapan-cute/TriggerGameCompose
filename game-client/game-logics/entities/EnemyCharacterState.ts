@@ -77,7 +77,6 @@ export class EnemyCharacterState extends CharacterImageState {
     combat: Combat
   ) {
     super.executeCharacterDefense(combat);
-    this.setEnemyUnitTypeId(this.getUnitTypeId()); // 敵のユニット種別を更新
     if (combat.getIsDefeatedCombat()) {
       this.setEnemyUnitBailout(true);
     }

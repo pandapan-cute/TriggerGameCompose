@@ -96,10 +96,20 @@ func createTables(ctx context.Context, client *dynamodb.Client) error {
 		TableName: aws.String("Connections"),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{AttributeName: aws.String("player_id"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("connection_id"), AttributeType: types.ScalarAttributeTypeS},
 		},
 		KeySchema: []types.KeySchemaElement{
 			// プライマリキーを player_id に設定することで、一意のプレイヤーに対して最新の接続IDを保存できる
 			{AttributeName: aws.String("player_id"), KeyType: types.KeyTypeHash},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("ConnectionIdIndex"),
+				KeySchema: []types.KeySchemaElement{
+					{AttributeName: aws.String("connection_id"), KeyType: types.KeyTypeHash},
+				},
+				Projection: &types.Projection{ProjectionType: types.ProjectionTypeAll},
+			},
 		},
 		BillingMode: types.BillingModePayPerRequest,
 	})

@@ -10,6 +10,7 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
+use chrono::Utc;
 use std::collections::HashMap;
 
 pub struct DynamoDbMatchingRepository {
@@ -209,5 +210,62 @@ impl MatchingRepository for DynamoDbMatchingRepository {
             MatchingEndDatetime::new(None),
             MatchingStatus::new_string(matching_status_str),
         )))
+    }
+
+    async fn interrupt_waiting_by_player_id(&self, player_id: &str) -> Result<(), String> {
+        // InProgress のみを GSI で絞り、対象プレイヤーのみ更新する。
+        let query_result = self
+            .client
+            .query()
+            .table_name(self.matchings_table.as_str())
+            .index_name("MatchingStatusIndex")
+            .key_condition_expression("matching_status = :status")
+            .filter_expression("player1_id = :player_id")
+            .expression_attribute_values(":player_id", AttributeValue::S(player_id.to_string()))
+            .expression_attribute_values(
+                ":status",
+                AttributeValue::S(MatchingStatusValue::InProgress.to_string()),
+            )
+            .send()
+            .await
+            .map_err(|e| format!("Failed to query waiting matching by player_id: {}", e))?;
+
+        for item in query_result.items() {
+            let Some(matching_id) = item.get("matching_id").and_then(|v| v.as_s().ok()) else {
+                continue;
+            };
+
+            let update_result = self
+                .client
+                .update_item()
+                .table_name(self.matchings_table.as_str())
+                .key("matching_id", AttributeValue::S(matching_id.to_string()))
+                .update_expression("SET matching_status = :interrupted, matching_end_datetime = :end_datetime")
+                .condition_expression("matching_status = :in_progress")
+                .expression_attribute_values(
+                    ":interrupted",
+                    AttributeValue::S(MatchingStatusValue::Interrupted.to_string()),
+                )
+                .expression_attribute_values(
+                    ":in_progress",
+                    AttributeValue::S(MatchingStatusValue::InProgress.to_string()),
+                )
+                .expression_attribute_values(
+                    ":end_datetime",
+                    AttributeValue::S(Utc::now().to_rfc3339()),
+                )
+                .send()
+                .await;
+
+            if let Err(e) = update_result {
+                // 競合で Completed 済みの場合は条件不一致のため no-op 扱い。
+                if e.to_string().contains("ConditionalCheckFailedException") {
+                    continue;
+                }
+                return Err(format!("Failed to interrupt waiting matching: {}", e));
+            }
+        }
+
+        Ok(())
     }
 }

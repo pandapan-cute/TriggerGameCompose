@@ -50,15 +50,20 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() {
 		conn.Close()
-		// 接続を削除
+		// 接続を削除し、connection_id を取得して $disconnect を Lambda に通知
 		clientsMu.Lock()
+		var disconnectedId string
 		for id, c := range clients {
 			if c == conn {
+				disconnectedId = id
 				delete(clients, id)
 				break
 			}
 		}
 		clientsMu.Unlock()
+		if disconnectedId != "" {
+			invokeDisconnect(disconnectedId)
+		}
 	}()
 
 	for {
@@ -127,6 +132,42 @@ func handlePostToConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func invokeDisconnect(connectionId string) {
+	client := &http.Client{}
+
+	lambdaEvent := map[string]interface{}{
+		"requestContext": map[string]interface{}{
+			"connectionId": connectionId,
+			"routeKey":     "$disconnect",
+			"domainName":   "localhost",
+			"stage":        "local",
+		},
+		"body": "",
+	}
+
+	payload, err := json.Marshal(lambdaEvent)
+	if err != nil {
+		log.Printf("Disconnect marshal error: %v", err)
+		return
+	}
+
+	lambdaURL := "http://game-server:9000/2015-03-31/functions/game_server/invocations"
+	req, err := http.NewRequest("POST", lambdaURL, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Printf("Disconnect request creation error: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Disconnect Lambda invocation error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+	log.Printf("Disconnect Lambda response status: %d (connectionId=%s)", resp.StatusCode, connectionId)
 }
 
 func invokeLambda(msg Message) map[string]interface{} {

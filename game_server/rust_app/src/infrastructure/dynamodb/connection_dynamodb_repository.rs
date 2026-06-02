@@ -9,6 +9,8 @@ use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use std::collections::HashMap;
 
+const CONNECTION_ID_INDEX_NAME: &str = "ConnectionIdIndex";
+
 /// DynamoDBを使用したConnectionリポジトリの実装
 /// このリポジトリはドメインの外部に位置します
 /// Lambdaでの特有のコネクション管理処理を担当します
@@ -84,5 +86,53 @@ impl ConnectionRepository for DynamoDbConnectionRepository {
             .ok_or("connection_id not found")?;
 
         Ok(connection_id_str.to_string())
+    }
+
+    async fn get_player_id_by_connection_id(
+        &self,
+        connection_id: &str,
+    ) -> Result<Option<String>, String> {
+        let result = self
+            .client
+            .query()
+            .table_name(self.connections_table.as_str())
+            .index_name(CONNECTION_ID_INDEX_NAME)
+            .key_condition_expression("connection_id = :connection_id")
+            .expression_attribute_values(
+                ":connection_id",
+                AttributeValue::S(connection_id.to_string()),
+            )
+            .limit(1)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to reverse lookup player_id: {}", e))?;
+
+        let Some(item) = result.items().first() else {
+            return Ok(None);
+        };
+
+        let player_id = item
+            .get("player_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or("player_id not found")?
+            .to_string();
+
+        Ok(Some(player_id))
+    }
+
+    async fn delete_by_connection_id(&self, connection_id: &str) -> Result<(), String> {
+        let Some(player_id) = self.get_player_id_by_connection_id(connection_id).await? else {
+            return Ok(());
+        };
+
+        self.client
+            .delete_item()
+            .table_name(self.connections_table.as_str())
+            .key("player_id", AttributeValue::S(player_id))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to delete connection: {}", e))?;
+
+        Ok(())
     }
 }

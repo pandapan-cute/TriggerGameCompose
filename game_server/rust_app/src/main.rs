@@ -14,7 +14,10 @@ use crate::{
         game::{
             get_game_state_usecase::GetGameStateUseCase, process_turn_usecase::ProcessTurnUseCase,
         },
-        matchmaking::matchmaking_application_service::MatchmakingApplicationService,
+        matchmaking::{
+            disconnect_usecase::DisconnectUseCase,
+            matchmaking_application_service::MatchmakingApplicationService,
+        },
         schedule::{
             motion_lab_limit_usecase::MotionLabLimitUseCase, schedule_maker::ScheduleMaker,
         },
@@ -132,10 +135,21 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
             println!("Client connected: {}", event.request_context.connection_id);
         }
         "$disconnect" => {
-            println!(
-                "Client disconnected: {}",
-                event.request_context.connection_id
+            let connection_id = event.request_context.connection_id.clone();
+            println!("Client disconnected: {}", connection_id);
+
+            let dynamo_client = create_dynamodb_client().await;
+            let connection_repository = DynamoDbConnectionRepository::new(dynamo_client.clone());
+            let matching_repository = DynamoDbMatchingRepository::new(dynamo_client);
+            let disconnect_usecase = DisconnectUseCase::new(
+                Arc::new(connection_repository),
+                Arc::new(matching_repository),
             );
+
+            disconnect_usecase.execute(&connection_id).await.map_err(|e| {
+                tracing::error!(connection_id = %connection_id, error = %e, "Disconnect cleanup failed");
+                Error::from(e)
+            })?;
         }
         "$default" => {
             // メッセージ受信時の処理

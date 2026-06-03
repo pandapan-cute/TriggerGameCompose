@@ -45,6 +45,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// Connections テーブルへ player_id と connection_id の紐付けを保存できることを検証する
     async fn test_save_connection() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
@@ -67,6 +68,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// player_id から connection_id を取得できることを検証する
     async fn test_get_connection_id_success() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
@@ -104,6 +106,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 未登録の player_id では期待どおりエラーを返すことを検証する
     async fn test_get_connection_id_not_found() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
@@ -129,6 +132,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// GSI を使った reverse lookup で connection_id から player_id を取得できることを検証する
     async fn test_get_player_id_by_connection_id_success() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
@@ -163,6 +167,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// reverse lookup 対象が存在しない場合に None を返すことを検証する
     async fn test_get_player_id_by_connection_id_not_found() {
         let connection_id = "test-connection-456";
 
@@ -182,6 +187,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// reverse lookup 後に対象 connection を削除できることを検証する
     async fn test_delete_by_connection_id_success() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let connection_id = "test-connection-456";
@@ -217,6 +223,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 削除対象が存在しない場合でも no-op で成功することを検証する
     async fn test_delete_by_connection_id_noop_when_not_found() {
         let connection_id = "test-connection-456";
 

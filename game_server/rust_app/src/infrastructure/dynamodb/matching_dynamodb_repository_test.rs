@@ -58,6 +58,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// マッチング情報を新規保存できることを検証する
     async fn test_save_matching() {
         let datetime = Utc::now();
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -84,6 +85,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// マッチング情報を更新できることを検証する
     async fn test_update_matching() {
         let datetime = Utc::now();
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -110,6 +112,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 待機中マッチングが存在する場合に最新1件を取得できることを検証する
     async fn test_get_latest_waiting_matching_found() {
         let matching_id = MatchingId::new(Uuid::new_v4().to_string());
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -152,6 +155,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 待機中マッチングが存在しない場合に None を返すことを検証する
     async fn test_get_latest_waiting_matching_not_found() {
         // GetItemでアイテムが見つからないレスポンスをモック
         let query_rule = mock!(Client::query)
@@ -167,6 +171,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 指定プレイヤーの待機中マッチングを Interrupted へ更新できることを検証する
     async fn test_interrupt_waiting_by_player_id_success() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
         let matching_id = Uuid::new_v4().to_string();
@@ -202,10 +207,15 @@ mod tests {
         let repo = DynamoDbMatchingRepository::new(client);
 
         let result = repo.interrupt_waiting_by_player_id(player_id).await;
-        assert!(result.is_ok(), "interrupt should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "interrupt should succeed: {:?}",
+            result.err()
+        );
     }
 
     #[tokio::test]
+    /// 対象待機が存在しない場合に no-op で成功することを検証する
     async fn test_interrupt_waiting_by_player_id_noop_when_not_found() {
         let player_id = "550e8400-e29b-41d4-a716-446655440001";
 
@@ -217,7 +227,10 @@ mod tests {
         let repo = DynamoDbMatchingRepository::new(client);
 
         let result = repo.interrupt_waiting_by_player_id(player_id).await;
-        assert!(result.is_ok(), "interrupt no-op should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "interrupt no-op should succeed: {:?}",
+            result.err()
+        );
     }
-
 }

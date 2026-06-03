@@ -127,6 +127,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 未知の connection_id では副作用を起こさず成功終了することを検証する
     async fn execute_unknown_connection_is_noop() {
         let connection_repository = Arc::new(MockConnectionRepository::default());
         let matching_repository = Arc::new(MockMatchingRepository::default());
@@ -143,6 +144,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 接続中プレイヤー切断時に待機中断と接続削除を順に実行することを検証する
     async fn execute_waiting_player_interrupts_then_deletes_connection() {
         let connection_repository = Arc::new(MockConnectionRepository {
             lookup_result: Mutex::new(Some("player-1".to_string())),
@@ -175,6 +177,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 同一 connection_id に対する再実行で結果が収束することを検証する
     async fn execute_is_idempotent_for_same_connection_id() {
         let connection_repository = Arc::new(MockConnectionRepository {
             lookup_result: Mutex::new(Some("player-1".to_string())),

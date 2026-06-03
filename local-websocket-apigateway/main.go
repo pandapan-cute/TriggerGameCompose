@@ -134,6 +134,8 @@ func handlePostToConnection(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// invokeDisconnect は WebSocket 切断時に Lambda へ $disconnect イベントを送信する。
+// これにより game_server 側の切断後処理（待機中断・接続削除）をローカルでも再現できる。
 func invokeDisconnect(connectionId string) {
 	client := &http.Client{}
 
@@ -170,6 +172,7 @@ func invokeDisconnect(connectionId string) {
 	log.Printf("Disconnect Lambda response status: %d (connectionId=%s)", resp.StatusCode, connectionId)
 }
 
+// invokeLambda は通常の受信メッセージを $default ルートイベントとして Lambda に転送する。
 func invokeLambda(msg Message) map[string]interface{} {
 	client := &http.Client{}
 

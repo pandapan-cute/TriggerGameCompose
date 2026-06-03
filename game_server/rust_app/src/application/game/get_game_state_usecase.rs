@@ -185,6 +185,17 @@ mod tests {
         async fn get_connection_id(&self, _player_id: &str) -> Result<String, String> {
             Ok(self.connection_id.clone())
         }
+
+        async fn get_player_id_by_connection_id(
+            &self,
+            _connection_id: &str,
+        ) -> Result<Option<String>, String> {
+            Ok(None)
+        }
+
+        async fn delete_by_connection_id(&self, _connection_id: &str) -> Result<(), String> {
+            Ok(())
+        }
     }
 
     struct MockWebSocketSender {

@@ -42,7 +42,23 @@ mod tests {
         Client::from_conf(config)
     }
 
+    fn setup_mock_client_with_rules(rules: &[Rule]) -> Client {
+        let mut mock_interceptor = MockResponseInterceptor::new().rule_mode(RuleMode::MatchAny);
+        for rule in rules {
+            mock_interceptor = mock_interceptor.with_rule(rule);
+        }
+
+        let config = Config::builder()
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new("ap-northeast-1"))
+            .interceptor(mock_interceptor)
+            .build();
+
+        Client::from_conf(config)
+    }
+
     #[tokio::test]
+    /// マッチング情報を新規保存できることを検証する
     async fn test_save_matching() {
         let datetime = Utc::now();
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -69,6 +85,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// マッチング情報を更新できることを検証する
     async fn test_update_matching() {
         let datetime = Utc::now();
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -95,6 +112,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 待機中マッチングが存在する場合に最新1件を取得できることを検証する
     async fn test_get_latest_waiting_matching_found() {
         let matching_id = MatchingId::new(Uuid::new_v4().to_string());
         let uuid1 = "550e8400-e29b-41d4-a716-446655440001";
@@ -137,6 +155,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// 待機中マッチングが存在しない場合に None を返すことを検証する
     async fn test_get_latest_waiting_matching_not_found() {
         // GetItemでアイテムが見つからないレスポンスをモック
         let query_rule = mock!(Client::query)
@@ -149,5 +168,69 @@ mod tests {
         let result = repo.get_latest_waiting_matching().await;
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    /// 指定プレイヤーの待機中マッチングを Interrupted へ更新できることを検証する
+    async fn test_interrupt_waiting_by_player_id_success() {
+        let player_id = "550e8400-e29b-41d4-a716-446655440001";
+        let matching_id = Uuid::new_v4().to_string();
+        let mut item = HashMap::new();
+        item.insert(
+            "matching_id".to_string(),
+            AttributeValue::S(matching_id.to_string()),
+        );
+        item.insert(
+            "player1_id".to_string(),
+            AttributeValue::S(player_id.to_string()),
+        );
+        item.insert(
+            "matching_status".to_string(),
+            AttributeValue::S(MatchingStatusValue::InProgress.to_string()),
+        );
+
+        let query_rule = mock!(Client::query)
+            .match_requests(|_: &QueryInput| true)
+            .then_output(move || {
+                QueryOutput::builder()
+                    .set_items(Some(vec![item.clone()]))
+                    .build()
+            });
+
+        let update_rule = mock!(Client::update_item)
+            .match_requests(|req: &UpdateItemInput| {
+                req.condition_expression() == Some("matching_status = :in_progress")
+            })
+            .then_output(|| UpdateItemOutput::builder().build());
+
+        let client = setup_mock_client_with_rules(&[query_rule, update_rule]);
+        let repo = DynamoDbMatchingRepository::new(client);
+
+        let result = repo.interrupt_waiting_by_player_id(player_id).await;
+        assert!(
+            result.is_ok(),
+            "interrupt should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[tokio::test]
+    /// 対象待機が存在しない場合に no-op で成功することを検証する
+    async fn test_interrupt_waiting_by_player_id_noop_when_not_found() {
+        let player_id = "550e8400-e29b-41d4-a716-446655440001";
+
+        let query_rule = mock!(Client::query)
+            .match_requests(|_: &QueryInput| true)
+            .then_output(|| QueryOutput::builder().build());
+
+        let client = setup_mock_client(query_rule);
+        let repo = DynamoDbMatchingRepository::new(client);
+
+        let result = repo.interrupt_waiting_by_player_id(player_id).await;
+        assert!(
+            result.is_ok(),
+            "interrupt no-op should succeed: {:?}",
+            result.err()
+        );
     }
 }

@@ -25,8 +25,18 @@ impl Visibility {
         &self.field_steps
     }
 
+    /// 攻撃者から防御者が見えるかを判定する関数
+    /// 関数内で防御者の座標を反転させて視界範囲チェックを行う
+    pub fn check_combat_visibility(
+        &self,
+        attacker_pos: &Position,
+        defender_pos: &Position,
+    ) -> bool {
+        self.check_units_visibility(attacker_pos, &defender_pos.get_enemy_position())
+    }
+
     /// ポジションAからポジションBが見えるか計算し、見える場合はtrueを返す
-    pub fn check_units_visibility(&self, position_a: &Position, position_b: &Position) -> bool {
+    fn check_units_visibility(&self, position_a: &Position, position_b: &Position) -> bool {
         if position_a.col() == position_b.col() && position_a.row() == position_b.row() {
             // 同じ位置は常に見える
             return true;

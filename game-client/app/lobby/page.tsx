@@ -1,7 +1,6 @@
 "use client";
 import RotateView from '@/components/views/RotateView';
 import { useManageMatching } from './useManageMatching';
-import Link from 'next/link';
 
 /**
  * マッチング待機中ページコンポーネント
@@ -71,20 +70,7 @@ export default function LobbyPage() {
               マッチングをキャンセル
             </button>
           )}
-
-          <Link
-            href="/"
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg transition-colors"
-          >
-            ホームに戻る
-          </Link>
         </div>
-
-        {/* デバッグ情報（開発時のみ） */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-6 text-left bg-black/20 rounded-lg p-3 text-xs text-white/50 font-mono">
-          </div>
-        )}
       </div>
     </div>
   );

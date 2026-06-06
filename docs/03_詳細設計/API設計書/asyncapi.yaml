@@ -156,8 +156,6 @@ components:
           action:
             type: string
             enum: [cancelMatching]
-          playerId:
-            type: string
 
     MatchmakingResult:
       name: matchmakingResult

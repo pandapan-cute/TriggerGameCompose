@@ -124,10 +124,9 @@ export const useManageMatching = () => {
 
   // マッチングキャンセル
   const cancelMatching = () => {
-    // sendMessage({
-    //   action: "cancel_matching",
-    //   playerId: playerId || undefined,
-    // });
+    sendMessage({
+      action: "cancelMatching",
+    });
     router.push("/");
   };
 

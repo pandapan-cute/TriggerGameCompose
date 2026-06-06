@@ -26,24 +26,16 @@ body:
       required: true
 
   - type: textarea
-    id: expected
+    id: screenshots
     attributes:
-      label: 期待する動作
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: 実際の動作
-    validations:
-      required: true
+      label: スクリーンショット
+      description: 画面キャプチャ、動画など
 
   - type: textarea
     id: logs
     attributes:
-      label: ログ・スクリーンショット
-      description: エラーログ、画面キャプチャ、動画など
+      label: ログ
+      description: エラーログなど
       render: shell
 
   - type: dropdown

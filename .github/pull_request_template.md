@@ -37,7 +37,7 @@
 - [ ] local-websocket-apigateway
 - [ ] local-dynamodb-initialize
 - [ ] local-eventbridge-scheduler
-- [ ] ドキュメントのみ
+- [ ] ドキュメント
 
 ## テスト
 

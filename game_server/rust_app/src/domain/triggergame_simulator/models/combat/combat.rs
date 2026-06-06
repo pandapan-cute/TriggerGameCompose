@@ -126,7 +126,7 @@ impl Combat {
         );
         // 攻撃側側から見て防御側が見えているか確認
         let is_defender_visible =
-            visibility.check_units_visibility(&attacker_position, &defender_position);
+            visibility.check_combat_visibility(&attacker_position, &defender_position);
         if (!is_main_trigger_hit && !is_sub_trigger_hit) || !is_defender_visible {
             // 射程外 かつ 角度の範囲外　または 視界外の場合はNoneを返す
             return None;

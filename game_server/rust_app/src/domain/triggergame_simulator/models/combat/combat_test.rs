@@ -25,34 +25,37 @@ mod tests {
     }
 
     fn create_test_visiblity() -> Visibility {
-        Visibility::new(vec![vec![0; 10]; 10])
+        Visibility::create()
     }
 
+    /// ポジションはcombat内で反転されるので攻撃側から見た位置と防御側から見た位置をそれぞれ設定する
+    /// シューターが画面左上で後ろ向きにトリガーを向けて攻撃（同じ階層）
     #[test]
-    fn test_create_combat_returns_option() {
+    fn test_create_combat_shooter() {
         let mut visibility = create_test_visiblity();
         let combat = Combat::create(
             create_test_unit_id(),
-            create_test_position(),
-            create_test_trigger_id(),
-            create_test_trigger_id(),
-            create_test_trigger_azimuth(),
-            create_test_trigger_azimuth(),
+            Position::new(14, 9),
+            TriggerId::new("ASTEROID".to_string()),
+            TriggerId::new("ASTEROID".to_string()),
+            TriggerAzimuth::new(180),
+            TriggerAzimuth::new(180),
             10,
             create_test_unit_id(),
-            Position::new(100, 100),
-            create_test_trigger_id(),
-            create_test_trigger_id(),
+            Position::new(21, 22),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
             100,
             100,
-            create_test_trigger_azimuth(),
-            create_test_trigger_azimuth(),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
             5,
             2,
             &mut visibility,
         );
+        println!("Combat creation result: {:?}", combat);
 
-        // Combatの生成に成功するか（射程や角度等の条件により失敗する可能性あり）
-        assert!(combat.is_some() || combat.is_none());
+        // Combatの生成に成功するか
+        assert!(combat.is_some());
     }
 }

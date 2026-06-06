@@ -36,7 +36,7 @@ mod tests {
         let combat = Combat::create(
             create_test_unit_id(),
             Position::new(14, 9),
-            TriggerId::new("ASTEROID".to_string()),
+            TriggerId::new("RAYGUST".to_string()),
             TriggerId::new("ASTEROID".to_string()),
             TriggerAzimuth::new(180),
             TriggerAzimuth::new(180),

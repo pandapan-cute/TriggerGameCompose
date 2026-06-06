@@ -226,6 +226,23 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                             .await?;
                     }
 
+                    // マッチングキャンセルリクエストの処理
+                    WebSocketRequest::CancelMatching {} => {
+                        let connection_id = &event.request_context.connection_id;
+                        // マッチングリポジトリとサービスの作成
+                        let matching_repository =
+                            DynamoDbMatchingRepository::new(dynamo_client.clone());
+                        let disconnect_usecase = DisconnectUseCase::new(
+                            Arc::new(connection_repository),
+                            Arc::new(matching_repository),
+                        );
+
+                        disconnect_usecase.execute(connection_id).await.map_err(|e| {
+                            tracing::error!(connection_id = %connection_id, error = %e, "マッチングのキャンセルに失敗しました");
+                            Error::from(e)
+                        })?;
+                    }
+
                     // ゲーム状態取得リクエストの処理
                     WebSocketRequest::GetGameState { player_id, game_id } => {
                         // コネクションIDとPlayerIDの紐付けを保存

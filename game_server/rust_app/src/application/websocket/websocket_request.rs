@@ -36,6 +36,10 @@ pub enum WebSocketRequest {
         units: Vec<CreateUnitDto>,
     },
 
+    /// マッチングキャンセルリクエスト
+    /// マッチング待機中のプレイヤーがマッチングをキャンセルするために送信される
+    CancelMatching {},
+
     /// ゲーム状態取得リクエスト
     /// ゲーム画面に遷移したときにクライアントから送信される
     GetGameState {

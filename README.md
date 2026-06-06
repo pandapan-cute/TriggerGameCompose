@@ -69,7 +69,15 @@ DynamoDBのローカル版はdocker compose内で `amazon/dynamodb-local:latest`
 
 ### 本番環境
 
+mainブランチにマージされたコードは以下のURLで公開しています
+
 [本番環境ページリンク](https://main.dsxdacl6jlb8y.amplifyapp.com/)
+
+### 開発環境
+
+developブランチにマージされたコードは以下のURLで公開しています
+
+[開発環境ページリンク](https://develop.dsxdacl6jlb8y.amplifyapp.com/)
 
 ### ゲームの基本的なルール・設計
 

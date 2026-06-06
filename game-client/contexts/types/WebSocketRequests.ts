@@ -20,6 +20,13 @@ interface MatchMakingRequest {
 }
 
 /**
+ * マッチングキャンセルリクエストの型定義
+ */
+interface CancelMatchingRequest {
+  action: "cancelMatching";
+}
+
+/**
  * ゲーム情報取得リクエストの型定義
  */
 interface GetGameStateRequest {
@@ -36,11 +43,5 @@ interface TurnActionsRequest {
   steps: Step[];
 };
 
-/** ゲームのキャンセル時に送信するリクエストの型定義 */
-interface CancelGameRequest {
-  action: "cancelMatching";
-  playerId: string;
-}
-
 /** WebSocketリクエストの型 */
-export type WebSocketRequestType = MatchMakingRequest | GetGameStateRequest | TurnActionsRequest | CancelGameRequest;
+export type WebSocketRequestType = MatchMakingRequest | CancelMatchingRequest | GetGameStateRequest | TurnActionsRequest;

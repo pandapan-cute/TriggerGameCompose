@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -48,21 +49,21 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Println("Upgrade error:", err)
 		return
 	}
+
+	// API Gateway 相当の接続IDを接続時に払い出し、接続ライフサイクル中は固定で使う。
+	connectionID := uuid.NewString()
+	clientsMu.Lock()
+	clients[connectionID] = conn
+	clientsMu.Unlock()
+
 	defer func() {
 		conn.Close()
 		// 接続を削除し、connection_id を取得して $disconnect を Lambda に通知
 		clientsMu.Lock()
-		var disconnectedId string
-		for id, c := range clients {
-			if c == conn {
-				disconnectedId = id
-				delete(clients, id)
-				break
-			}
-		}
+		delete(clients, connectionID)
 		clientsMu.Unlock()
-		if disconnectedId != "" {
-			invokeDisconnect(disconnectedId)
+		if connectionID != "" {
+			invokeDisconnect(connectionID)
 		}
 	}()
 
@@ -76,13 +77,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// 受信したメッセージのログ出力
 		// log.Printf("Received: %+v\n", msg)
 
-		// 接続を登録（connection_id として player_id を使用）
-		clientsMu.Lock()
-		clients[msg.PlayerId] = conn
-		clientsMu.Unlock()
-
 		// Lambda を呼び出し
-		response := invokeLambda(msg)
+		response := invokeLambda(connectionID, msg)
 
 		// クライアントに返信（Lambda からの POST で送信されるため、ここでは不要）
 		_ = response
@@ -173,7 +169,7 @@ func invokeDisconnect(connectionId string) {
 }
 
 // invokeLambda は通常の受信メッセージを $default ルートイベントとして Lambda に転送する。
-func invokeLambda(msg Message) map[string]interface{} {
+func invokeLambda(connectionID string, msg Message) map[string]interface{} {
 	client := &http.Client{}
 
 	// bodyを文字列化
@@ -186,7 +182,7 @@ func invokeLambda(msg Message) map[string]interface{} {
 	// Lambda Runtime API の形式に合わせる
 	lambdaEvent := map[string]interface{}{
 		"requestContext": map[string]interface{}{
-			"connectionId": msg.PlayerId,
+			"connectionId": connectionID,
 			"routeKey":     "$default",
 			"domainName":   "localhost",
 			"stage":        "local",

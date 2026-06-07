@@ -60,7 +60,10 @@ export class TurnReplayController {
     console.log(`=== ステップ ${stepIndex + 1} 実行開始 ===`);
 
     this.replayActions(turn, stepIndex);
-    this.replayCombats(turn, stepIndex);
+    this.deps.scene.time.delayedCall(500, () => {
+      // 少し遅れて防御や攻撃の演出して、移動後のセルで戦闘が起きていることがわかるようにする
+      this.replayCombats(turn, stepIndex);
+    });
 
     // ステップ再生後に視界情報を更新する。
     this.deps.updateFieldViewVisibility();

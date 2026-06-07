@@ -79,8 +79,6 @@ export class TurnReplayController {
         // 未再生ステップが残っている場合: 次ステップ再生へ進む。
         this.executeStep(turn, nextStepIndex);
       } else {
-        // 全ステップ再生済みの場合: フェーズ完了処理へ進む。
-        this.completeUnitActionPhase(turn.getTurnNumber());
         console.log("=== 全ステップ実行完了 ===");
         // ゲーム終了判定を行う。
         const gameResult = this.checkGameIsCompleted(turn.getTurnNumber());
@@ -88,7 +86,9 @@ export class TurnReplayController {
           console.log("ゲーム終了判定: 結果 =", gameResult);
           // ゲーム終了処理をここに追加する（例: 結果画面への遷移）
           this.deps.completeGame?.(gameResult);
-          return;
+        } else {
+          // 全ステップ再生済みの場合: フェーズ完了処理へ進む。
+          this.completeUnitActionPhase(turn.getTurnNumber());
         }
       }
     });

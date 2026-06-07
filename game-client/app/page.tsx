@@ -3,7 +3,6 @@ import { Noto_Sans_JP, Orbitron } from "next/font/google";
 import styles from "./index.module.css";
 import { SkyOutlineButton } from "@/components/buttons/sky-outline";
 import { WhiteFillButton } from "@/components/buttons/white-fill";
-import RotateView from "@/components/views/RotateView";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -18,9 +17,6 @@ const notoSansJp = Noto_Sans_JP({
 export default function TopPage() {
   return (
     <main className={`${styles.page} ${notoSansJp.className}`}>
-      {/* 画面回転を推奨するコンポーネント */}
-      <RotateView />
-
       <section className={styles.heroSection}>
         <div className={styles.heroContent}>
           <Image

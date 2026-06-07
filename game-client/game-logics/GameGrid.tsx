@@ -41,7 +41,6 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
   // ゲームを表示するDOMコンテナのRef
   const containerRef = useRef<HTMLDivElement>(null);
-  const resultDialogRef = useRef<HTMLDialogElement>(null);
 
   // ゲームモードの状態管理
   const [gameMode, setGameMode] = useState<"lab" | "execute">("lab");
@@ -111,10 +110,11 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   };
 
   /** ユニットの行動終了処理 */
-  const handleFinishMotionExecute = () => {
+  const handleFinishMotionExecute = (turnNumber: number) => {
     console.log("ユニットの行動終了処理を実行します。,現在のターン状態:", currentTurn);
     if (currentTurn < MAX_TURN) {
       // 次のターンの動きの設定フェーズへ移行
+      setCurrentTurn(turnNumber + 1);
       setGameMode("lab");
       motionLabDialogRef.current?.show();
     }
@@ -143,7 +143,6 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         const hydratedTurn = Turn.fromJSON(data.turn);
         targetScene.executeTurn(hydratedTurn, new Date(data.motionLabEndTime)); // Phaserシーンにターン情報を渡して実行
         setGameMode("execute");
-        setCurrentTurn(data.turn.getTurnNumber());
         motionExecuteDialogRef.current?.show();
         setMotionExecuteEndTimeState(new Date(Date.now() + 15000 + 2000)); // 動きの実行時間（15秒）＋αを設定
         setMotionLabEndTimeState(new Date(data.motionLabEndTime));

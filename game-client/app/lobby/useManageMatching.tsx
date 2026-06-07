@@ -1,16 +1,22 @@
 "use client";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
+import useDeviceOrientation from "@/hooks/device/useDeviceOrientation";
 import { MatchingStatus } from "@/types/MatchingTypes";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 /**
  * マッチング管理用のカスタムフック
+ * 
+ * モバイル端末で縦画面でマッチング中のとき -> マッチング開始をキャンセルする
+ * 接続していないとき -> Websocket接続を開始する
+ * 接続中でモバイル縦画面でないとき -> マッチング開始メッセージを送信する
+ * マッチング結果の受信 -> ステータスを更新してゲーム画面に遷移
  */
 export const useManageMatching = () => {
   const router = useRouter();
-  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus>("InProgress");
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus>("NotStarted");
 
   const {
     isConnected,
@@ -64,10 +70,14 @@ export const useManageMatching = () => {
     };
   }, [addMessageListener, removeMessageListener, router]);
 
+
+  const { isMobilePortrait } = useDeviceOrientation();
+
   // マッチング開始
   useEffect(() => {
-    console.log("マッチング開始のチェック:", isConnected);
-    if (isConnected) {
+    console.log(`マッチング開始のチェック: isConnected=${isConnected}, playerId=${playerId}, isMobilePortrait=${isMobilePortrait}`);
+    if (isConnected && !isMobilePortrait && matchingStatus === "NotStarted") {
+      // 接続状態かつモバイル縦向きでない場合にマッチング開始
       if (!playerId) {
         console.error("プレイヤーIDが存在しません。マッチングを開始できません。");
         return;
@@ -115,19 +125,32 @@ export const useManageMatching = () => {
           }
         ],
       });
+      setMatchingStatus("InProgress");
       console.log("マッチング開始メッセージを送信しました");
-    } else {
+
+    } else if (isMobilePortrait && matchingStatus === "InProgress") {
+      // モバイル縦向きかつ接続中の場合、マッチングをキャンセルしてステータスをリセット
+      sendCancelMatching();
+      setMatchingStatus("NotStarted");
+
+    } else if (!isConnected) {
       // 接続していない場合は接続を開始
       connect();
+      setMatchingStatus("NotStarted");
     }
-  }, [isConnected, playerId]); // readyStateの変更時およびplayerIdの変更時に実行
+  }, [isConnected, playerId, isMobilePortrait]); // readyStateの変更時およびplayerIdの変更時に実行
 
   // マッチングキャンセル
   const cancelMatching = () => {
+    sendCancelMatching();
+    router.push("/");
+  };
+
+  /** マッチングキャンセル送信処理 */
+  const sendCancelMatching = () => {
     sendMessage({
       action: "cancelMatching",
     });
-    router.push("/");
   };
 
   // 再接続ボタン

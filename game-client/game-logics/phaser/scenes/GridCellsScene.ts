@@ -55,7 +55,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: () => void) {
+  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: (turnNumber: number) => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -342,8 +342,8 @@ export class GridCellsScene extends Phaser.Scene {
       scene: this,
       hexUtils: this.hexUtils,
       characterManager: this.characterManager,
-      onReplayCompleted: () => {
-        this.handleFinishMotionExecute();
+      onReplayCompleted: (turnNumber: number) => {
+        this.handleFinishMotionExecute(turnNumber);
       },
       clearTriggerArrows: () => {
         this.triggerArrows.forEach((arrow) => arrow.destroy());

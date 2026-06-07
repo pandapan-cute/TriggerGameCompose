@@ -1,6 +1,6 @@
 "use client";
+import useDeviceOrientation from "@/hooks/device/useDeviceOrientation";
 import { Metadata } from "next";
-import { useEffect, useState } from "react";
 
 export const metadata: Metadata = {
   viewport: {
@@ -15,38 +15,11 @@ export const metadata: Metadata = {
 
 /**
  * 画面の回転を推奨する表示を行うコンポーネント
- * @returns 
+ * @returns JSX.Element | null
  */
 export default function Index() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isPortrait, setIsPortrait] = useState(false);
 
-  useEffect(() => {
-    const checkDevice = () => {
-      const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      setIsMobile(mobile);
-    };
-
-    const checkOrientation = () => {
-      if (isMobile) {
-        const portrait = window.innerHeight > window.innerWidth;
-        setIsPortrait(portrait);
-      }
-    };
-
-    checkDevice();
-    checkOrientation();
-
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(checkOrientation, 100); // orientationchange後の遅延
-    });
-
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-    };
-  }, [isMobile]);
+  const { isMobilePortrait } = useDeviceOrientation();
 
   // フルスクリーン＋画面回転制御
   const enterFullscreenLandscape = async () => {
@@ -66,7 +39,7 @@ export default function Index() {
     }
   };
 
-  if (isMobile && isPortrait) {
+  if (isMobilePortrait) {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
         <div className="text-center text-white p-8 max-w-sm">
@@ -84,8 +57,9 @@ export default function Index() {
 
           <h2 className="text-3xl font-bold mb-4">画面を横向きにしてください</h2>
           <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-            TriggerAppは横画面でのプレイを<br />
-            推奨しています
+            ワールドトリガーGridFieldは
+            <br />
+            横画面でのプレイを推奨しています
           </p>
 
           <button
@@ -102,4 +76,5 @@ export default function Index() {
       </div>
     );
   }
+  return null;
 }

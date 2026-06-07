@@ -41,6 +41,18 @@ pub struct Combat {
     is_defeated: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum GuardPattern {
+    /// 両防御
+    Full,
+    /// メイントリガー防御
+    MainOnly,
+    /// サブトリガー防御
+    SubOnly,
+    /// 防御なし
+    None,
+}
+
 impl Combat {
     // privateなコンストラクタ
     fn new(
@@ -177,61 +189,69 @@ impl Combat {
 
         if !is_avoided.value() {
             // ダメージ量の計算
-            if is_defender_facing_attacker_main
-                && defender_main_trigger_status.defense() > 0
-                && is_defender_facing_attacker_sub
-                && defender_sub_trigger_status.defense() > 0
-            {
-                // 両防御の場合
-                let (main_trigger_damage, sub_trigger_damage) = Self::calculate_full_guard_damage(
-                    attacker_base_attack,
-                    defender_base_defense,
-                    TriggerStatus::get_trigger_status(attacker_main_trigger_id.value()).attack()
-                        + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
-                            .attack(),
-                    defender_main_trigger_status.defense(),
-                    defender_sub_trigger_status.defense(),
-                    main_trigger_hp,
-                    sub_trigger_hp,
-                );
+            let guard_pattern = Self::determine_guard_pattern(
+                is_defender_facing_attacker_main,
+                defender_main_trigger_status.defense(),
+                is_defender_facing_attacker_sub,
+                defender_sub_trigger_status.defense(),
+            );
 
-                main_trigger_hp -= main_trigger_damage;
-                sub_trigger_hp -= sub_trigger_damage;
+            match guard_pattern {
+                GuardPattern::Full => {
+                    // 両防御の場合
+                    let (main_trigger_damage, sub_trigger_damage) =
+                        Self::calculate_full_guard_damage(
+                            attacker_base_attack,
+                            defender_base_defense,
+                            TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
+                                .attack()
+                                + TriggerStatus::get_trigger_status(
+                                    attacker_sub_trigger_id.value(),
+                                )
+                                .attack(),
+                            defender_main_trigger_status.defense(),
+                            defender_sub_trigger_status.defense(),
+                            main_trigger_hp,
+                            sub_trigger_hp,
+                        );
 
-                if main_trigger_hp <= 0 || sub_trigger_hp <= 0 {
+                    main_trigger_hp -= main_trigger_damage;
+                    sub_trigger_hp -= sub_trigger_damage;
+
+                    if main_trigger_hp <= 0 || sub_trigger_hp <= 0 {
+                        is_defeated = true;
+                    }
+                }
+                GuardPattern::MainOnly => {
+                    // 片方防御の場合（メイントリガーのみ防御）
+                    let damage = Self::calculate_partial_guard_damage(
+                        attacker_base_attack,
+                        defender_base_defense,
+                        TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
+                            .attack()
+                            + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
+                                .attack(),
+                        defender_main_trigger_status.defense(),
+                    );
+                    main_trigger_hp -= damage;
+                }
+                GuardPattern::SubOnly => {
+                    // 片方防御の場合（サブトリガーのみ防御）
+                    let damage = Self::calculate_partial_guard_damage(
+                        attacker_base_attack,
+                        defender_base_defense,
+                        TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
+                            .attack()
+                            + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
+                                .attack(),
+                        defender_sub_trigger_status.defense(),
+                    );
+                    sub_trigger_hp -= damage;
+                }
+                GuardPattern::None => {
+                    // 両トリガーが防御トリガーでないときは即撃墜
                     is_defeated = true;
                 }
-            } else if is_defender_facing_attacker_main
-                && defender_main_trigger_status.defense() > 0
-                && !is_defender_facing_attacker_sub
-            {
-                // 片方防御の場合（メイントリガーのみ防御）
-                let damage = Self::calculate_partial_guard_damage(
-                    attacker_base_attack,
-                    defender_base_defense,
-                    TriggerStatus::get_trigger_status(attacker_main_trigger_id.value()).attack()
-                        + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
-                            .attack(),
-                    defender_main_trigger_status.defense(),
-                );
-                main_trigger_hp -= damage;
-            } else if !is_defender_facing_attacker_main
-                && is_defender_facing_attacker_sub
-                && defender_sub_trigger_status.defense() > 0
-            {
-                // 片方防御の場合（サブトリガーのみ防御）
-                let damage = Self::calculate_partial_guard_damage(
-                    attacker_base_attack,
-                    defender_base_defense,
-                    TriggerStatus::get_trigger_status(attacker_main_trigger_id.value()).attack()
-                        + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
-                            .attack(),
-                    defender_sub_trigger_status.defense(),
-                );
-                sub_trigger_hp -= damage;
-            } else {
-                // 両トリガーが防御トリガーでないときは即撃墜
-                is_defeated = true;
             }
         }
 
@@ -357,6 +377,38 @@ impl Combat {
         }
     }
 
+    /// ガードパターンの判定
+    /// * 両防御：攻撃者に向いているトリガーが両方とも防御トリガーで、防御力が0より大きい
+    /// * メイントリガー防御：攻撃者に向いているトリガーがメイントリガーで、防御力が0より大きい、かつサブトリガーが攻撃者に向いていないか、防御力が0のとき
+    /// * サブトリガー防御：攻撃者に向いているトリガーがサブトリガーで、防御力が0より大きい、かつメイントリガーが攻撃者に向いていないか、防御力が0のとき
+    /// * 防御なし：攻撃者に向いているトリガーがない、または攻撃者に向いているトリガーの防御力が0のとき
+    pub(super) fn determine_guard_pattern(
+        is_defender_facing_attacker_main: bool,
+        defender_main_trigger_defense: i32,
+        is_defender_facing_attacker_sub: bool,
+        defender_sub_trigger_defense: i32,
+    ) -> GuardPattern {
+        if is_defender_facing_attacker_main
+            && defender_main_trigger_defense > 0
+            && is_defender_facing_attacker_sub
+            && defender_sub_trigger_defense > 0
+        {
+            GuardPattern::Full
+        } else if is_defender_facing_attacker_main
+            && defender_main_trigger_defense > 0
+            && (!is_defender_facing_attacker_sub || defender_sub_trigger_defense == 0)
+        {
+            GuardPattern::MainOnly
+        } else if is_defender_facing_attacker_sub
+            && defender_sub_trigger_defense > 0
+            && (!is_defender_facing_attacker_main || defender_main_trigger_defense == 0)
+        {
+            GuardPattern::SubOnly
+        } else {
+            GuardPattern::None
+        }
+    }
+
     /// 両防御の場合のダメージを計算
     /// 例：9 × 8 × 2 - 4 × (10 + 5) = 144 - 60
     fn calculate_full_guard_damage(
@@ -413,6 +465,18 @@ impl Combat {
     }
 
     // ゲッター
+    pub fn main_trigger_hp(&self) -> i32 {
+        self.main_trigger_hp
+    }
+
+    pub fn sub_trigger_hp(&self) -> i32 {
+        self.sub_trigger_hp
+    }
+
+    pub fn is_avoided(&self) -> bool {
+        self.is_avoided.value()
+    }
+
     pub fn is_defeated(&self) -> bool {
         self.is_defeated
     }

@@ -58,7 +58,7 @@ export default function TurnStateMotionLabPanel(props: MotionLabProps) {
           </div>
           <div className={styles.turnInfo}>
             <p>Turn</p>
-            <p><span className={styles.currentTurn}>{turn}</span> / {maxTurn}</p>
+            <p><span className={styles.currentTurn}>{turn}</span><span className={styles.maxTurn}> / {maxTurn}</span></p>
           </div>
 
         </LonghexOutline>

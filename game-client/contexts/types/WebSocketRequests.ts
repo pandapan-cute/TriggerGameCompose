@@ -43,5 +43,10 @@ interface TurnActionsRequest {
   steps: Step[];
 };
 
+/** 降参リクエストの型定義 */
+interface ConcedeGameRequest {
+  action: "concedeGame";
+}
+
 /** WebSocketリクエストの型 */
-export type WebSocketRequestType = MatchMakingRequest | CancelMatchingRequest | GetGameStateRequest | TurnActionsRequest;
+export type WebSocketRequestType = MatchMakingRequest | CancelMatchingRequest | GetGameStateRequest | TurnActionsRequest | ConcedeGameRequest;

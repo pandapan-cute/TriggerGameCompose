@@ -1,11 +1,12 @@
 import { useState } from "react";
 import "./index.css";
+import ConcedeIcon from "../buttons/concede-icon";
 
 interface NavItem {
   idx: number;
   id: string;
   icon: string | React.ReactNode;
-  label: string;
+  label?: string;
   content?: React.ReactNode;
   action?: () => void;
   disabled?: boolean;
@@ -32,6 +33,21 @@ export default function GridLeftNav({
   const navigationItems: NavItem[] = [
     {
       idx: 0,
+      id: "concede",
+      icon: (
+        <ConcedeIcon />
+      ),
+    },
+    {
+      idx: 1,
+      id: "border",
+      icon: (
+        <hr className="w-6 border-t-2 border-gray-500" />
+      ),
+      disabled: true,
+    },
+    {
+      idx: 2,
       id: "help",
       icon: (
         <img
@@ -102,7 +118,7 @@ export default function GridLeftNav({
       </div>
 
       {/* 右側コンテンツエリア */}
-      {selectedIndex !== null && (
+      {selectedIndex !== null && navigationItems[selectedIndex].content && (
         <div
           className="h-screen bg-slate-800/70 backdrop-blur-sm border-r border-gray-700 shadow-xl transition-all duration-300 ease-in-out col-span-5"
           style={{ animation: "slideInFromLeft 0.8s ease-out" }}

@@ -5,6 +5,7 @@ import { GameResult } from "@/types/GameTypes";
 import { FriendUnit } from "@/types/FriendUnit";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import LonghexOutline from "@/components/outlines/LonghexOutline";
+import { ResultNavButton } from "@/components/buttons/result-nav";
 
 /**
  * BattleResultPanel に渡す入力データ。
@@ -172,20 +173,12 @@ const BattleResultPanel = ({
 				</LonghexOutline>
 				{/* 画面下の遷移導線 */}
 				<div className="lg:mt-8 flex flex-wrap items-center justify-center gap-24 text-[20px] lg:text-[36px] leading-none lg:justify-between">
-					<button
-						type="button"
-						onClick={() => window.location.href = "/"}
-						className="text-slate-100 transition-opacity hover:opacity-80"
-					>
+					<ResultNavButton href="/" variant="back">
 						&lt; BACK TO TOP &gt;
-					</button>
-					<button
-						type="button"
-						onClick={() => window.location.href = "/lobby"}
-						className="text-cyan-400 transition-opacity hover:opacity-80"
-					>
+					</ResultNavButton>
+					<ResultNavButton href="/lobby" variant="next">
 						&lt; NEXT BATTLE &gt;
-					</button>
+					</ResultNavButton>
 				</div>
 			</section >
 		</div >

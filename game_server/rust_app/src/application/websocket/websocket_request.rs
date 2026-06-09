@@ -54,6 +54,9 @@ pub enum WebSocketRequest {
         steps: Vec<Step>,
     },
 
+    /// ゲーム降参リクエスト
+    ConcedeGame {},
+
     /// Ping/Pong
     Ping,
 }

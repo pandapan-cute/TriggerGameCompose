@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use aws_sdk_apigatewaymanagement::primitives::Blob;
-use game_server::application::matchmaking::match_cancel_usecase;
+use game_server::{
+    application::matchmaking::match_cancel_usecase,
+    domain::triggergame_simulator::repositories::game_repository,
+};
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -279,6 +282,21 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                             Arc::new(schedule_maker),
                         );
                         service.execute(game_id, player_id, steps).await?;
+                    }
+
+                    // ゲーム降参リクエストの処理
+                    WebSocketRequest::ConcedeGame {} => {
+                        let connection_id = &event.request_context.connection_id;
+                        // ゲームリポジトリとサービスの作成
+                        let interrupt_game_usecase = InterruptGameUseCase::new(
+                            Arc::new(connection_repository),
+                            Arc::new(game_repository),
+                            Arc::new(websocket_sender),
+                        );
+                        interrupt_game_usecase.execute(connection_id).await.map_err(|e| {
+                            tracing::error!(connection_id = %connection_id, error = %e, "ゲームの降参に失敗しました");
+                            Error::from(e)
+                        })?;
                     }
 
                     WebSocketRequest::Ping => {

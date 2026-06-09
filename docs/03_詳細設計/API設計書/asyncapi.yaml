@@ -35,6 +35,7 @@ channels:
           - $ref: '#/components/messages/EventMotionLabTimer'
           - $ref: '#/components/messages/PingRequest'
           - $ref: '#/components/messages/CancelMatchingRequest'
+          - $ref: '#/components/messages/ConcedeGameRequest'
     subscribe:
       operationId: serverToClient
       summary: Server pushes result/event messages to client
@@ -156,6 +157,20 @@ components:
           action:
             type: string
             enum: [cancelMatching]
+
+    ConcedeGameRequest:
+      name: concedeGame
+      title: ゲームの降参リクエスト
+      x-implementationStatus: client-type-only
+      payload:
+        type: object
+        required:
+          - action
+          - playerId
+        properties:
+          action:
+            type: string
+            enum: [concedeGame]
 
     MatchmakingResult:
       name: matchmakingResult

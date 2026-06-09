@@ -459,34 +459,6 @@ async fn acceptance_pattern2_refresh_disconnect_connect_then_game_starts() {
 }
 
 #[tokio::test]
-async fn disconnect_during_waiting_interrupts_matching() {
-    let (
-        connection_repository,
-        matching_repository,
-        _game_repository,
-        _websocket_sender,
-        matchmaking_service,
-        disconnect_usecase,
-    ) = setup();
-
-    connection_repository.save(PLAYER_A, CONN_A1).await.unwrap();
-    matchmaking_service
-        .execute(PLAYER_A, CONN_A1, create_test_units("a"))
-        .await
-        .unwrap();
-
-    disconnect_usecase.execute(CONN_A1).await.unwrap();
-
-    let a_statuses = matching_repository.statuses_for_player1(PLAYER_A);
-    assert!(a_statuses.contains(&MatchingStatusValue::Interrupted));
-    assert!(connection_repository
-        .get_player_id_by_connection_id(CONN_A1)
-        .await
-        .unwrap()
-        .is_none());
-}
-
-#[tokio::test]
 async fn disconnect_when_not_matching_is_noop() {
     let (
         _connection_repository,

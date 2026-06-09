@@ -1,11 +1,10 @@
 // infrastructure/dynamodb/game_dynamodb_repository.rs
 
 use crate::config::env::resolve_table_name;
-use crate::domain::matching_management::repositories::matching_repository::MatchingRepository;
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::game::game::Game;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
-use crate::domain::triggergame_simulator::models::game::game_state::GameState;
+use crate::domain::triggergame_simulator::models::game::game_state::{GameState, GameStateValue};
 use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
@@ -72,75 +71,9 @@ impl DynamoDbGameRepository {
 
         item
     }
-}
 
-#[async_trait]
-impl GameRepository for DynamoDbGameRepository {
-    async fn save(&self, game: &Game) -> Result<(), String> {
-        // Gameアイテムを保存
-        let game_item = self.game_to_item(game);
-        self.client
-            .put_item()
-            .table_name(self.games_table.as_str())
-            .set_item(Some(game_item))
-            .send()
-            .await
-            .map_err(|e| format!("ゲーム情報の保存に失敗しました: {}", e))?;
-        Ok(())
-    }
-
-    async fn update(&self, game: &Game) -> Result<(), String> {
-        let update_expression =
-            "SET current_turn_number = :current_turn_number, game_state = :game_state";
-
-        self.client
-            .update_item()
-            .table_name(self.games_table.as_str())
-            .key(
-                "game_id",
-                AttributeValue::S(game.game_id().value().to_string()),
-            )
-            .update_expression(update_expression)
-            .expression_attribute_values(
-                ":current_turn_number",
-                AttributeValue::N(game.current_turn_number().value().to_string()),
-            )
-            .expression_attribute_values(
-                ":game_state",
-                AttributeValue::S(game.game_state().value().to_string()),
-            )
-            .send()
-            .await
-            .map_err(|e| {
-                println!("Failed to update game: {}", e);
-                if let Some(service_error) = e.as_service_error() {
-                    eprintln!("Service Error: {:?}", service_error);
-                }
-                format!("ゲーム情報の更新に失敗しました: {}", e)
-            })?;
-
-        Ok(())
-    }
-
-    /// マッチング待機中の最新情報を取得
-    async fn get_game_by_id(&self, game_id: &GameId) -> Result<Game, String> {
-        println!("ゲーム {} を取得中...", game_id.value());
-        // game_idを指定して1件取得（プライマリキー検索）
-        let result = self
-            .client
-            .get_item()
-            .table_name(self.games_table.as_str())
-            .key("game_id", AttributeValue::S(game_id.value().to_string()))
-            .send()
-            .await
-            .map_err(|e| format!("ゲーム情報の取得に失敗しました: {}", e))?;
-
-        // println!("GetItem result: {:?}", result);
-
-        let game_item = result
-            .item()
-            .ok_or("ゲームが見つかりませんでした。".to_string())?;
-
+    // ヘルパーメソッド：DynamoDBアイテムをGameに変換
+    fn item_to_game(&self, game_item: &HashMap<String, AttributeValue>) -> Result<Game, String> {
         // Gameの属性を抽出
         let game_id_str = game_item
             .get("game_id")
@@ -213,5 +146,108 @@ impl GameRepository for DynamoDbGameRepository {
             PlayerId::new(player2_id_str.to_string()),
             visibility,
         ))
+    }
+}
+
+#[async_trait]
+impl GameRepository for DynamoDbGameRepository {
+    /// ゲーム情報を保存する。
+    async fn save(&self, game: &Game) -> Result<(), String> {
+        // Gameアイテムを保存
+        let game_item = self.game_to_item(game);
+        self.client
+            .put_item()
+            .table_name(self.games_table.as_str())
+            .set_item(Some(game_item))
+            .send()
+            .await
+            .map_err(|e| format!("ゲーム情報の保存に失敗しました: {}", e))?;
+        Ok(())
+    }
+
+    /// ゲーム情報を更新する。
+    async fn update(&self, game: &Game) -> Result<(), String> {
+        let update_expression =
+            "SET current_turn_number = :current_turn_number, game_state = :game_state";
+
+        self.client
+            .update_item()
+            .table_name(self.games_table.as_str())
+            .key(
+                "game_id",
+                AttributeValue::S(game.game_id().value().to_string()),
+            )
+            .update_expression(update_expression)
+            .expression_attribute_values(
+                ":current_turn_number",
+                AttributeValue::N(game.current_turn_number().value().to_string()),
+            )
+            .expression_attribute_values(
+                ":game_state",
+                AttributeValue::S(game.game_state().value().to_string()),
+            )
+            .send()
+            .await
+            .map_err(|e| {
+                println!("Failed to update game: {}", e);
+                if let Some(service_error) = e.as_service_error() {
+                    eprintln!("Service Error: {:?}", service_error);
+                }
+                format!("ゲーム情報の更新に失敗しました: {}", e)
+            })?;
+
+        Ok(())
+    }
+
+    /// マッチング待機中の最新情報を取得
+    async fn get_game_by_id(&self, game_id: &GameId) -> Result<Game, String> {
+        println!("ゲーム {} を取得中...", game_id.value());
+        // game_idを指定して1件取得（プライマリキー検索）
+        let result = self
+            .client
+            .get_item()
+            .table_name(self.games_table.as_str())
+            .key("game_id", AttributeValue::S(game_id.value().to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("ゲーム情報の取得に失敗しました: {}", e))?;
+
+        // println!("GetItem result: {:?}", result);
+
+        let game_item = result
+            .item()
+            .ok_or("ゲームが見つかりませんでした。".to_string())?;
+
+        self.item_to_game(game_item)
+    }
+
+    /// 指定したプレイヤーIDの進行中のゲームを取得
+    async fn get_inprogress_games_by_player_id(
+        &self,
+        player_id: &str,
+    ) -> Result<Vec<Game>, String> {
+        // InProgress のみを GSI で絞り、プレイヤー一致は FilterExpression で判定する。
+        let query_result = self
+            .client
+            .query()
+            .table_name(self.games_table.as_str())
+            .index_name("GameStateIndex")
+            .key_condition_expression("game_state = :in_progress")
+            .filter_expression("player1_id = :player_id OR player2_id = :player_id")
+            .expression_attribute_values(
+                ":in_progress",
+                AttributeValue::S(GameStateValue::InProgress.to_string()),
+            )
+            .expression_attribute_values(":player_id", AttributeValue::S(player_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("対象ゲームの検索に失敗しました: {}", e))?;
+
+        // クエリ結果からゲームを構築して返す
+        query_result
+            .items()
+            .iter()
+            .map(|item| self.item_to_game(item))
+            .collect::<Result<Vec<Game>, String>>()
     }
 }

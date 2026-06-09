@@ -147,6 +147,13 @@ mod tests {
                 .clone()
                 .ok_or_else(|| "Game not found".to_string())
         }
+
+        async fn get_inprogress_games_by_player_id(
+            &self,
+            _player_id: &str,
+        ) -> Result<Vec<Game>, String> {
+            Ok(Vec::new())
+        }
     }
 
     struct MockUnitRepository {

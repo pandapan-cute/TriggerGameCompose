@@ -15,4 +15,8 @@ pub trait GameRepository: Send + Sync {
 
     /// 指定したゲームIDの情報を取得
     async fn get_game_by_id(&self, game_id: &GameId) -> Result<Game, String>;
+
+    /// 指定したプレイヤーIDの進行中のゲームを取得
+    async fn get_inprogress_games_by_player_id(&self, player_id: &str)
+        -> Result<Vec<Game>, String>;
 }

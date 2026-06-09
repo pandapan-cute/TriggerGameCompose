@@ -261,6 +261,13 @@ mod tests {
         async fn get_game_by_id(&self, _game_id: &GameId) -> Result<Game, String> {
             Ok(self.game.clone())
         }
+
+        async fn get_inprogress_games_by_player_id(
+            &self,
+            _player_id: &str,
+        ) -> Result<Vec<Game>, String> {
+            Ok(vec![])
+        }
     }
 
     struct InMemoryTurnRepository {

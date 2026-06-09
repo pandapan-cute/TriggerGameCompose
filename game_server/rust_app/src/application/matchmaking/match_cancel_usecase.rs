@@ -5,12 +5,12 @@ use crate::domain::{
     player_management::repositories::connection_repository::ConnectionRepository,
 };
 
-pub struct DisconnectUseCase {
+pub struct MatchCancelUseCase {
     connection_repository: Arc<dyn ConnectionRepository>,
     matching_repository: Arc<dyn MatchingRepository>,
 }
 
-impl DisconnectUseCase {
+impl MatchCancelUseCase {
     pub fn new(
         connection_repository: Arc<dyn ConnectionRepository>,
         matching_repository: Arc<dyn MatchingRepository>,
@@ -40,10 +40,6 @@ impl DisconnectUseCase {
 
         self.matching_repository
             .interrupt_waiting_by_player_id(&player_id)
-            .await?;
-
-        self.connection_repository
-            .delete_by_connection_id(connection_id)
             .await?;
 
         Ok(())
@@ -132,7 +128,7 @@ mod tests {
         let connection_repository = Arc::new(MockConnectionRepository::default());
         let matching_repository = Arc::new(MockMatchingRepository::default());
 
-        let usecase = DisconnectUseCase::new(connection_repository.clone(), matching_repository);
+        let usecase = MatchCancelUseCase::new(connection_repository.clone(), matching_repository);
 
         let result = usecase.execute("conn-unknown").await;
         assert!(result.is_ok());
@@ -153,7 +149,7 @@ mod tests {
         let matching_repository = Arc::new(MockMatchingRepository::default());
 
         let usecase =
-            DisconnectUseCase::new(connection_repository.clone(), matching_repository.clone());
+            MatchCancelUseCase::new(connection_repository.clone(), matching_repository.clone());
 
         let result = usecase.execute("conn-1").await;
         assert!(result.is_ok());
@@ -186,7 +182,7 @@ mod tests {
         let matching_repository = Arc::new(MockMatchingRepository::default());
 
         let usecase =
-            DisconnectUseCase::new(connection_repository.clone(), matching_repository.clone());
+            MatchCancelUseCase::new(connection_repository.clone(), matching_repository.clone());
 
         let first = usecase.execute("conn-1").await;
         let second = usecase.execute("conn-1").await;

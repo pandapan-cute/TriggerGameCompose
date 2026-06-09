@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use aws_sdk_apigatewaymanagement::primitives::Blob;
+use game_server::application::matchmaking::match_cancel_usecase;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,18 +13,19 @@ use infrastructure::aws::{
 use crate::{
     application::{
         game::{
-            get_game_state_usecase::GetGameStateUseCase, process_turn_usecase::ProcessTurnUseCase,
+            get_game_state_usecase::GetGameStateUseCase,
+            interrupt_game_usecase::InterruptGameUseCase, process_turn_usecase::ProcessTurnUseCase,
         },
         matchmaking::{
-            disconnect_usecase::DisconnectUseCase,
+            match_cancel_usecase::MatchCancelUseCase,
             matchmaking_application_service::MatchmakingApplicationService,
         },
         schedule::{
             motion_lab_limit_usecase::MotionLabLimitUseCase, schedule_maker::ScheduleMaker,
         },
         websocket::{
-            websocket_request::WebSocketRequest, websocket_response::WebSocketResponse,
-            websocket_sender::WebSocketSender,
+            disconnect_usecase::DisconnectUseCase, websocket_request::WebSocketRequest,
+            websocket_response::WebSocketResponse, websocket_sender::WebSocketSender,
         },
     },
     domain::{
@@ -140,14 +142,18 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
 
             let dynamo_client = create_dynamodb_client().await;
             let connection_repository = DynamoDbConnectionRepository::new(dynamo_client.clone());
-            let matching_repository = DynamoDbMatchingRepository::new(dynamo_client);
+            let matching_repository = DynamoDbMatchingRepository::new(dynamo_client.clone());
+            let game_repository = DynamoDbGameRepository::new(dynamo_client.clone());
+            let websocket_sender = WebSocketapiSender::new(apigateway_client.clone());
+            // DisconnectUseCaseの作成と実行
             let disconnect_usecase = DisconnectUseCase::new(
-                Arc::new(connection_repository),
-                Arc::new(matching_repository),
+                Arc::new(DynamoDbConnectionRepository::new(dynamo_client.clone())),
+                Arc::new(DynamoDbMatchingRepository::new(dynamo_client.clone())),
+                Arc::new(DynamoDbGameRepository::new(dynamo_client.clone())),
+                Arc::new(WebSocketapiSender::new(apigateway_client.clone())),
             );
-
             disconnect_usecase.execute(&connection_id).await.map_err(|e| {
-                tracing::error!(connection_id = %connection_id, error = %e, "Disconnect cleanup failed");
+                tracing::error!(connection_id = %connection_id, error = %e, "Disconnect usecase failed");
                 Error::from(e)
             })?;
         }
@@ -232,12 +238,12 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                         // マッチングリポジトリとサービスの作成
                         let matching_repository =
                             DynamoDbMatchingRepository::new(dynamo_client.clone());
-                        let disconnect_usecase = DisconnectUseCase::new(
+                        let match_cancel_usecase = MatchCancelUseCase::new(
                             Arc::new(connection_repository),
                             Arc::new(matching_repository),
                         );
 
-                        disconnect_usecase.execute(connection_id).await.map_err(|e| {
+                        match_cancel_usecase.execute(connection_id).await.map_err(|e| {
                             tracing::error!(connection_id = %connection_id, error = %e, "マッチングのキャンセルに失敗しました");
                             Error::from(e)
                         })?;

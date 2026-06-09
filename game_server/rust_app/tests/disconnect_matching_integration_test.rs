@@ -1,11 +1,14 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use game_server::{
     application::{
         matchmaking::{
-            disconnect_usecase::DisconnectUseCase,
+            match_cancel_usecase::MatchCancelUseCase,
             matchmaking_application_service::MatchmakingApplicationService,
             matchmaking_dto::CreateUnitDto,
         },
@@ -49,7 +52,9 @@ impl ConnectionRepository for InMemoryConnectionRepository {
         let mut player_to_connection = self.player_to_connection.lock().unwrap();
         let mut connection_to_player = self.connection_to_player.lock().unwrap();
 
-        if let Some(old_connection_id) = player_to_connection.insert(player_id.to_string(), connection_id.to_string()) {
+        if let Some(old_connection_id) =
+            player_to_connection.insert(player_id.to_string(), connection_id.to_string())
+        {
             connection_to_player.remove(&old_connection_id);
         }
         connection_to_player.insert(connection_id.to_string(), player_id.to_string());
@@ -105,19 +110,15 @@ impl InMemoryMatchingRepository {
     }
 
     fn has_completed_match_between(&self, player1_id: &str, player2_id: &str) -> bool {
-        self.matchings
-            .lock()
-            .unwrap()
-            .iter()
-            .any(|matching| {
-                matching.player1_id().value() == player1_id
-                    && matching
-                        .player2_id()
-                        .as_ref()
-                        .map(|id| id.value() == player2_id)
-                        .unwrap_or(false)
-                    && matching.matching_status().value() == &MatchingStatusValue::Completed
-            })
+        self.matchings.lock().unwrap().iter().any(|matching| {
+            matching.player1_id().value() == player1_id
+                && matching
+                    .player2_id()
+                    .as_ref()
+                    .map(|id| id.value() == player2_id)
+                    .unwrap_or(false)
+                && matching.matching_status().value() == &MatchingStatusValue::Completed
+        })
     }
 }
 
@@ -249,6 +250,23 @@ impl GameRepository for InMemoryGameRepository {
             .cloned()
             .ok_or_else(|| "game not found".to_string())
     }
+
+    async fn get_inprogress_games_by_player_id(
+        &self,
+        player_id: &str,
+    ) -> Result<Vec<Game>, String> {
+        Ok(self
+            .games
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|g| {
+                g.game_state().is_in_progress()
+                    && (g.player1_id().value() == player_id || g.player2_id().value() == player_id)
+            })
+            .cloned()
+            .collect())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -280,12 +298,18 @@ impl WebSocketSender for CollectingWebSocketSender {
         connection_id: &str,
         response: &WebSocketResponse,
     ) -> Result<(), String> {
-        if let WebSocketResponse::MatchmakingResult { status, game_id, .. } = response {
-            self.notifications.lock().unwrap().push(MatchmakingNotification {
-                connection_id: connection_id.to_string(),
-                status: status.clone(),
-                game_id: game_id.clone(),
-            });
+        if let WebSocketResponse::MatchmakingResult {
+            status, game_id, ..
+        } = response
+        {
+            self.notifications
+                .lock()
+                .unwrap()
+                .push(MatchmakingNotification {
+                    connection_id: connection_id.to_string(),
+                    status: status.clone(),
+                    game_id: game_id.clone(),
+                });
         }
         Ok(())
     }
@@ -324,7 +348,7 @@ type TestSetup = (
     Arc<InMemoryGameRepository>,
     Arc<CollectingWebSocketSender>,
     MatchmakingApplicationService,
-    DisconnectUseCase,
+    MatchCancelUseCase,
 );
 
 fn setup() -> TestSetup {
@@ -333,7 +357,8 @@ fn setup() -> TestSetup {
     let game_repository = Arc::new(InMemoryGameRepository::default());
     let websocket_sender = Arc::new(CollectingWebSocketSender::default());
 
-    let disconnect_usecase = DisconnectUseCase::new(connection_repository.clone(), matching_repository.clone());
+    let disconnect_usecase =
+        MatchCancelUseCase::new(connection_repository.clone(), matching_repository.clone());
 
     let matchmaking_service = MatchmakingApplicationService::new(
         matching_repository.clone(),
@@ -434,34 +459,6 @@ async fn acceptance_pattern2_refresh_disconnect_connect_then_game_starts() {
 }
 
 #[tokio::test]
-async fn disconnect_during_waiting_interrupts_matching() {
-    let (
-        connection_repository,
-        matching_repository,
-        _game_repository,
-        _websocket_sender,
-        matchmaking_service,
-        disconnect_usecase,
-    ) = setup();
-
-    connection_repository.save(PLAYER_A, CONN_A1).await.unwrap();
-    matchmaking_service
-        .execute(PLAYER_A, CONN_A1, create_test_units("a"))
-        .await
-        .unwrap();
-
-    disconnect_usecase.execute(CONN_A1).await.unwrap();
-
-    let a_statuses = matching_repository.statuses_for_player1(PLAYER_A);
-    assert!(a_statuses.contains(&MatchingStatusValue::Interrupted));
-    assert!(connection_repository
-        .get_player_id_by_connection_id(CONN_A1)
-        .await
-        .unwrap()
-        .is_none());
-}
-
-#[tokio::test]
 async fn disconnect_when_not_matching_is_noop() {
     let (
         _connection_repository,
@@ -472,7 +469,10 @@ async fn disconnect_when_not_matching_is_noop() {
         disconnect_usecase,
     ) = setup();
 
-    disconnect_usecase.execute("unknown-connection").await.unwrap();
+    disconnect_usecase
+        .execute("unknown-connection")
+        .await
+        .unwrap();
 
     assert!(matching_repository
         .statuses_for_player1(PLAYER_A)

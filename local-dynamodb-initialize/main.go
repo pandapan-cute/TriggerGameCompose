@@ -153,9 +153,19 @@ func createTables(ctx context.Context, client *dynamodb.Client) error {
 		TableName: aws.String("Games"),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{AttributeName: aws.String("game_id"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("game_state"), AttributeType: types.ScalarAttributeTypeS},
 		},
 		KeySchema: []types.KeySchemaElement{
 			{AttributeName: aws.String("game_id"), KeyType: types.KeyTypeHash},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("GameStateIndex"),
+				KeySchema: []types.KeySchemaElement{
+					{AttributeName: aws.String("game_state"), KeyType: types.KeyTypeHash},
+				},
+				Projection: &types.Projection{ProjectionType: types.ProjectionTypeAll},
+			},
 		},
 		BillingMode: types.BillingModePayPerRequest,
 	})

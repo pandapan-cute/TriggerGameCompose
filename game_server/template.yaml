@@ -61,6 +61,7 @@ Resources:
               - !GetAtt UnitsTable.Arn
               - !Sub '${UnitsTable.Arn}/index/*'
               - !GetAtt GamesTable.Arn
+              - !Sub '${GamesTable.Arn}/index/*'
               - !GetAtt TurnsTable.Arn
           - Effect: Allow
             Action:
@@ -306,9 +307,18 @@ Resources:
       AttributeDefinitions:
         - AttributeName: game_id
           AttributeType: S
+        - AttributeName: game_state
+          AttributeType: S
       KeySchema:
         - AttributeName: game_id
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: GameStateIndex
+          KeySchema:
+            - AttributeName: game_state
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
   # Turns用DynamoDBテーブル

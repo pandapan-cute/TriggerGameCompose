@@ -5,12 +5,12 @@ use crate::domain::{
     player_management::repositories::connection_repository::ConnectionRepository,
 };
 
-pub struct DisconnectUseCase {
+pub struct MatchCancelUseCase {
     connection_repository: Arc<dyn ConnectionRepository>,
     matching_repository: Arc<dyn MatchingRepository>,
 }
 
-impl DisconnectUseCase {
+impl MatchCancelUseCase {
     pub fn new(
         connection_repository: Arc<dyn ConnectionRepository>,
         matching_repository: Arc<dyn MatchingRepository>,
@@ -40,10 +40,6 @@ impl DisconnectUseCase {
 
         self.matching_repository
             .interrupt_waiting_by_player_id(&player_id)
-            .await?;
-
-        self.connection_repository
-            .delete_by_connection_id(connection_id)
             .await?;
 
         Ok(())
@@ -132,7 +128,7 @@ mod tests {
         let connection_repository = Arc::new(MockConnectionRepository::default());
         let matching_repository = Arc::new(MockMatchingRepository::default());
 
-        let usecase = DisconnectUseCase::new(connection_repository.clone(), matching_repository);
+        let usecase = MatchCancelUseCase::new(connection_repository.clone(), matching_repository);
 
         let result = usecase.execute("conn-unknown").await;
         assert!(result.is_ok());
@@ -141,73 +137,5 @@ mod tests {
             .lock()
             .unwrap()
             .is_empty());
-    }
-
-    #[tokio::test]
-    /// 接続中プレイヤー切断時に待機中断と接続削除を順に実行することを検証する
-    async fn execute_waiting_player_interrupts_then_deletes_connection() {
-        let connection_repository = Arc::new(MockConnectionRepository {
-            lookup_result: Mutex::new(Some("player-1".to_string())),
-            deleted_connection_ids: Mutex::new(vec![]),
-        });
-        let matching_repository = Arc::new(MockMatchingRepository::default());
-
-        let usecase =
-            DisconnectUseCase::new(connection_repository.clone(), matching_repository.clone());
-
-        let result = usecase.execute("conn-1").await;
-        assert!(result.is_ok());
-
-        assert_eq!(
-            matching_repository
-                .interrupted_player_ids
-                .lock()
-                .unwrap()
-                .as_slice(),
-            ["player-1"]
-        );
-        assert_eq!(
-            connection_repository
-                .deleted_connection_ids
-                .lock()
-                .unwrap()
-                .as_slice(),
-            ["conn-1"]
-        );
-    }
-
-    #[tokio::test]
-    /// 同一 connection_id に対する再実行で結果が収束することを検証する
-    async fn execute_is_idempotent_for_same_connection_id() {
-        let connection_repository = Arc::new(MockConnectionRepository {
-            lookup_result: Mutex::new(Some("player-1".to_string())),
-            deleted_connection_ids: Mutex::new(vec![]),
-        });
-        let matching_repository = Arc::new(MockMatchingRepository::default());
-
-        let usecase =
-            DisconnectUseCase::new(connection_repository.clone(), matching_repository.clone());
-
-        let first = usecase.execute("conn-1").await;
-        let second = usecase.execute("conn-1").await;
-
-        assert!(first.is_ok());
-        assert!(second.is_ok());
-        assert_eq!(
-            matching_repository
-                .interrupted_player_ids
-                .lock()
-                .unwrap()
-                .as_slice(),
-            ["player-1"]
-        );
-        assert_eq!(
-            connection_repository
-                .deleted_connection_ids
-                .lock()
-                .unwrap()
-                .as_slice(),
-            ["conn-1"]
-        );
     }
 }

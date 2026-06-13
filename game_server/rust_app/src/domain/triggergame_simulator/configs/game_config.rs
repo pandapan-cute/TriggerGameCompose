@@ -41,7 +41,7 @@ impl GameConfig {
             damage_weight: 1.0,
             defend_weight: 1.0,
             min_damage: 20,
-            motion_lab_seconds: 150,
+            motion_lab_seconds: 80, // 動きの設定時間を80秒に
             action_time_seconds: 15,
             communication_wait_seconds: 5,
         }

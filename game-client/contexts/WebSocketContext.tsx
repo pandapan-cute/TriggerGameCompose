@@ -22,8 +22,6 @@ interface WebSocketContextType {
   setGameId: (gameId: string | null) => void;
   /** プレイヤーID */
   playerId?: string | null;
-  /** フィールドの状態 */
-  fieldView: boolean[][] | null;
   // メッセージ送信
   sendMessage: (message: WebSocketRequestType) => void;
   // メッセージリスナー
@@ -35,6 +33,10 @@ interface WebSocketContextType {
     action: string,
     callback: (data: WebSocketResponseType) => void
   ) => void;
+
+  // 接続・切断イベントを購読するための関数
+  addConnectionListener: (event: "connect" | "disconnect", callback: () => void) => void;
+  removeConnectionListener: (event: "connect" | "disconnect", callback: () => void) => void;
 
   // 接続制御
   connect: () => void;
@@ -52,12 +54,8 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
   const wsRef = useRef<WebSocket | null>(null);
   // 接続状態管理
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  // プレイヤーID管理
-  const [playerId, setPlayerId] = useState<string | null>(null);
   // ゲームID管理
   const [gameId, setGameId] = useState<string | null>(null);
-  // フィールドビュー情報
-  const [fieldView, setFieldView] = useState<boolean[][] | null>(null);
 
   // メッセージリスナーを管理
   const messageListeners = useRef<
@@ -69,20 +67,29 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
 
-  // プレイヤーIDの初期化
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedPlayerId = localStorage.getItem("playerId");
-      if (storedPlayerId) {
-        setPlayerId(storedPlayerId);
-      } else {
-        const newPlayerId = crypto.randomUUID();
-        console.log("新しいプレイヤーIDを生成:", newPlayerId);
-        setPlayerId(newPlayerId);
-        localStorage.setItem("playerId", newPlayerId);
-      }
+  // コンポーネント内
+  const [playerId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+
+    const storedPlayerId = localStorage.getItem("playerId");
+    if (storedPlayerId) {
+      return storedPlayerId;
+    } else {
+      const newPlayerId = crypto.randomUUID();
+      console.log("新しいプレイヤーIDを生成:", newPlayerId);
+      localStorage.setItem("playerId", newPlayerId);
+      return newPlayerId;
     }
-  }, []);
+  });
+
+  /** 接続・切断イベントリスナー */
+  const connectionListeners = useRef<{
+    connect: Set<() => void>;
+    disconnect: Set<() => void>;
+  }>({
+    connect: new Set(),
+    disconnect: new Set(),
+  });
 
   // WebSocket接続関数
   const connect = async () => {
@@ -117,6 +124,9 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
         console.log("WebSocket接続が確立されました");
         setIsConnected(true);
         setReconnectAttempts(0);
+
+        // 接続完了をリスナーに通知
+        connectionListeners.current.connect.forEach((callback) => callback());
       };
 
       wsRef.current.onmessage = (event) => {
@@ -143,6 +153,9 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
         setIsConnected(false);
         console.log("WebSocket接続が閉じられました:", event.code, event.reason);
 
+        // 切断（onClose）をリスナーに通知（手動切断でも自動切断でも走る）
+        connectionListeners.current.disconnect.forEach((callback) => callback());
+
         // 意図的でない切断の場合は再接続を試行
         if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
@@ -151,7 +164,6 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
             setReconnectAttempts((prev) => prev + 1);
             connect();
           }, delay);
-        } else {
         }
       };
     } catch (error) {
@@ -224,6 +236,15 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
     }
   };
 
+  /** 接続・切断リスナーの追加関数 */
+  const addConnectionListener = (event: "connect" | "disconnect", callback: () => void) => {
+    connectionListeners.current[event].add(callback);
+  };
+  /** 接続・切断リスナーの削除関数 */
+  const removeConnectionListener = (event: "connect" | "disconnect", callback: () => void) => {
+    connectionListeners.current[event].delete(callback);
+  };
+
   // クリーンアップ
   useEffect(() => {
     return () => {
@@ -236,10 +257,11 @@ export const WebSocketProvider: React.FC<{ children: ReactNode; }> = ({
     gameId,
     setGameId,
     playerId,
-    fieldView,
     sendMessage,
     addMessageListener,
     removeMessageListener,
+    addConnectionListener,
+    removeConnectionListener,
     connect,
     disconnect,
   };

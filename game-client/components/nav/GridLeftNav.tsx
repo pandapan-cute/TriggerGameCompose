@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./index.css";
 import ConcedeIcon from "../buttons/concede-icon";
+import Image from "next/image";
 
 interface NavItem {
   idx: number;
@@ -50,10 +51,12 @@ export default function GridLeftNav({
       idx: 2,
       id: "help",
       icon: (
-        <img
+        <Image
           src="/icons/backhand.svg"
           alt="History"
-          className="w-6 h-6 text-sky-500"
+          width={24}
+          height={24}
+          className="text-sky-500"
         />
       ),
       label: "操作方法",

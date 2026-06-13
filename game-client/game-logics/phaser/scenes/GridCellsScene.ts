@@ -463,7 +463,7 @@ export class GridCellsScene extends Phaser.Scene {
    */
   private createCharacters() {
     // 自分のキャラクターを配置
-    this.friendUnits.forEach((unit, index) => {
+    this.friendUnits.forEach((unit) => {
       const status = CHARACTER_STATUS[unit.unitTypeId as keyof typeof CHARACTER_STATUS];
       const playerCharacterState = new PlayerCharacterState(
         status.activeCount,
@@ -476,7 +476,7 @@ export class GridCellsScene extends Phaser.Scene {
     });
 
     // 相手のキャラクターを配置（逆転した座標を使用）
-    this.enemyUnits.forEach((unit, index) => {
+    this.enemyUnits.forEach((unit) => {
       const enemyCharacterState = new EnemyCharacterState(
         this,
         unit,

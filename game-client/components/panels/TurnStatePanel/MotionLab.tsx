@@ -14,7 +14,7 @@ export default function TurnStateMotionLabPanel(props: MotionLabProps) {
   const { endtime, turn, maxTurn } = props;
   const endTimestamp = endtime.getTime();
 
-  const [initialDurationMs, setInitialDurationMs] = useState(() => {
+  const [initialDurationMs] = useState(() => {
     return Math.max(1, endTimestamp - Date.now());
   });
 
@@ -24,8 +24,6 @@ export default function TurnStateMotionLabPanel(props: MotionLabProps) {
   });
 
   useEffect(() => {
-    setInitialDurationMs(Math.max(1, endTimestamp - Date.now()));
-
     const updateRemainingTime = () => {
       setRemainingCentiseconds(
         Math.max(0, Math.ceil((endTimestamp - Date.now()) / 10)),

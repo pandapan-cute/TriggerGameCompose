@@ -65,7 +65,7 @@ export class Action {
   /**
    * エネミー用にトリガー角度を反転させる
    */
-  invertTriggerAngleForEnemy(gridConfig: GridConfig) {
+  invertTriggerAngleForEnemy() {
     this.mainTriggerAzimuth = (this.mainTriggerAzimuth + 180) % 360;
     this.subTriggerAzimuth = (this.subTriggerAzimuth + 180) % 360;
   }

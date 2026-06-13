@@ -33,8 +33,6 @@ export default function TurnStateMotionExecutePanel(props: MotionExecuteProps) {
     return () => window.clearInterval(intervalId);
   }, [endTimestamp]);
 
-  const timerColor = `hsl(113 81% 40%)`;
-
   return (
     <>
       <div className={styles.container}>

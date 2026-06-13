@@ -15,7 +15,7 @@ export default function LobbyPage() {
       {/* 画面回転を推奨するコンポーネント */}
       <RotateView />
 
-      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full text-center border border-white/20">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full text-center border border-white/20" style={{ height: "304px" }}>
         {/* ヘッダー */}
         <h1 className="text-3xl font-bold text-white mb-8">マッチング</h1>
 

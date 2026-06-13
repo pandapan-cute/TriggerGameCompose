@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import GridLeftNav from "@/components/nav/GridLeftNav";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
@@ -59,21 +59,6 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     gameId,
     connect,
   } = useWebSocket();
-
-
-  // 対戦終了処理
-  const handleEndMatch = () => {
-    if (isConnected && playerId) {
-      const messageData = {
-        action: "cancelMatching" as const,
-        playerId: playerId,
-      };
-      console.log("対戦終了メッセージを送信:", messageData);
-      sendMessage(messageData);
-    } else {
-      console.error("WebSocket接続がないか、プレイヤーIDが不足しています");
-    }
-  };
 
   // WebSocket接続とゲームIDの初期化
   useEffect(() => {
@@ -167,7 +152,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     };
   }, [addMessageListener, removeMessageListener, router]);
 
-  useEffect(() => {
+  const onRenderEffectEvent = useEffectEvent(() => {
     // DOM要素が存在しない場合は何もしない
     if (!containerRef.current) return;
 
@@ -229,7 +214,11 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       }
       gridSceneRef.current = null;
     };
-  }, []); // 空の依存配列で初回のみ実行
+  });
+
+  useEffect(() => {
+    onRenderEffectEvent();
+  }, []);  // 空の依存配列で初回のみ実行
 
   return (
     <div className="game-container relative w-full h-screen overflow-hidden">

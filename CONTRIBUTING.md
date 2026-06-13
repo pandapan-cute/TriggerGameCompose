@@ -13,16 +13,16 @@
 
 - 機能追加: `feature/<issue番号>-<要約>`
 - バグ修正: `fix/<issue番号>-<要約>`
-- 雑務/保守: `chore/<要約>`
-- リファクタリング: `refactor/<要約>`
-- ドキュメント: `docs/<要約>`
+- 雑務/保守: `chore/<issue番号>-<要約>`
+- リファクタリング: `refactor/<issue番号>-<要約>`
+- ドキュメント: `docs/<issue番号>-<要約>`
 
 例:
 
 - `feature/123-turn_timeout`
 - `fix/245-invalid_action_order`
 - `refactor/456-code_structure`
-- `docs/contributing_update`
+- `docs/789-contributing_update`
 
 ## 2. コミットメッセージ
 

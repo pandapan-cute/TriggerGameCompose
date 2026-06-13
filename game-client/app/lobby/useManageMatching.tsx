@@ -4,14 +4,14 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import useDeviceOrientation from "@/hooks/device/useDeviceOrientation";
 import { MatchingStatus } from "@/types/MatchingTypes";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /**
  * マッチング管理用のカスタムフック
  * 
  * モバイル端末で縦画面でマッチング中のとき -> マッチング開始をキャンセルする
  * 接続していないとき -> Websocket接続を開始する
- * 接続中でモバイル縦画面でないとき -> マッチング開始メッセージを送信する
+ * 接続中でモバイル縦画面でない、マッチング開始前のとき -> マッチング開始メッセージを送信する
  * マッチング結果の受信 -> ステータスを更新してゲーム画面に遷移
  */
 export const useManageMatching = () => {
@@ -25,6 +25,8 @@ export const useManageMatching = () => {
     sendMessage,
     addMessageListener,
     removeMessageListener,
+    addConnectionListener,
+    removeConnectionListener,
     connect,
   } = useWebSocket();
 
@@ -37,14 +39,6 @@ export const useManageMatching = () => {
         if (data.gameId) {
           setGameId(data.gameId);
         }
-        // if (
-        //   data.result &&
-        //   typeof data.result === "object" &&
-        //   "fieldView" in data.result
-        // ) {
-        //   // フィールドビュー情報を設定
-        //   setFieldView((data.result as MatchmakingResponse).fieldView);
-        // }
 
         // 3秒後にゲーム画面に遷移
         setTimeout(() => {
@@ -68,90 +62,123 @@ export const useManageMatching = () => {
       removeMessageListener("matchmakingResult", handleMatchingResult);
       removeMessageListener("error", handleError);
     };
-  }, [addMessageListener, removeMessageListener, router]);
+  }, [addMessageListener, removeMessageListener, router, setGameId]);
 
-
-  const { isMobilePortrait } = useDeviceOrientation();
-
-  // マッチング開始
+  // 接続リスナーのクリーンアップ
   useEffect(() => {
-    console.log(`マッチング開始のチェック: isConnected=${isConnected}, playerId=${playerId}, isMobilePortrait=${isMobilePortrait}`);
-    if (isConnected && !isMobilePortrait && matchingStatus === "NotStarted") {
-      // 接続状態かつモバイル縦向きでない場合にマッチング開始
-      if (!playerId) {
-        console.error("プレイヤーIDが存在しません。マッチングを開始できません。");
-        return;
+    // コンポーネントマウント時に接続を試みる
+    connect();
+
+    return () => {
+      removeConnectionListener("disconnect", () => { });
+      removeConnectionListener("connect", () => { });
+    };
+  }, [removeConnectionListener, connect]);
+
+  // 画面の向きが変わったときの処理
+  const { isMobilePortrait } = useDeviceOrientation({
+    onOrientationChange: (isMobilePortrait) => {
+      console.log("画面の向きが変わりました。isMobilePortrait:", isMobilePortrait);
+      if (isMobilePortrait === true && matchingStatus === "InProgress") {
+        // モバイル縦画面でマッチング中のときはマッチングをキャンセルする
+        handleCancelMatching();
+      } else if (isConnected && isMobilePortrait === false && matchingStatus === "NotStarted") {
+        // 接続中でモバイル縦画面でない、マッチング開始前のとき
+        startMatchmaking();
       }
-      // マッチング開始メッセージを送信
-      sendMessage({
-        action: "matchmaking",
-        playerId: playerId || "",
-        units: [
-          {
-            unitTypeId: "MIKUMO_OSAMU",
-            initialX: 4,
-            initialY: 34,
-            usingMainTriggerId: "RAYGUST",
-            usingSubTriggerId: "ASTEROID",
-            mainTriggerIds: ["RAYGUST", "THRUSTER", "SHIELD", "BAGWORM"],
-            subTriggerIds: ["ASTEROID", "SHIELD", "SPIDER"],
-          },
-          {
-            unitTypeId: "KUGA_YUMA",
-            initialX: 12,
-            initialY: 34,
-            usingMainTriggerId: "SCORPION",
-            usingSubTriggerId: "SHIELD",
-            mainTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER"],
-            subTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER", "BAGWORM"],
-          },
-          {
-            unitTypeId: "AMATORI_CHIKA",
-            initialX: 20,
-            initialY: 34,
-            usingMainTriggerId: "IBIS",
-            usingSubTriggerId: "BAGWORM",
-            mainTriggerIds: ["IBIS", "LIGHTNING", "HOUND", "SHIELD"],
-            subTriggerIds: ["REDBULLET", "SHIELD", "BAGWORM"],
-          },
-          {
-            unitTypeId: "HYUSE_KURONIN",
-            initialX: 28,
-            initialY: 34,
-            usingMainTriggerId: "KOGETSU",
-            usingSubTriggerId: "SHIELD",
-            mainTriggerIds: ["KOGETSU", "SENKU", "SHIELD",],
-            subTriggerIds: ["VIPER", "ESCUDE", "SHIELD", "BAGWORM"],
-          }
-        ],
-      });
-      setMatchingStatus("InProgress");
-      console.log("マッチング開始メッセージを送信しました");
-
-    } else if (isMobilePortrait && matchingStatus === "InProgress") {
-      // モバイル縦向きかつ接続中の場合、マッチングをキャンセルしてステータスをリセット
-      sendCancelMatching();
-      setMatchingStatus("NotStarted");
-
-    } else if (!isConnected) {
-      // 接続していない場合は接続を開始
-      connect();
-      setMatchingStatus("NotStarted");
     }
-  }, [isConnected, playerId, isMobilePortrait]); // readyStateの変更時およびplayerIdの変更時に実行
+  });
 
-  // マッチングキャンセル
-  const cancelMatching = () => {
-    sendCancelMatching();
-    router.push("/");
-  };
+  // ws切断したらマッチング中断にする
+  addConnectionListener("disconnect", () => {
+    if (matchingStatus === "InProgress") {
+      setMatchingStatus("Interrupted");
+    }
+  });
+
+  // ws接続したらマッチング開始する（ただしモバイル縦画面のときは開始しない）
+  addConnectionListener("connect", () => {
+    console.log("WebSocketに接続されました。");
+    if (matchingStatus !== "InProgress" && isMobilePortrait === false) {
+      startMatchmaking();
+    }
+  });
 
   /** マッチングキャンセル送信処理 */
-  const sendCancelMatching = () => {
+  const sendCancelMatching = useCallback(() => {
     sendMessage({
       action: "cancelMatching",
     });
-  };
+  }, [sendMessage]);
+
+
+  // --- マッチングを開始する専用の関数（ハンドラ）を作る ---
+  const startMatchmaking = useCallback(() => {
+    if (!playerId) {
+      console.error("プレイヤーIDが存在しません。マッチングを開始できません。");
+      return;
+    }
+
+    sendMessage({
+      action: "matchmaking",
+      playerId: playerId,
+      units: [
+        {
+          unitTypeId: "MIKUMO_OSAMU",
+          initialX: 4,
+          initialY: 34,
+          usingMainTriggerId: "RAYGUST",
+          usingSubTriggerId: "ASTEROID",
+          mainTriggerIds: ["RAYGUST", "THRUSTER", "SHIELD", "BAGWORM"],
+          subTriggerIds: ["ASTEROID", "SHIELD", "SPIDER"],
+        },
+        {
+          unitTypeId: "KUGA_YUMA",
+          initialX: 12,
+          initialY: 34,
+          usingMainTriggerId: "SCORPION",
+          usingSubTriggerId: "SHIELD",
+          mainTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER"],
+          subTriggerIds: ["SCORPION", "SHIELD", "GRASSHOPPER", "BAGWORM"],
+        },
+        {
+          unitTypeId: "AMATORI_CHIKA",
+          initialX: 20,
+          initialY: 34,
+          usingMainTriggerId: "IBIS",
+          usingSubTriggerId: "BAGWORM",
+          mainTriggerIds: ["IBIS", "LIGHTNING", "HOUND", "SHIELD"],
+          subTriggerIds: ["REDBULLET", "SHIELD", "BAGWORM"],
+        },
+        {
+          unitTypeId: "HYUSE_KURONIN",
+          initialX: 28,
+          initialY: 34,
+          usingMainTriggerId: "KOGETSU",
+          usingSubTriggerId: "SHIELD",
+          mainTriggerIds: ["KOGETSU", "SENKU", "SHIELD",],
+          subTriggerIds: ["VIPER", "ESCUDE", "SHIELD", "BAGWORM"],
+        }
+      ],
+    });
+
+    // Stateの更新は、この関数が「呼び出されたとき」に1回だけ行う
+    setMatchingStatus("InProgress");
+    console.log("マッチング開始メッセージを送信しました");
+  }, [playerId, sendMessage]);
+
+  // --- マッチングをキャンセルする専用の関数 ---
+  const handleCancelMatching = useCallback(() => {
+    sendCancelMatching();
+    setMatchingStatus("NotStarted");
+  }, [sendCancelMatching]);
+
+  /** マッチングのキャンセルと画面の移動 */
+  const cancelMatching = useCallback(() => {
+    sendCancelMatching();
+    setMatchingStatus("NotStarted");
+    router.push("/");
+  }, [sendCancelMatching, router]);
 
   // 再接続ボタン
   const retryConnection = () => {

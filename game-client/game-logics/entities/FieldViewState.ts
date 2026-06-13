@@ -1,7 +1,6 @@
 'use client';
 import { HexUtils } from "../hexUtils";
 import { GridConfig } from "../types";
-import { FIELD_STEPS } from "../config/FieldData";
 import { HexagonCell } from "../phaser/game-objects/graphics/HexagonCell";
 import { OnGridCellText } from "../phaser/game-objects/texts/OnGridCellText";
 

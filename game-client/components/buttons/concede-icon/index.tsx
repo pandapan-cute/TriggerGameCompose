@@ -2,6 +2,7 @@ import NormalFullDialog from "@/components/dialogs/NormalFullDialog";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { useRef } from "react";
 import { ResultNavButton } from "../result-nav";
+import Image from "next/image";
 
 /**
  * 対戦リタイアアイコンボタン
@@ -32,10 +33,12 @@ export default function ConcedeIcon() {
   return (
     <>
       <div onClick={handleOpenDialog}>
-        <img
+        <Image
           src="/icons/concede.svg"
           alt="Concede"
-          className="w-6 h-6 text-red-500"
+          width={24}
+          height={24}
+          className="text-red-500"
         />
       </div>
       <NormalFullDialog ref={dialogRef}>

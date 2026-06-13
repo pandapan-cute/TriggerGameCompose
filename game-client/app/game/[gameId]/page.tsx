@@ -10,7 +10,7 @@ import { FriendUnit } from "@/types/FriendUnit";
 import { GameResult, GameState } from "@/types/GameTypes";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const GameGrid = dynamic(() => import("@/game-logics/GameGrid"), {
   // フロント側で500が出るため、SSRを無効化
@@ -42,7 +42,7 @@ export default function GamePage() {
   const [motionLabEndTime, setMotionLabEndTime] = useState<Date>(new Date());
   const resultDialogRef = useRef<HTMLDialogElement>(null);
 
-  const checkGameState = (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState?: GameState) => {
+  const checkGameState = useCallback((friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number, gameState?: GameState) => {
     if (isConnected && playerId) {
       setFriendUnits(friendUnits);
       setEnemyUnits(enemyUnits);
@@ -59,7 +59,7 @@ export default function GamePage() {
         setGameResult("Draw");
       }
     }
-  };
+  }, [isConnected, playerId]);
 
   useEffect(() => {
     // ゲーム終了の検知
@@ -68,6 +68,10 @@ export default function GamePage() {
       resultDialogRef.current?.showModal();
     }
   }, [gameResult]);
+
+  // URLパラメータを取得
+  const params = useParams();
+  const gameId = params.gameId as string;
 
   useEffect(() => {
     /** ゲーム状態の受信処理 */
@@ -107,11 +111,7 @@ export default function GamePage() {
       removeMessageListener("getGameStateResult", handleGameStateResult);
       removeMessageListener("notifyGameState", handleNotifyGameState);
     };
-  }, [addMessageListener, removeMessageListener]);
-
-  // URLパラメータを取得
-  const params = useParams();
-  const gameId = params.gameId as string;
+  }, [addMessageListener, removeMessageListener, gameId, checkGameState]);
 
   // WebSocketの接続状態が変わったら接続を確立する
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function GamePage() {
         gameId: gameId,
       });
     }
-  }, [isConnected, playerId, gameId, sendMessage]);
+  }, [isConnected, playerId, gameId, sendMessage, setGameId]);
 
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">

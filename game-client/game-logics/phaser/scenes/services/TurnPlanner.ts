@@ -1,5 +1,4 @@
 import { CharacterManager } from "@/game-logics/characterManager";
-import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { Action } from "@/game-logics/models/Action";
 import { ActionType } from "@/game-logics/models/Action";
 import { Step } from "@/game-logics/models/Step";

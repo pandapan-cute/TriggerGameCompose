@@ -16,7 +16,18 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
-  ...storybook.configs["flat/recommended"]
+  ...storybook.configs["flat/recommended"],
+  {
+    // 対象にするテストファイルのパターンを指定
+    files: [
+      "**/__tests__/**/*.[jt]s?(x)", 
+      "**/?(*.)+(spec|test).[jt]s?(x)"
+    ],
+    // テストファイルでは any を許可する
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off"
+    }
+  }
 ]);
 
 export default eslintConfig;

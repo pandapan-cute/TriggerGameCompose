@@ -59,9 +59,6 @@ const MotionLabDialog = forwardRef<MotionLabDialogHandle, MotionLabDialogProps>(
    * React がこの関数を呼んで描画する。
    */
   function MotionLabDialog({ turn, onAnimationEnd }, ref) {
-    /** createPortal で document.body を触るので、マウント後だけ描画する */
-    const [isMounted, setIsMounted] = useState(false);
-
     /** true の間だけオーバーレイ自体を表示する */
     const [isVisible, setIsVisible] = useState(false);
 
@@ -77,8 +74,6 @@ const MotionLabDialog = forwardRef<MotionLabDialogHandle, MotionLabDialogProps>(
     }, []);
 
     useEffect(() => {
-      setIsMounted(true);
-
       return () => {
         clearTimers();
       };
@@ -141,7 +136,7 @@ const MotionLabDialog = forwardRef<MotionLabDialogHandle, MotionLabDialogProps>(
       [show],
     );
 
-    if (!isMounted || !isVisible) {
+    if (!isVisible) {
       return null;
     }
 

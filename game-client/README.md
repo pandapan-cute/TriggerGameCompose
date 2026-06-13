@@ -16,6 +16,17 @@ AWS Amplifyに環境変数NEXT_PUBLIC_WS_URLはWebsocketサーバーのURLを指
 
 ## テスト
 
+コミット前に以下のコマンドでエラーが発生しないことを確認してください。
+
+```bash
+# テストの実行
+npm run test
+# lintの実行
+npm run lint
+# ビルドの実行
+npm run build
+```
+
 ### Vitest
 
 ユニットテストにはVitestを使用しています。
@@ -48,3 +59,5 @@ npm run storybook
 | `red-400` | 敵キャラクターを示す |
 | `lime-400` | 動きの設定モードを示す |
 | `orange-400` | ユニット行動モードを示す |
+| `0xff6b6b` | メイントリガーを示す |
+| `0x6b6bff` | サブトリガーを示す |

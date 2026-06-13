@@ -14,9 +14,16 @@ export class TriggerTypeText extends Phaser.GameObjects.Text {
       {
         fontSize: "14px",
         color: `#${color.toString(16).padStart(6, '0')}`,
-        backgroundColor: "#ffffffdd",
         padding: { x: 8, y: 4 },
         fontStyle: "bold",
+        shadow: {
+          offsetX: 2,
+          offsetY: 2,
+          color: "#ffffff",
+          blur: 4,
+          stroke: true,
+          fill: true
+        }
       });
 
     this.setOrigin(0.5);

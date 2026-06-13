@@ -148,18 +148,10 @@ export class GridCellsScene extends Phaser.Scene {
     this.initializeMargins(); // 余白を初期化
     new GameCamera(this, this.gridConfig); // カメラの設定を最初に行う
     this.initializeGameConfig(); // 六角形グリッドの設定値初期化
-    // this.setupMatchmakingListeners(); // マッチ決定後のイベントリスナーを設定
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
-    this.createCharacters(); // キャラクターを配置
     this.setupSceneControllers(); // SelectionService / TriggerSettingController を初期化
+    this.createCharacters(); // キャラクターを配置
     this.setupInputController(); // InputController を初期化してイベントをバインドする
-    // これはいらんのでは？
-    // if (this.pendingTurn) {
-    //   const queuedTurn = this.pendingTurn;
-    //   this.pendingTurn = null;
-    //   this.executeTurn(queuedTurn);
-    // }
-    // this.setupActionModeListeners(); // 行動モードのイベントリスナーを設定
   }
 
   /**
@@ -279,6 +271,7 @@ export class GridCellsScene extends Phaser.Scene {
     return {
       characterManager: this.characterManager,
       fieldViewState: this.fieldViewState,
+      fieldViewService: this.fieldViewService!,
       hexUtils: this.hexUtils,
       gridConfig: this.gridConfig,
       isTriggerDragging: () => this.isDraggingTrigger,
@@ -470,7 +463,8 @@ export class GridCellsScene extends Phaser.Scene {
         this,
         unit,
         this.hexUtils,
-        this.gridConfig
+        this.gridConfig,
+        this.fieldViewService!
       );
       this.characterManager.playerCharacters.push(playerCharacterState);
     });
@@ -481,7 +475,8 @@ export class GridCellsScene extends Phaser.Scene {
         this,
         unit,
         this.hexUtils,
-        this.gridConfig
+        this.gridConfig,
+        this.fieldViewService!
       );
       this.characterManager.enemyCharacters.push(enemyCharacterState);
     });

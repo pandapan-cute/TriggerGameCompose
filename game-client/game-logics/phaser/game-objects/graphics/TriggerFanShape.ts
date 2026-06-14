@@ -1,14 +1,17 @@
 import { GridConfig } from "@/game-logics/types";
 import { TriggerTypeText } from "../texts/TriggerTypeText";
 import { HexUtils } from "@/game-logics/hexUtils";
+import { FieldViewService } from "../../scenes/services/FieldViewService";
+import { TriggerPoint } from "./TriggerPoint";
 
 
 export class TriggerFanShape extends Phaser.GameObjects.Graphics {
   private color: number;
   private triggerAngle: number;
   private triggerRange: number;
+  private triggerRangePoints: TriggerPoint[] = [];
 
-  constructor(scene: Phaser.Scene, x: number, y: number, color: number, private direction: number, triggerAngle: number = 60, triggerRange: number = 3, triggerName: string = "", private gridConfig: GridConfig, private hexUtils: HexUtils, visible: boolean) {
+  constructor(scene: Phaser.Scene, x: number, y: number, color: number, private direction: number, triggerAngle: number = 60, triggerRange: number = 3, triggerName: string = "", private gridConfig: GridConfig, private hexUtils: HexUtils, visible: boolean, private fieldViewService: FieldViewService) {
     super(scene);
     this.setDepth(1);
     this.setVisible(visible); // 初期状態では非表示
@@ -64,11 +67,8 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
 
   /**
    * トリガー範囲内のマスの中心に赤い点を表示する
-   * @param centerX - トリガー中心のX座標
-   * @param centerY - トリガー中心のY座標
-   * @param direction - トリガーの向き（度数法）
-   * @param triggerAngle - トリガーの角度
-   * @param triggerRange - トリガーの範囲
+   * @param centerCol - トリガー中心の列
+   * @param centerRow - トリガー中心の行
    * @param pointColor - 赤い点の色（デフォルトは赤色0xff0000）
    * @return 描画した点のGraphicsオブジェクトの配列
    */
@@ -77,19 +77,23 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
     centerRow: number,
     pointColor: number = 0xff0000
   ) {
-    // 既存の赤い点を削除（もしあれば）
-    const existingPoints = this.scene.children.getChildren().filter(child =>
-      child.getData && child.getData('triggerRangePoint') === true
-    );
-    existingPoints.forEach(point => point.destroy());
+    // // 既存の赤い点を削除（もしあれば）
+    // const existingPoints = this.scene.children.getChildren().filter(child =>
+    //   child.getData && child.getData('triggerRangePoint') === true
+    // );
+    // existingPoints.forEach(point => point.destroy());
+
+    this.triggerRangePoints.forEach(point => point.destroy());
+    this.triggerRangePoints = [];
 
     const centerPos = this.hexUtils.getHexPosition(centerCol, centerRow);
 
     const correctedDirection = this.direction - 90;
 
-    const points: Phaser.GameObjects.Graphics[] = [];
+    const points: TriggerPoint[] = [];
 
     // トリガー範囲内のマスをチェック
+    // トリガーを横に向けたときに範囲が正しく表示されるように、中心からrange+5マスまでをチェックする（余裕を持たせる）
     for (let col = centerCol - this.triggerRange - 5; col <= centerCol + this.triggerRange + 5; col++) {
       for (let row = centerRow - this.triggerRange - 5; row <= centerRow + this.triggerRange + 5; row++) {
         // グリッド範囲内かチェック
@@ -101,6 +105,12 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
         // 中心からの距離をチェック
         const distance = this.hexUtils.calculateHexDistance(centerCol, centerRow, col, row);
         if (distance > this.gridConfig.hexHeight * (this.triggerRange + 0.5)) {
+          continue;
+        }
+
+        // フィールドビューサービスを使って、中心からマスへの視認性をチェック
+        const canVisible = this.fieldViewService.checkUnitsVisibility({ col: centerCol, row: centerRow }, { col, row });
+        if (!canVisible) {
           continue;
         }
 
@@ -128,15 +138,12 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
 
         if (angleDiff <= halfAngle) {
           // 赤い点を描画
-          const point = this.scene.add.graphics();
-          point.fillStyle(pointColor, 0.6); // 指定された色、60%透明度
-          point.fillCircle(hexPosition.x, hexPosition.y, 6); // 半径6pxの円
-          point.setDepth(1); // トリガー扇形より前面に表示
-          point.setData('triggerRangePoint', true); // 識別用データ
+          const point = new TriggerPoint(this.scene, hexPosition, pointColor);
           points.push(point);
         }
       }
     }
+    this.triggerRangePoints = points;
     return points;
   }
 
@@ -161,7 +168,7 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
     const endAngle = (direction + triggerAngle / 2) * (Math.PI / 180);
 
     // 扇形を描画
-    this.fillStyle(color, 0.5);
+    this.fillStyle(color, 0.25);
     this.lineStyle(2, color, 0.8);
 
     this.beginPath();
@@ -188,5 +195,6 @@ export class TriggerFanShape extends Phaser.GameObjects.Graphics {
     if (label) {
       label.setVisible(visible);
     }
+    this.triggerRangePoints.forEach(point => point.setVisible(visible));
   }
 }

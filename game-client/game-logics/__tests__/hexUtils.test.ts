@@ -42,3 +42,28 @@ describe("HexUtils pathfinding", () => {
     ]);
   });
 });
+
+
+/**
+ * HexUtils の2点間の距離チェックロジックをテストする。
+ */
+describe("HexUtils distance", () => {
+  /** グリッドの設定値 */
+  const gridConfig: GridConfig = {
+    gridSize: 32,
+    gridWidth: 36,
+    gridHeight: 36,
+    hexRadius: 24,
+    hexWidth: 24 * 2,
+    hexHeight: 24 * Math.sqrt(3),
+    marginLeft: 0,
+    marginTop: 0,
+  };
+
+  it("calculateHexDistance: (20,27)から(27,8)の距離がバックエンド側と等しい", () => {
+    const hexUtils = new HexUtils(gridConfig);
+    const distance = hexUtils.calculateHexDistance(20, 27, 27, 8);
+    console.log("Hex distance:", distance);
+    expect(distance).toBeCloseTo(809.2663, 2);
+  });
+});

@@ -66,7 +66,7 @@ export class FieldViewService {
    * @param positionB 目標のポジション
    * @returns 見える場合はtrue、見えない場合はfalse
    */
-  private checkUnitsVisibility(positionA: Position, positionB: Position): boolean {
+  checkUnitsVisibility(positionA: Position, positionB: Position): boolean {
     // 同じ位置は常に見える
     if (positionA.col === positionB.col && positionA.row === positionB.row) {
       return true;
@@ -79,6 +79,11 @@ export class FieldViewService {
       positionB.col,
       positionB.row
     );
+
+    if (positionA.col < 0 || positionA.col >= this.deps.gridConfig.gridWidth || positionA.row < 0 || positionA.row >= this.deps.gridConfig.gridHeight) {
+      // 視点がグリッド外の場合は見えないとする
+      return false;
+    }
 
     // 視界者の高さを取得
     const viewerHeight = FIELD_STEPS[positionA.row][positionA.col];

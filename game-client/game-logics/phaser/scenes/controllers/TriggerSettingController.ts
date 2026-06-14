@@ -4,6 +4,8 @@ import { GridConfig } from "@/game-logics/types";
 import { CHARACTER_STATUS, TRIGGER_STATUS } from "@/game-logics/config/status";
 import { FieldViewState } from "@/game-logics/entities/FieldViewState";
 import { TriggerFanShape } from "../../game-objects/graphics/TriggerFanShape";
+import { FieldViewService } from "../services/FieldViewService";
+import { TriggerPoint } from "../../game-objects/graphics/TriggerPoint";
 
 /**
  * TriggerSettingController が参照する依存関係。
@@ -15,6 +17,7 @@ import { TriggerFanShape } from "../../game-objects/graphics/TriggerFanShape";
 export interface TriggerSettingControllerDeps {
   characterManager: CharacterManager;
   fieldViewState: FieldViewState;
+  fieldViewService: FieldViewService;
   hexUtils: HexUtils;
   gridConfig: GridConfig;
   isTriggerDragging: () => boolean;
@@ -25,8 +28,8 @@ export interface TriggerSettingControllerDeps {
   setCurrentTriggerAngle: (angle: number) => void;
   getTriggerFan: () => TriggerFanShape | null;
   setTriggerFan: (fan: TriggerFanShape | null) => void;
-  getTriggerPoints: () => Phaser.GameObjects.Graphics[] | null;
-  setTriggerPoints: (points: Phaser.GameObjects.Graphics[] | null) => void;
+  getTriggerPoints: () => TriggerPoint[] | null;
+  setTriggerPoints: (points: TriggerPoint[] | null) => void;
   recordActionHistory: () => void;
   showMovableHexes: () => void;
   clearSelection: () => void;
@@ -116,7 +119,8 @@ export class TriggerSettingController {
       triggerName,
       this.deps.gridConfig,
       this.deps.hexUtils,
-      true
+      true,
+      this.deps.fieldViewService
     );
 
     this.deps.setTriggerFan(triggerFan);
@@ -181,7 +185,8 @@ export class TriggerSettingController {
       triggerName,
       this.deps.gridConfig,
       this.deps.hexUtils,
-      true
+      true,
+      this.deps.fieldViewService
     );
     this.deps.setTriggerFan(newTriggerFan);
 

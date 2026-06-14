@@ -9,6 +9,7 @@ import { GridConfig } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { UnitType } from "@/types/UnitType";
 import { Combat } from "../models/Combat";
+import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
 
 /**
  * 敵キャラクターごとの状態管理の型定義
@@ -18,7 +19,8 @@ export class EnemyCharacterState extends CharacterImageState {
     scene: Phaser.Scene,
     private enemyUnit: EnemyUnit,
     hexUtils: HexUtils,
-    private gridConfig: GridConfig
+    private gridConfig: GridConfig,
+    fieldViewService: FieldViewService
   ) {
     const invertedPos = hexUtils.invertPosition(enemyUnit.position);
     const hexPosition = hexUtils.getHexPosition(
@@ -50,10 +52,11 @@ export class EnemyCharacterState extends CharacterImageState {
       invertedPos, // 敵の座標は自分から見た逆位置で管理
       enemyUnit.unitTypeId,
       { main: 0, sub: 0 }, // トリガーの向きは初期値で0にしておく
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus?.range, mainTriggerKey, gridConfig, hexUtils, false),
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus?.range, subTriggerKey, gridConfig, hexUtils, false),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus?.range, mainTriggerKey, gridConfig, hexUtils, false, fieldViewService),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus?.range, subTriggerKey, gridConfig, hexUtils, false, fieldViewService),
       enemyUnit.isBailout,
-      hexUtils
+      hexUtils,
+      fieldViewService
     );
   }
 

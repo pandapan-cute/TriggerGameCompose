@@ -9,6 +9,7 @@ import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { TRIGGER_STATUS } from "../config/status";
 import { Combat } from "../models/Combat";
+import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
 
 export class PlayerCharacterState extends CharacterImageState {
 
@@ -29,7 +30,9 @@ export class PlayerCharacterState extends CharacterImageState {
     /** 座標計算系クラス */
     hexUtils: HexUtils,
     /** グリッド設定 */
-    gridConfig: GridConfig
+    gridConfig: GridConfig,
+    /** フィールドビューサービス */
+    fieldViewService: FieldViewService
   ) {
     const hexPosition = hexUtils.getHexPosition(friendUnit.position.col, friendUnit.position.row);
     const image = new FriendUnitImage(
@@ -56,10 +59,11 @@ export class PlayerCharacterState extends CharacterImageState {
       friendUnit.position,
       friendUnit.unitId,
       { main: 0, sub: 0 },
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false),
-      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0xff4444, 0, 0, mainTriggerStatus.range, mainTriggerKey, gridConfig, hexUtils, false, fieldViewService),
+      new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false, fieldViewService),
       friendUnit.isBailout,
-      hexUtils
+      hexUtils,
+      fieldViewService
     );
 
     this.actionPointsText = null;

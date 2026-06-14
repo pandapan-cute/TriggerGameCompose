@@ -8,6 +8,7 @@ import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape
 import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { Position, TriggerDirection, } from "../types";
+import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
 
 /**
  * キャラクターごとの状態管理の型定義
@@ -35,6 +36,8 @@ export class CharacterImageState {
     private isBailedOut: boolean,
     /** 座標計算系クラス */
     protected hexUtils: HexUtils,
+    /** フィールドビューサービス */
+    protected fieldViewService: FieldViewService,
   ) { }
 
   /**
@@ -87,8 +90,10 @@ export class CharacterImageState {
     const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
     // メイントリガーの表示を更新
     this.mainTriggerFan?.updateTriggerAzimuth(action.getMainTriggerAzimuth(), this.image.x, this.image.y, mainTriggerStatus.angle, mainTriggerStatus.range, mainTriggerKey, visible);
+    this.mainTriggerFan?.drawTriggerRangePoints(action.getPosition().col, action.getPosition().row, 0xff6b6b);
     // サブトリガーの表示を更新
     this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey, visible);
+    this.subTriggerFan?.drawTriggerRangePoints(action.getPosition().col, action.getPosition().row, 0x6b6bff);
   }
 
   /**

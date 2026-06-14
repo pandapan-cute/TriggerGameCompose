@@ -140,6 +140,10 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
             "sub_trigger_azimuth".to_string(),
             AttributeValue::N("90".to_string()),
         );
+        action_map1.insert(
+            "current_action_points".to_string(),
+            AttributeValue::N("10".to_string()),
+        );
 
         // Action2のマップ作成
         let mut action_map2 = HashMap::new();
@@ -182,6 +186,10 @@ use crate::infrastructure::dynamodb::test_utils::create_test_unit;
         action_map2.insert(
             "sub_trigger_azimuth".to_string(),
             AttributeValue::N("270".to_string()),
+        );
+        action_map2.insert(
+            "current_action_points".to_string(),
+            AttributeValue::N("5".to_string()),
         );
 
         // Stepのマップ作成

@@ -17,7 +17,8 @@ mod tests {
     use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
     use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
     use crate::domain::triggergame_simulator::models::turn::Turn;
-    use crate::domain::unit_management::models::unit::{
+    use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
+use crate::domain::unit_management::models::unit::{
         having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
         trigger_id::trigger_id::TriggerId, unit_type_id::unit_type_id::UnitTypeId, Unit,
     };
@@ -182,6 +183,7 @@ mod tests {
             TriggerId::new("SHIELD".to_string()),
             TriggerAzimuth::new(0),
             TriggerAzimuth::new(0),
+            CurrentActionPoints::new(5),
         );
         let p2_action = Action::create(
             ActionType::new(ActionTypeValue::Move),
@@ -192,6 +194,7 @@ mod tests {
             TriggerId::new("SHIELD".to_string()),
             TriggerAzimuth::new(180),
             TriggerAzimuth::new(180),
+            CurrentActionPoints::new(5),
         );
 
         let mut p1_turn = Turn::create(

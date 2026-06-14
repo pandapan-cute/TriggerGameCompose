@@ -16,5 +16,6 @@ export interface FriendUnit {
   subTriggerHp: number;
   sightRange: number;
   isBailout: boolean;
+  currentActionPoints: number;
 }
 

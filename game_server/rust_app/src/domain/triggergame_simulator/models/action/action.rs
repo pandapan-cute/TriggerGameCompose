@@ -2,9 +2,10 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use crate::domain::triggergame_simulator::models::action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
 use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
-use crate::domain::unit_management::models::unit;
+use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::UnitTypeId;
+use crate::domain::unit_management::models::unit::{self, current_action_points};
 use crate::domain::unit_management::models::unit::{
     position::position::Position, trigger_id::trigger_id::TriggerId, Unit,
 };
@@ -30,6 +31,7 @@ pub struct Action {
     using_sub_trigger_id: TriggerId,
     main_trigger_azimuth: TriggerAzimuth,
     sub_trigger_azimuth: TriggerAzimuth,
+    current_action_points: CurrentActionPoints,
 }
 
 impl Action {
@@ -44,6 +46,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         Self {
             action_id,
@@ -55,6 +58,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         }
     }
 
@@ -68,6 +72,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         let action_id = ActionId::new(Uuid::new_v4().to_string());
         Self::new(
@@ -80,6 +85,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         )
     }
 
@@ -94,6 +100,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         Self::new(
             action_id,
@@ -105,6 +112,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         )
     }
 
@@ -251,6 +259,9 @@ impl Action {
     }
     pub fn sub_trigger_azimuth(&self) -> &TriggerAzimuth {
         &self.sub_trigger_azimuth
+    }
+    pub fn current_action_points(&self) -> &CurrentActionPoints {
+        &self.current_action_points
     }
 }
 

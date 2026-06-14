@@ -12,4 +12,5 @@ export interface EnemyUnit {
   usingMainTriggerId: string;
   usingSubTriggerId: string;
   isBailout: boolean;
+  currentActionPoints: number;
 }

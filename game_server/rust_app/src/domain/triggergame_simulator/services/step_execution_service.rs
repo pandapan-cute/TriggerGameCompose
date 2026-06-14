@@ -167,6 +167,7 @@ impl StepExecutionService {
                     unit.using_sub_trigger_id().clone(),
                     unit.main_trigger_azimuth().clone(),
                     unit.sub_trigger_azimuth().clone(),
+                    unit.current_action_points().clone(),
                 )
             })
             .collect::<Vec<_>>();
@@ -312,6 +313,7 @@ mod tests {
             TriggerId::new("BAGWORM".to_string()),
             TriggerAzimuth::new(45),
             TriggerAzimuth::new(270),
+            unit.current_action_points().clone(),
         );
 
         Step::create(

@@ -325,7 +325,7 @@ impl Combat {
             TriggerStatus::get_trigger_status(attacker_trigger_id.value());
 
         // 0.5は、ユニット中心からセルの端までの距離の補正
-        if pixel_length >= hex_height as f64 * (attacker_trigger_status.range() as f64 + 0.5) {
+        if pixel_length > hex_height * (attacker_trigger_status.range() as f64 + 0.5) {
             // 射程内にいない場合はfalseを返す
             println!("射程外です, アタッカー座標({:?},{:?}), ディフェンダー座標({:?},{:?}), トリガーID={:?}, 射程={:?}", attacker_x, attacker_y, defender_x, defender_y, attacker_trigger_id.value(), TriggerStatus::get_trigger_status(attacker_trigger_id.value()).range());
             return false;

@@ -7,7 +7,7 @@ pub struct GameConfig {
     /// グリッドセルの幅
     hex_width: i32,
     /// グリッドセルの高さ
-    hex_height: i32,
+    hex_height: f64,
     /// ゲームの横のセル数
     gameboard_width: i32,
     /// ゲームの縦のセル数
@@ -34,7 +34,7 @@ impl GameConfig {
         GameConfig {
             hex_radius: 24,
             hex_width: 24 * 2,
-            hex_height: (24.0 * (3 as f64).sqrt()) as i32,
+            hex_height: 24.0 * 3.0_f64.sqrt(),
             gameboard_width: 36,
             gameboard_height: 36,
             avoid_weight: 100,
@@ -58,7 +58,7 @@ impl GameConfig {
     }
 
     /// グリッドセルの高さを取得
-    pub fn hex_height(&self) -> i32 {
+    pub fn hex_height(&self) -> f64 {
         self.hex_height
     }
 

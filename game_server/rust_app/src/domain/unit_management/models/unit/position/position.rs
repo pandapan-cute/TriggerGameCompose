@@ -45,8 +45,10 @@ impl Position {
         let hex_height = game_config.hex_height();
 
         let x = col * hex_width * 3 / 4 + hex_radius;
-        let y = row * hex_height + if col % 2 == 1 { hex_height / 2 } else { 0 } + hex_radius;
-        (x, y)
+        let y = row as f64 * hex_height
+            + if col % 2 == 1 { hex_height / 2.0 } else { 0.0 }
+            + hex_radius as f64;
+        (x as i32, y as i32)
     }
 
     pub fn col(&self) -> i32 {

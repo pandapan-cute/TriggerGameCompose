@@ -96,6 +96,36 @@ mod tests {
         );
     }
 
+    /// スナイパーがタワー上で横向きにトリガーを向けて攻撃（攻撃側が上の階層、防御側が下の階層）
+    #[test]
+    fn test_create_combat_sniper() {
+        let mut visibility = create_test_visiblity();
+        let combat = Combat::create(
+            create_test_unit_id(),
+            Position::new(20, 27),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
+            TriggerAzimuth::new(270),
+            TriggerAzimuth::new(3),
+            2,
+            create_test_unit_id(),
+            Position::new(27, 8),
+            TriggerId::new("SCORPION".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            100,
+            100,
+            TriggerAzimuth::new(90),
+            TriggerAzimuth::new(90),
+            8,
+            10,
+            &mut visibility,
+        );
+        println!("Combat creation result: {:?}", combat);
+
+        // Combatの生成に成功するか
+        assert!(combat.is_some());
+    }
+
     /// 両防御パターンテスト
     #[test]
     fn test_determine_guard_pattern_full() {

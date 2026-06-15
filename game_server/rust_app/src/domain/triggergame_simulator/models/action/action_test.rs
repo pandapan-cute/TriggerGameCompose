@@ -35,7 +35,7 @@ mod tests {
         // 仕様: 視界外ユニットには攻撃できない。
         // 36x36で平坦マップを作り、視界上限(8.5hex)より遠い位置を使う。
         let mut visibility = Visibility::new(vec![vec![0; 36]; 36]);
-        let action_owner =
+        let mut action_owner =
             create_test_unit("550e8400-e29b-41d4-a716-446655440201", Position::new(0, 0));
         let mut defence_unit =
             create_test_unit("550e8400-e29b-41d4-a716-446655440202", Position::new(8, 0));
@@ -52,7 +52,7 @@ mod tests {
             CurrentActionPoints::new(5),
         );
 
-        let combat = action.generate_combats(&mut defence_unit, &mut visibility);
+        let combat = action.generate_combats(&mut action_owner, &mut defence_unit, &mut visibility);
         assert!(combat.is_none());
     }
 }

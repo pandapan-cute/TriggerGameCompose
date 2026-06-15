@@ -11,10 +11,9 @@ use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId
 use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use crate::domain::unit_management::models::unit::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
 use crate::domain::unit_management::models::unit::is_bailout::is_bailout::IsBailout;
-use crate::domain::unit_management::models::unit::main_trigger_hp::main_trigger_hp::MainTriggerHP;
 use crate::domain::unit_management::models::unit::position::position::Position;
 use crate::domain::unit_management::models::unit::sight_range::sight_range::SightRange;
-use crate::domain::unit_management::models::unit::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
+use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
 use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::UnitTypeId;
@@ -221,14 +220,14 @@ impl DynamoDbUnitRepository {
                 .collect(),
         );
 
-        let main_trigger_hp = MainTriggerHP::new(
+        let main_trigger_hp = TriggerHP::new(
             item.get("main_trigger_hp")
                 .and_then(|v| v.as_n().ok())
                 .and_then(|n| n.parse::<i32>().ok())
                 .ok_or("main_trigger_hp not found or invalid")?,
         );
 
-        let sub_trigger_hp = SubTriggerHP::new(
+        let sub_trigger_hp = TriggerHP::new(
             item.get("sub_trigger_hp")
                 .and_then(|v| v.as_n().ok())
                 .and_then(|n| n.parse::<i32>().ok())

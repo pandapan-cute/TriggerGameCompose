@@ -3,6 +3,7 @@ mod tests {
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
     use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
+    use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
     use crate::infrastructure::dynamodb::test_utils::{
         create_test_0_action_points_unit, create_test_unit,
     };
@@ -10,10 +11,8 @@ mod tests {
     use super::super::current_action_points::current_action_points::CurrentActionPoints;
     use super::super::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
     use super::super::is_bailout::is_bailout::IsBailout;
-    use super::super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
     use super::super::position::position::Position;
     use super::super::sight_range::sight_range::SightRange;
-    use super::super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
     use super::super::trigger_id::trigger_id::TriggerId;
     use super::super::unit::Unit;
     use super::super::unit_id::unit_id::UnitId;
@@ -109,8 +108,8 @@ mod tests {
         let using_sub_trigger_id = TriggerId::new(Uuid::new_v4().to_string());
         let having_main_trigger_ids = HavingTriggerIds::new(vec![]);
         let having_sub_trigger_ids = HavingTriggerIds::new(vec![]);
-        let main_trigger_hp = MainTriggerHP::new(80);
-        let sub_trigger_hp = SubTriggerHP::new(40);
+        let main_trigger_hp = TriggerHP::new(80);
+        let sub_trigger_hp = TriggerHP::new(40);
         let sight_range = SightRange::new(7);
         let is_bailout = IsBailout::new(false);
 
@@ -158,8 +157,8 @@ mod tests {
         let using_sub_trigger_id = TriggerId::new("SHIELD".to_string());
         let having_main_trigger_ids = HavingTriggerIds::new(vec![]);
         let having_sub_trigger_ids = HavingTriggerIds::new(vec![]);
-        let main_trigger_hp = MainTriggerHP::new(100);
-        let sub_trigger_hp = SubTriggerHP::new(50);
+        let main_trigger_hp = TriggerHP::new(100);
+        let sub_trigger_hp = TriggerHP::new(50);
         let sight_range = SightRange::new(5);
         let is_bailout = IsBailout::new(false);
 

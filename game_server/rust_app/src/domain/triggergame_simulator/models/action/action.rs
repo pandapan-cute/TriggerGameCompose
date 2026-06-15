@@ -31,7 +31,8 @@ pub struct Action {
     using_sub_trigger_id: TriggerId,
     main_trigger_azimuth: TriggerAzimuth,
     sub_trigger_azimuth: TriggerAzimuth,
-    current_action_points: CurrentActionPoints,
+    #[serde(default)]
+    current_action_points: CurrentActionPoints, // リクエストはない。デフォルト値0が入る
 }
 
 impl Action {
@@ -122,32 +123,24 @@ impl Action {
     /// unit: 防御側ユニット情報
     pub fn generate_combats(
         &self,
+        attacker_unit: &mut Unit,
         defence_unit: &mut Unit,
         visibility: &mut Visibility,
     ) -> Option<Combat> {
         // ユニットのステータス取得
-        let unit_status = UnitTypeSpec::get_spec(&self.unit_type_id.value()).unwrap();
+        let attacker_unit_status =
+            UnitTypeSpec::get_spec(&attacker_unit.unit_type_id().value()).unwrap();
+        let defence_unit_status =
+            UnitTypeSpec::get_spec(&defence_unit.unit_type_id().value()).unwrap();
         // アクションタイプに応じてcombatを生成
         if self.is_attack() {
             // action主を攻撃者、引数の防御側ユニットを防御者とするcombatを生成
             let combat = Combat::create(
-                self.unit_id.clone(),
-                self.position.clone(),
-                self.using_main_trigger_id.clone(),
-                self.using_sub_trigger_id.clone(),
-                self.main_trigger_azimuth.clone(),
-                self.sub_trigger_azimuth.clone(),
-                unit_status.base_attack(),
-                defence_unit.unit_id().clone(),
-                defence_unit.position().clone(),
-                defence_unit.using_main_trigger_id().clone(),
-                defence_unit.using_sub_trigger_id().clone(),
-                defence_unit.main_trigger_hp().value(),
-                defence_unit.sub_trigger_hp().value(),
-                defence_unit.main_trigger_azimuth().clone(),
-                defence_unit.sub_trigger_azimuth().clone(),
-                unit_status.base_defense(),
-                unit_status.base_avoid(),
+                attacker_unit,
+                attacker_unit_status.base_attack(),
+                defence_unit,
+                defence_unit_status.base_defense(),
+                defence_unit_status.base_avoid(),
                 visibility,
             );
 
@@ -224,6 +217,11 @@ impl Action {
         // 仮の実装、まだ特殊なアクションはないからね
         // 移動・待機は自動攻撃できるイメージ
         true
+    }
+
+    /// セッター
+    pub fn set_current_action_points(&mut self, current_action_points: CurrentActionPoints) {
+        self.current_action_points = current_action_points;
     }
 
     // ゲッター

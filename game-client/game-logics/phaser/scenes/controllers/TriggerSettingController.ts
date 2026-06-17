@@ -286,21 +286,21 @@ export class TriggerSettingController {
       return;
     }
 
-    const remainingActionPoints =
+    const remainingSeconds =
       this.deps.characterManager.findPlayerCharacterByImage(
         selectedCharacter.image
-      )?.getActionPoints() ?? 0;
+      )?.getRemainSeconds() ?? 0;
 
     // 行動力の残量に応じて次のUI遷移を分岐する。
-    if (remainingActionPoints > 0) {
+    if (remainingSeconds > 0) {
       // 行動力が残っている場合: 選択維持のまま移動候補を再表示する。
       console.log(
-        `行動力が${remainingActionPoints}残っています。次の行動を設定してください。`
+        `残り時間が${remainingSeconds}秒です。次の行動を設定してください。`
       );
       this.deps.showMovableHexes();
     } else {
       // 行動力が0の場合: 行動済み表示を出して選択を解除する。
-      console.log("行動力が0になりました。キャラクター選択をクリアします。");
+      console.log("残り時間が0秒になりました。キャラクター選択をクリアします。");
       this.deps.showActionCompletedText(selectedCharacter.image);
       this.deps.clearSelection();
     }

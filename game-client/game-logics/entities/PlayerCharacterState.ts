@@ -3,26 +3,26 @@ import { GridConfig, Position } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { HexUtils } from "../hexUtils";
 import { ActionCompletedText } from "../phaser/game-objects/texts/ActionCompletedText";
-import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
 import { FriendUnit } from "../../types/FriendUnit";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape";
 import { TRIGGER_STATUS } from "../config/status";
 import { Combat } from "../models/Combat";
 import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
+import { RemainSecondsText } from "../phaser/game-objects/texts/RemainSecondsText";
 
 export class PlayerCharacterState extends CharacterImageState {
 
-  /** 残りの行動力表示 */
-  private actionPointsText: ActionPointsText | null;
+  /** 残りの行動可能秒数 */
+  private remainSecondsText: RemainSecondsText | null;
   /** 行動設定完了表示 */
   private completeText: ActionCompletedText | null;
   /** 現在のステップ番号(初期値は0) */
   private currentStep: number = 0;
 
   constructor(
-    /** 残りの行動力 */
-    private actionPoints: number,
+    /** 残りの行動可能秒数 */
+    private remainSeconds: number,
     /** Phaserシーンクラス */
     scene: Phaser.Scene,
     /** 味方ユニット情報 */
@@ -63,68 +63,20 @@ export class PlayerCharacterState extends CharacterImageState {
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus.range, subTriggerKey, gridConfig, hexUtils, false, fieldViewService),
       friendUnit.isBailout,
       hexUtils,
-      fieldViewService
+      fieldViewService,
+      friendUnit.currentActionPoints,
+      null
     );
 
-    this.actionPointsText = null;
+    this.remainSecondsText = null;
     this.completeText = null;
     this.currentStep = 0;
 
     if (!friendUnit.isBailout) {
       this.updateActionPointsDisplay(scene);
+      this.updateRemainSecondsDisplay(scene);
     }
   }
-
-  /** 行動力表示を更新または削除する
-   * @param points 新しい行動力、nullの場合は表示を削除
-   */
-  setActionPointsText(points: number | null) {
-    if (points === null) {
-      this.actionPointsText?.destroy();
-      this.actionPointsText = null;
-    } else {
-      this.actionPoints = points;
-      this.actionPointsText?.updatePoints(points);
-    }
-  }
-
-  /**
-   * 目的地に向けて一番近くの隣接マスに移動する
-   * @param target 目的地の座標
-   * @return 移動した場合はtrue、すでに目的地にいる場合はfalse
-   */
-  moveTowardsAdjacent(target: Position): boolean {
-    let result = false;
-    if (target.col > this.position.col) {
-      result = true;
-      this.position.col += 1;
-    } else if (target.col < this.position.col) {
-      result = true;
-      this.position.col -= 1;
-    }
-
-    if (target.row > this.position.row) {
-      result = true;
-      this.position.row += 1;
-    } else if (target.row < this.position.row) {
-      result = true;
-      this.position.row -= 1;
-    }
-
-    if (result) {
-      // 移動先のピクセル座標を計算
-      const targetPosition = this.hexUtils.getHexPosition(this.position.col, this.position.row);
-      this.image.setPosition(
-        targetPosition.x,
-        targetPosition.y
-      );
-      // 行動力を1減らす
-      this.actionPoints = Math.max(0, this.actionPoints - 1);
-    }
-
-    return result;
-  }
-
 
   /**
    * 行動完了テキストを表示する
@@ -155,27 +107,41 @@ export class PlayerCharacterState extends CharacterImageState {
   }
 
   /**
-   * キャラクター左下の行動力表示を更新する
+   * 残り行動可能秒数表示を更新または削除する
+   * @param points 新しい残り行動可能秒数、nullの場合は表示を削除
    */
-  updateActionPointsDisplay(scene: Phaser.Scene) {
+  setRemainSecondsText(points: number | null) {
+    if (points === null) {
+      this.remainSecondsText?.destroy();
+      this.remainSecondsText = null;
+    } else {
+      this.remainSeconds = points;
+      this.remainSecondsText?.updateRemainSeconds(points);
+    }
+  }
+
+  /**
+   * キャラクター左下の残り行動可能秒数表示を更新する
+   */
+  updateRemainSecondsDisplay(scene: Phaser.Scene) {
     const pixelPos = this.hexUtils.getHexPosition(
       this.position.col,
       this.position.row
     );
 
-    const existingText = this.actionPointsText;
+    const existingText = this.remainSecondsText;
     if (existingText) {
-      existingText.setPosition(pixelPos.x - 12, pixelPos.y + 20);
-      existingText.updatePoints(this.actionPoints);
+      existingText.setPosition(pixelPos.x, pixelPos.y + 43);
+      existingText.updateRemainSeconds(this.remainSeconds);
       return;
     }
 
     // 新しいテキストを作成
-    this.actionPointsText = new ActionPointsText(
+    this.remainSecondsText = new RemainSecondsText(
       scene,
-      pixelPos.x - 12,
-      pixelPos.y + 20,
-      this.actionPoints
+      pixelPos.x,
+      pixelPos.y + 43,
+      this.remainSeconds
     );
   }
 
@@ -190,6 +156,7 @@ export class PlayerCharacterState extends CharacterImageState {
     if (combat.getIsDefeatedCombat()) {
       this.setFriendUnitBailout(true);
       this.setActionPointsText(null);
+      this.setRemainSecondsText(null);
     }
   }
 
@@ -203,10 +170,6 @@ export class PlayerCharacterState extends CharacterImageState {
   }
 
   // ゲッター
-  getActionPoints() {
-    return this.actionPoints;
-  }
-
   getCompleteText() {
     return this.completeText;
   }
@@ -219,13 +182,17 @@ export class PlayerCharacterState extends CharacterImageState {
     return this.friendUnit;
   }
 
-  // セッター
-  setActionPoints(points: number) {
-    this.actionPoints = points;
+  getRemainSeconds() {
+    return this.remainSeconds;
   }
 
+  // セッター
   setCompleteText(text: ActionCompletedText | null) {
     this.completeText = text;
+  }
+
+  setRemainSeconds(seconds: number) {
+    this.remainSeconds = seconds;
   }
 
   private setFriendUnitBailout(isBailout: boolean) {

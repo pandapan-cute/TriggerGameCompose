@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::domain::{
     player_management::models::player::player_id::player_id::PlayerId,
     triggergame_simulator::models::game::game_id::game_id::GameId,
-    unit_management::models::unit::{trigger_id::trigger_id::TriggerId, Unit},
+    unit_management::models::{
+        unit::{trigger_id::trigger_id::TriggerId, Unit},
+        unit_type::unit_type_spec::UnitTypeSpec,
+    },
 };
 
 /// マッチメイキングリクエストで受け取るユニット情報
@@ -30,6 +33,9 @@ impl CreateUnitDto {
             unit_type_id::unit_type_id::UnitTypeId, Unit,
         };
 
+        // 行動力をユニット種別から求める
+        let action_points = UnitTypeSpec::get_spec(&self.unit_type_id);
+
         Unit::create(
             UnitTypeId::new(self.unit_type_id.clone()),
             game_id,
@@ -42,7 +48,7 @@ impl CreateUnitDto {
             100, // TODO: マスターデータから取得予定
             100, // TODO: マスターデータから取得予定
             8,   // TODO: 開始地点の高さから取得予定
-            13,  // TODO: マスターデータから取得予定
+            action_points.unwrap().action_points(),
         )
     }
 

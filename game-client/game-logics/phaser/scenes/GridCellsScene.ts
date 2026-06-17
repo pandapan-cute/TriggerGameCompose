@@ -31,6 +31,7 @@ import {
 import { FieldViewService } from "./services/FieldViewService";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { GameResult } from "@/types/GameTypes";
+import { MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -248,8 +249,8 @@ export class GridCellsScene extends Phaser.Scene {
       fieldViewState: this.fieldViewState,
       hexUtils: this.hexUtils,
       gridConfig: this.gridConfig,
-      consumeActionPoint: (remainingMoves: number) => {
-        this.turnPlanner?.consumeActionPoint(remainingMoves);
+      consumeActionPoint: (remainingMoves: number, remainingSeconds: number) => {
+        this.turnPlanner?.consumeActionPointRemainSeconds(remainingMoves, remainingSeconds);
       },
       startTriggerSetting: () => {
         this.triggerSettingController?.startTriggerSetting();
@@ -351,8 +352,8 @@ export class GridCellsScene extends Phaser.Scene {
       clearPlannedSteps: () => {
         this.turnPlanner?.clearPlannedSteps();
       },
-      restoreActionPointsText: () => {
-        this.characterManager.setAllActionPointsText(this);
+      restoreActionPointsRemainSecondsText: () => {
+        this.characterManager.setAllActionPointsRemainSecondsText(this);
       },
       updateFieldViewVisibility: () => {
         return this.fieldViewService?.updateVisibility();
@@ -459,7 +460,7 @@ export class GridCellsScene extends Phaser.Scene {
     this.friendUnits.forEach((unit) => {
       const status = CHARACTER_STATUS[unit.unitTypeId as keyof typeof CHARACTER_STATUS];
       const playerCharacterState = new PlayerCharacterState(
-        status.activeCount,
+        MAX_UNIT_EXEC_SECONDS, // 初期の行動可能秒数を設定
         this,
         unit,
         this.hexUtils,

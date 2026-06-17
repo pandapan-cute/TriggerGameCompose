@@ -2,13 +2,13 @@
 import "phaser";
 
 /**
- * 行動力表示テキストを表示するクラス
+ * 残り秒数表示テキストを表示するクラス
  */
-export class ActionPointsText extends Phaser.GameObjects.Text {
-  constructor(scene: Phaser.Scene, x: number, y: number, points: number) {
-    super(scene, x, y, `⚡${points}`, {
+export class RemainSecondsText extends Phaser.GameObjects.Text {
+  constructor(scene: Phaser.Scene, x: number, y: number, seconds: number) {
+    super(scene, x, y, `⏳${seconds}`, {
       fontSize: "12px",
-      color: "#FF9900",
+      color: "#ffffff",
       fontStyle: "bold",
       fontFamily: "Michroma",
       backgroundColor: "#1e293baa",
@@ -28,7 +28,7 @@ export class ActionPointsText extends Phaser.GameObjects.Text {
     scene.add.existing(this);
   }
 
-  updatePoints(points: number) {
-    this.setText(`⚡${points}`);
+  updateRemainSeconds(seconds: number) {
+    this.setText(`⏳${seconds}`);
   }
 }

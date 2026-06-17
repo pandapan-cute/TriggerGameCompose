@@ -22,6 +22,7 @@ pub struct FriendUnitDto {
     pub sub_trigger_hp: i32,
     pub sight_range: i32,
     pub is_bailout: bool,
+    pub current_action_points: i32,
 }
 
 impl FriendUnitDto {
@@ -39,6 +40,7 @@ impl FriendUnitDto {
             sub_trigger_hp: unit.sub_trigger_hp().value(),
             sight_range: unit.sight_range().value(),
             is_bailout: unit.is_bailout_value().value(),
+            current_action_points: unit.current_action_points().value(),
         }
     }
 

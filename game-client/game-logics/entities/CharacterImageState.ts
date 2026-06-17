@@ -9,6 +9,7 @@ import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { Position, TriggerDirection, } from "../types";
 import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
+import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
 
 /**
  * キャラクターごとの状態管理の型定義
@@ -38,6 +39,10 @@ export class CharacterImageState {
     protected hexUtils: HexUtils,
     /** フィールドビューサービス */
     protected fieldViewService: FieldViewService,
+    /** 残りの行動力 */
+    private actionPoints: number,
+    /** 残りの行動力表示 */
+    private actionPointsText: ActionPointsText | null
   ) { }
 
   /**
@@ -94,6 +99,9 @@ export class CharacterImageState {
     // サブトリガーの表示を更新
     this.subTriggerFan?.updateTriggerAzimuth(action.getSubTriggerAzimuth(), this.image.x, this.image.y, subTriggerStatus.angle, subTriggerStatus.range, subTriggerKey, visible);
     this.subTriggerFan?.drawTriggerRangePoints(action.getPosition().col, action.getPosition().row, 0x6b6bff);
+    // 残り行動力の表示を更新
+    this.actionPoints = action.getCurrentActionPoints();
+    this.updateActionPointsDisplay(this.image.scene);
   }
 
   /**
@@ -123,6 +131,51 @@ export class CharacterImageState {
         minHp
       );
     }
+  }
+
+  /** 行動力表示を更新または削除する
+   * @param points 新しい行動力、nullの場合は表示を削除
+   */
+  setActionPointsText(points: number | null) {
+    if (points === null) {
+      this.actionPointsText?.destroy();
+      this.actionPointsText = null;
+    } else {
+      this.actionPoints = points;
+      this.actionPointsText?.updatePoints(points);
+    }
+  }
+
+  /**
+   * 行動力を減らす
+   */
+  decrementActionPoints(points: number = 1) {
+    this.setActionPointsText(Math.max(0, this.actionPoints - points));
+  }
+
+  /**
+   * キャラクター左下の行動力表示を更新する
+   */
+  updateActionPointsDisplay(scene: Phaser.Scene) {
+    const pixelPos = this.hexUtils.getHexPosition(
+      this.position.col,
+      this.position.row
+    );
+
+    const existingText = this.actionPointsText;
+    if (existingText) {
+      existingText.setPosition(pixelPos.x, pixelPos.y + 24);
+      existingText.updatePoints(this.actionPoints);
+      return;
+    }
+
+    // 新しいテキストを作成
+    this.actionPointsText = new ActionPointsText(
+      scene,
+      pixelPos.x,
+      pixelPos.y + 24,
+      this.actionPoints
+    );
   }
 
 
@@ -158,8 +211,16 @@ export class CharacterImageState {
     return this.isBailedOut;
   }
 
+  getActionPoints() {
+    return this.actionPoints;
+  }
+
   // セッター
   setDirection(direction: TriggerDirection) {
     this.direction = direction;
+  }
+
+  setActionPoints(points: number) {
+    this.actionPoints = points;
   }
 }

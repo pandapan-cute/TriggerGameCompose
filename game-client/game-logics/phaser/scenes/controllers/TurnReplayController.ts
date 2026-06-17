@@ -23,7 +23,7 @@ export interface TurnReplayControllerDeps {
   setActionMode?: (isActionMode: boolean) => void;
   setActionAnimationInProgress?: (isInProgress: boolean) => void;
   clearPlannedSteps?: () => void;
-  restoreActionPointsText?: () => void;
+  restoreActionPointsRemainSecondsText?: () => void;
   updateFieldViewVisibility: () => boolean[][] | undefined;
   completeGame?: (result: GameResult) => void;
 }
@@ -42,7 +42,7 @@ export class TurnReplayController {
    * @param turn サーバーから受信したターン情報。
    */
   public executeTurn(turn: Turn): void {
-    this.deps.characterManager.setAllActionPointsTextToNull();
+    this.deps.characterManager.setAllActionPointsRemainSecondsTextToNull();
 
     this.deps.scene.time.delayedCall(2000, () => {
       this.executeStep(turn, 0);
@@ -164,7 +164,7 @@ export class TurnReplayController {
     this.deps.characterManager.resetAllActionPoints();
 
     this.deps.clearPlannedSteps?.();
-    this.deps.restoreActionPointsText?.();
+    this.deps.restoreActionPointsRemainSecondsText?.();
     this.deps.onReplayCompleted(turnNumber);
   }
 

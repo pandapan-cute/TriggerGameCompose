@@ -30,11 +30,12 @@ export class TurnPlanner {
   constructor(private readonly deps: TurnPlannerDeps) { }
 
   /**
-   * 選択中キャラクターの行動力を消費し、表示を更新する。
+   * 選択中キャラクターの行動力と残り秒数を消費し、表示を更新する。
    *
-   * @param remainingMoves 消費後の残り行動回数。
+   * @param remainingMoves 消費後の残り行動力。
+   * @param remainingSeconds 消費後の残り行動秒数。
    */
-  public consumeActionPoint(remainingMoves: number): void {
+  public consumeActionPointRemainSeconds(remainingMoves: number, remainingSeconds: number): void {
     // 行動力を消費できる選択中キャラクターがいるかを判定する。
     if (!this.deps.characterManager.selectedCharacter) {
       return;
@@ -53,10 +54,31 @@ export class TurnPlanner {
       )!.setActionPoints(remainingMoves);
 
       console.log(
-        `キャラクター${this.deps.characterManager.selectedCharacter?.id}の行動力を消費しました。残り: ${remainingMoves}`
+        `キャラクター${this.deps.characterManager.selectedCharacter?.id}の残り行動力を消費しました。残り: ${remainingMoves}`
       );
 
       this.deps.characterManager.selectedCharacter.updateActionPointsDisplay(
+        this.deps.scene
+      );
+    }
+
+    const currentRemainSeconds =
+      this.deps.characterManager.findPlayerCharacterByImage(
+        this.deps.characterManager.selectedCharacter?.image
+      )?.getRemainSeconds() ?? 0;
+
+    // 現在残り秒数が1以上残っているかを判定する。
+    if (currentRemainSeconds && currentRemainSeconds > 0) {
+      // 残り秒数が残っている場合: 消費と表示更新を行う。
+      this.deps.characterManager.findPlayerCharacterByImage(
+        this.deps.characterManager.selectedCharacter?.image
+      )!.setRemainSeconds(remainingSeconds);
+
+      console.log(
+        `キャラクター${this.deps.characterManager.selectedCharacter?.id}の残り秒数を消費しました。残り: ${remainingSeconds}`
+      );
+
+      this.deps.characterManager.selectedCharacter.updateRemainSecondsDisplay(
         this.deps.scene
       );
     }
@@ -107,17 +129,17 @@ export class TurnPlanner {
         continue;
       }
 
-      const actionPoints =
+      const remainSeconds =
         this.deps.characterManager.findPlayerCharacterByImage(character.image)
-          ?.getActionPoints() || 0;
-      totalRemainingPoints += actionPoints;
-      // 1人でも行動力が残っているかを判定する。
-      if (actionPoints > 0) {
+          ?.getRemainSeconds() ?? 0;
+      totalRemainingPoints += remainSeconds;
+      // 1人でも残り秒数が残っているかを判定する。
+      if (remainSeconds > 0) {
         allCompleted = false;
       }
     }
 
-    console.log(`残り行動力合計: ${totalRemainingPoints}`);
+    console.log(`残り秒数合計: ${totalRemainingPoints}`);
 
     // 全員完了かつプレイヤーキャラクターが存在するかを判定する。
     if (allCompleted && this.deps.characterManager.playerCharacters.length > 0) {

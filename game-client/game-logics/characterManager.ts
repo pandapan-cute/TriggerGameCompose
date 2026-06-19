@@ -160,7 +160,7 @@ export class CharacterManager {
     this.playerCharacters.forEach(character => {
       character.getCompleteText()?.destroy();
       character.setCompleteText(null);
-      character.setRemainSecondsText(null);
+      character.setRemainSecondsWidget(null);
     });
   };
 
@@ -172,7 +172,7 @@ export class CharacterManager {
     this.playerCharacters.forEach(character => {
       if (character.getIsBailedOut()) {
         character.setActionPointsText(null);
-        character.setRemainSecondsText(null);
+        character.setRemainSecondsWidget(null);
         return;
       }
       character.updateActionPointsDisplay(scene);
@@ -190,7 +190,7 @@ export class CharacterManager {
         // ベイルアウト済みユニットは次ターン以降も行動設定対象外にする。
         character.setActionPoints(0);
         character.setActionPointsText(null);
-        character.setRemainSecondsText(null);
+        character.setRemainSecondsWidget(null);
         character.getCompleteText()?.destroy();
         character.setCompleteText(null);
         character.resetCurrentStep();
@@ -204,7 +204,7 @@ export class CharacterManager {
         character.getCompleteText()?.destroy();
         character.setCompleteText(null);
         // 行動力を最大値にリセット
-        character.setActionPoints(characterStatus.activeCount);
+        character.setActionPointsText(character.getUnitMaxActionPoints());
         // 行動可能秒数を最大値にリセット
         character.setRemainSeconds(MAX_UNIT_EXEC_SECONDS);
         // ターン切り替え時にステップ番号をリセット

@@ -1,6 +1,6 @@
 'use client';
 import { UnitType } from "@/types/UnitType";
-import { TRIGGER_STATUS } from "../config/status";
+import { CHARACTER_STATUS, TRIGGER_STATUS } from "../config/status";
 import { HexUtils } from "../hexUtils";
 import { Action } from "../models/Action";
 import { Combat } from "../models/Combat";
@@ -9,7 +9,7 @@ import { EnemyUnitImage } from "../phaser/game-objects/images/EnemyUnitImage";
 import { FriendUnitImage } from "../phaser/game-objects/images/FriendUnitImage";
 import { Position, TriggerDirection, } from "../types";
 import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
-import { ActionPointsText } from "../phaser/game-objects/texts/ActionPointsText";
+import { ActionPointsWidget } from "../phaser/game-objects/widgets/ActionPointsWidget";
 
 /**
  * キャラクターごとの状態管理の型定義
@@ -42,7 +42,7 @@ export class CharacterImageState {
     /** 残りの行動力 */
     private actionPoints: number,
     /** 残りの行動力表示 */
-    private actionPointsText: ActionPointsText | null
+    private actionPointsWidget: ActionPointsWidget | null
   ) { }
 
   /**
@@ -76,6 +76,12 @@ export class CharacterImageState {
     this.image.moveUnitTween(targetPixelPos.x, targetPixelPos.y, duration, () => {
       // 移動完了後にトリガー表示を更新
       this.updateTriggerPositionsForCharacter(action);
+      // 移動完了後に行動力表示を更新
+      this.actionPointsWidget?.updateActionPointsDisplay(
+        { x: this.image.x, y: this.image.y },
+        this.getUnitMaxActionPoints(),
+        this.actionPoints
+      );
     }, onStepComplete);
   }
 
@@ -101,7 +107,6 @@ export class CharacterImageState {
     this.subTriggerFan?.drawTriggerRangePoints(action.getPosition().col, action.getPosition().row, 0x6b6bff);
     // 残り行動力の表示を更新
     this.actionPoints = action.getCurrentActionPoints();
-    this.updateActionPointsDisplay(this.image.scene);
   }
 
   /**
@@ -138,19 +143,17 @@ export class CharacterImageState {
    */
   setActionPointsText(points: number | null) {
     if (points === null) {
-      this.actionPointsText?.destroy();
-      this.actionPointsText = null;
+      this.actionPointsWidget?.destroy();
+      this.actionPointsWidget = null;
     } else {
+      const unitActionPoints = this.getUnitMaxActionPoints();
       this.actionPoints = points;
-      this.actionPointsText?.updatePoints(points);
+      const pixelPos = this.hexUtils.getHexPosition(
+        this.position.col,
+        this.position.row
+      );
+      this.actionPointsWidget?.updateActionPointsDisplay({ x: pixelPos.x, y: pixelPos.y }, unitActionPoints, points);
     }
-  }
-
-  /**
-   * 行動力を減らす
-   */
-  decrementActionPoints(points: number = 1) {
-    this.setActionPointsText(Math.max(0, this.actionPoints - points));
   }
 
   /**
@@ -162,19 +165,17 @@ export class CharacterImageState {
       this.position.row
     );
 
-    const existingText = this.actionPointsText;
-    if (existingText) {
-      existingText.setPosition(pixelPos.x, pixelPos.y + 24);
-      existingText.updatePoints(this.actionPoints);
+    const existingWidget = this.actionPointsWidget;
+    if (existingWidget) {
+      console.log(`キャラクター${this.getUnitTypeId()}の行動力を更新: ${this.actionPoints} -> ${this.actionPoints}`);
+      existingWidget.updateActionPointsDisplay({ x: pixelPos.x, y: pixelPos.y }, this.getUnitMaxActionPoints(), this.actionPoints);
       return;
     }
 
     // 新しいテキストを作成
-    this.actionPointsText = new ActionPointsText(
+    this.actionPointsWidget = new ActionPointsWidget(
       scene,
-      pixelPos.x,
-      pixelPos.y + 24,
-      this.actionPoints
+      { x: pixelPos.x, y: pixelPos.y },
     );
   }
 
@@ -196,6 +197,19 @@ export class CharacterImageState {
     this.subTriggerFan?.setTriggerVisible(false);
     this.subTriggerFan?.destroy();
     this.subTriggerFan = null;
+  }
+
+  /**
+   * キャラクターの行動力を取得する
+   * @returns キャラクターの行動力
+   */
+  getUnitMaxActionPoints() {
+    const status = CHARACTER_STATUS[this.getUnitTypeId() as keyof typeof CHARACTER_STATUS];
+    if (!status) {
+      return 0;
+    } else {
+      return status.activeCount;
+    }
   }
 
   // ゲッター

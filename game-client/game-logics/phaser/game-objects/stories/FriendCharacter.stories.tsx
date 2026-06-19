@@ -35,4 +35,5 @@ export const Default = () => {
   };
   return <PhaserWrapper config={{ scene }} />;
 };
-export default { title: 'Phaser/FriendCharacter' };
+const meta = { title: 'Phaser/FriendCharacter' };
+export default meta;

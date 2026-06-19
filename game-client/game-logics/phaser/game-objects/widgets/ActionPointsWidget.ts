@@ -34,6 +34,24 @@ export class ActionPointsWidget {
       this.actionPointImage.setPosition(pixelPos.x, pixelPos.y);
       return;
     }
+
+    if (!this.actionPointCircle) {
+      this.actionPointCircle = new ActionPointCircle(
+        this.scene,
+        { x: pixelPos.x, y: pixelPos.y }
+      );
+      this.scene.add.existing(this.actionPointCircle);
+      this.actionPointCircle.updatePoint(pixelPos, maxPoints, currentPoints);
+    }
+
+    if (!this.actionPointImage) {
+      this.actionPointImage = new ActionPointImage(
+        this.scene,
+        pixelPos.x,
+        pixelPos.y
+      );
+      this.scene.add.existing(this.actionPointImage);
+    }
   }
 
   public destroy() {

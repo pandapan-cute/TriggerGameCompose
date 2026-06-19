@@ -16,6 +16,7 @@ export class RemainSecondsText extends Phaser.GameObjects.Text {
 
     this.setOrigin(0.3, 0.2);
     this.setDepth(3); // キャラクターより前面
+    this.postFX.addShadow(undefined, undefined, undefined, undefined, 0x962353, 1.0, 0); // 視認性を向上
 
     scene.add.existing(this);
   }

@@ -1,5 +1,5 @@
 'use client';
-import { GridConfig, Position } from "../types";
+import { GridConfig } from "../types";
 import { CharacterImageState } from "./CharacterImageState";
 import { HexUtils } from "../hexUtils";
 import { ActionCompletedText } from "../phaser/game-objects/texts/ActionCompletedText";
@@ -9,12 +9,12 @@ import { TriggerFanShape } from "../phaser/game-objects/graphics/TriggerFanShape
 import { TRIGGER_STATUS } from "../config/status";
 import { Combat } from "../models/Combat";
 import { FieldViewService } from "../phaser/scenes/services/FieldViewService";
-import { RemainSecondsText } from "../phaser/game-objects/texts/RemainSecondsText";
+import { RemainSecondsWidget } from "../phaser/game-objects/widgets/RemainSecondsWidget";
 
 export class PlayerCharacterState extends CharacterImageState {
 
   /** 残りの行動可能秒数 */
-  private remainSecondsText: RemainSecondsText | null;
+  private remainSecondsWidget: RemainSecondsWidget | null;
   /** 行動設定完了表示 */
   private completeText: ActionCompletedText | null;
   /** 現在のステップ番号(初期値は0) */
@@ -68,7 +68,7 @@ export class PlayerCharacterState extends CharacterImageState {
       null
     );
 
-    this.remainSecondsText = null;
+    this.remainSecondsWidget = null;
     this.completeText = null;
     this.currentStep = 0;
 
@@ -110,13 +110,13 @@ export class PlayerCharacterState extends CharacterImageState {
    * 残り行動可能秒数表示を更新または削除する
    * @param points 新しい残り行動可能秒数、nullの場合は表示を削除
    */
-  setRemainSecondsText(points: number | null) {
+  setRemainSecondsWidget(points: number | null) {
     if (points === null) {
-      this.remainSecondsText?.destroy();
-      this.remainSecondsText = null;
+      this.remainSecondsWidget?.destroy();
+      this.remainSecondsWidget = null;
     } else {
       this.remainSeconds = points;
-      this.remainSecondsText?.updateRemainSeconds(points);
+      this.remainSecondsWidget?.updateRemainSecondsDisplay({ x: this.image.x, y: this.image.y }, points);
     }
   }
 
@@ -129,20 +129,17 @@ export class PlayerCharacterState extends CharacterImageState {
       this.position.row
     );
 
-    const existingText = this.remainSecondsText;
-    if (existingText) {
-      existingText.setPosition(pixelPos.x, pixelPos.y + 43);
-      existingText.updateRemainSeconds(this.remainSeconds);
+    const existingWidget = this.remainSecondsWidget;
+    if (existingWidget) {
+      existingWidget.updateRemainSecondsDisplay({ x: pixelPos.x, y: pixelPos.y }, this.remainSeconds);
       return;
     }
 
     // 新しいテキストを作成
-    this.remainSecondsText = new RemainSecondsText(
+    this.remainSecondsWidget = new RemainSecondsWidget(
       scene,
-      pixelPos.x,
-      pixelPos.y + 43,
-      this.remainSeconds
     );
+    this.remainSecondsWidget.updateRemainSecondsDisplay({ x: pixelPos.x, y: pixelPos.y }, this.remainSeconds);
   }
 
   /** 
@@ -156,7 +153,7 @@ export class PlayerCharacterState extends CharacterImageState {
     if (combat.getIsDefeatedCombat()) {
       this.setFriendUnitBailout(true);
       this.setActionPointsText(null);
-      this.setRemainSecondsText(null);
+      this.setRemainSecondsWidget(null);
     }
   }
 

@@ -56,7 +56,8 @@ export class SelectionService {
         );
         const actionPoints = characterAtPosition.getActionPoints() || 0;
         const remainingSeconds = characterAtPosition.getRemainSeconds() || 0;
-        this.deps.consumeActionPoint(actionPoints - 1, remainingSeconds - 1);
+        // 行動力は消費せず、残り秒数のみを消費する
+        this.deps.consumeActionPoint(actionPoints, remainingSeconds - 1);
         this.deps.startTriggerSetting();
       } else {
         // 未選択の別キャラクターをクリックした場合: 対象を選択状態にする。
@@ -204,7 +205,7 @@ export class SelectionService {
               fillAlpha: 0.4,
               lineColor: 0x00aa00,
               lineAlpha: 1.0,
-              lineWidth: 2,
+              lineWidth: 2.4,
               depth: 0.8,
             }
           );

@@ -3,13 +3,11 @@ import { FieldViewState } from "../../entities/FieldViewState";
 import { GameView } from "../../GameView";
 import { HexUtils } from "../../hexUtils";
 import { BackCanvasTexture } from "../textures/BackCanvasTexture";
-import { GridConfig } from "../../types";
 import "phaser";
 import { UnitImageLoader } from "./loader/UnitImageLoader";
 import { GameAssetsLoader } from "./loader/GameAssetsLoader";
 import { GameCamera } from "../cameras/GameCamera";
 import { CharacterManager } from "@/game-logics/characterManager";
-import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
@@ -449,7 +447,6 @@ export class GridCellsScene extends Phaser.Scene {
   private createCharacters() {
     // 自分のキャラクターを配置
     this.friendUnits.forEach((unit) => {
-      const status = CHARACTER_STATUS[unit.unitTypeId as keyof typeof CHARACTER_STATUS];
       const playerCharacterState = new PlayerCharacterState(
         MAX_UNIT_EXEC_SECONDS, // 初期の行動可能秒数を設定
         this,

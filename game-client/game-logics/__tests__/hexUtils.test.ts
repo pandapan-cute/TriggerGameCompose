@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { HexUtils } from "@/game-logics/hexUtils";
-import { GridConfig } from "@/game-logics/types";
 import { GRID_CONFIG } from "../config/game-config";
 
 /**

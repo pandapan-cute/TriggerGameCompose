@@ -17,17 +17,6 @@ const GameGrid = dynamic(() => import("@/game-logics/GameGrid"), {
   ssr: false,
 });
 
-export interface GridConfig {
-  gridSize: number;
-  gridWidth: number;
-  gridHeight: number;
-  hexRadius: number;
-  hexWidth: number;
-  hexHeight: number;
-  marginLeft: number;
-  marginTop: number;
-}
-
 export default function GamePage() {
   // WebSocketコンテキストを使用
   const { isConnected, playerId, setGameId, connect, sendMessage, addMessageListener, removeMessageListener } = useWebSocket();

@@ -56,7 +56,9 @@ export class EnemyCharacterState extends CharacterImageState {
       new TriggerFanShape(scene, hexPosition.x, hexPosition.y, 0x4444ff, 0, 0, subTriggerStatus?.range, subTriggerKey, gridConfig, hexUtils, false, fieldViewService),
       enemyUnit.isBailout,
       hexUtils,
-      fieldViewService
+      fieldViewService,
+      enemyUnit.currentActionPoints,
+      null
     );
   }
 

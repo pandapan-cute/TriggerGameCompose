@@ -31,7 +31,7 @@ import {
 import { FieldViewService } from "./services/FieldViewService";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { GameResult } from "@/types/GameTypes";
-import { MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
+import { GRID_CONFIG, MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -73,16 +73,7 @@ export class GridCellsScene extends Phaser.Scene {
   private pendingTurn: Turn | null = null;
 
   /** グリッドの設定値 */
-  private gridConfig: GridConfig = {
-    gridSize: 32,
-    gridWidth: 36,
-    gridHeight: 36,
-    hexRadius: 24,
-    hexWidth: 24 * 2,
-    hexHeight: 24 * Math.sqrt(3),
-    marginLeft: 0,
-    marginTop: 0,
-  };
+  private gridConfig = GRID_CONFIG;
   /** グリッドフィールドの関数群 */
   private hexUtils!: HexUtils;
   /** ゲーム表示関連のクラス */

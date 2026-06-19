@@ -22,5 +22,7 @@ export class GameAssetsLoader {
       "/game/shields/shield_hexagon_yellow.svg"
     );
     scene.load.image("avoid", "/game/avoid/avoid.svg");
+    scene.load.image("hourglass", "/game/icon/hourglass.svg");
+    scene.load.image("flash", "/game/icon/flash.svg");
   }
 }

@@ -3,6 +3,7 @@ import "phaser";
 
 /**
  * 行動力表示テキストを表示するクラス
+ * @deprecated ActionPointsWidgetで円形のグラフィックを表示する形に変更済み
  */
 export class ActionPointsText extends Phaser.GameObjects.Text {
   constructor(scene: Phaser.Scene, x: number, y: number, points: number) {

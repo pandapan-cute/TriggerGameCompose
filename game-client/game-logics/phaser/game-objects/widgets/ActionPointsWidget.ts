@@ -30,6 +30,14 @@ export class ActionPointsWidget {
 
   public updateActionPointsDisplay(pixelPos: { x: number; y: number; }, maxPoints: number, currentPoints: number) {
     if (this.actionPointCircle && this.actionPointImage) {
+
+      if (currentPoints === 0) {
+        // 行動力が0の場合はアイコンをグレースケールにする
+        this.actionPointImage.updateImageGray();
+      } else {
+        // 行動力が0以上の場合はアイコンを通常のカラーに戻す
+        this.actionPointImage.resetImageColor();
+      }
       this.actionPointCircle.updatePoint(pixelPos, maxPoints, currentPoints);
       this.actionPointImage.setPosition(pixelPos.x, pixelPos.y);
       return;

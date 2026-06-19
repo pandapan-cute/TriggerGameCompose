@@ -15,6 +15,17 @@ export class RemainSecondsWidget {
 
   public updateRemainSecondsDisplay(pixelPos: { x: number; y: number; }, remainSeconds: number) {
     if (this.remainSecondsText && this.remainSecondsImage) {
+
+      if (remainSeconds === 0) {
+        // 残り時間が0秒の場合はアイコンとテキストをグレースケールにする
+        this.remainSecondsImage.updateImageGray();
+        this.remainSecondsText.updateTextGray();
+      } else {
+        // 残り時間が0秒以上の場合はアイコンとテキストを通常のカラーに戻す
+        this.remainSecondsImage.resetImageColor();
+        this.remainSecondsText.resetTextColor();
+      }
+
       this.remainSecondsImage.setPosition(pixelPos.x, pixelPos.y + 22);
       this.remainSecondsText.setPosition(pixelPos.x, pixelPos.y + 22);
       this.remainSecondsText.updateRemainSeconds(remainSeconds);

@@ -332,7 +332,7 @@ impl ScheduleMaker for NoopScheduleMaker {
 
 fn create_test_units(seed: &str) -> Vec<CreateUnitDto> {
     vec![CreateUnitDto {
-        unit_type_id: format!("unit-type-{}", seed),
+        unit_type_id: "MIKUMO_OSAMU".to_string(),
         initial_x: 3,
         initial_y: 4,
         using_main_trigger_id: format!("main-trigger-{}", seed),
@@ -418,6 +418,7 @@ async fn acceptance_pattern1_disconnect_then_rejoin_starts_game() {
     assert!(a_statuses.contains(&MatchingStatusValue::Interrupted));
 }
 
+/// 切断→再接続の順でマッチングリクエストを送るパターン。切断前のリクエストは無視され、再接続後のリクエストでマッチングが成立することを確認。
 #[tokio::test]
 async fn acceptance_pattern2_refresh_disconnect_connect_then_game_starts() {
     let (

@@ -205,10 +205,9 @@ impl Combat {
             defender_sub_trigger_status.angle(),
         );
 
-        let mut is_defeated = false;
         if !is_defender_facing_attacker_main && !is_defender_facing_attacker_sub {
             // トリガーが向いていない場合は即撃墜
-            is_defeated = true;
+            defender_unit.bailout();
         }
 
         // 回避計算の実行
@@ -275,12 +274,6 @@ impl Combat {
                         defender_sub_trigger_status.defense(),
                         defender_unit,
                     );
-
-                    if defender_unit.main_trigger_hp().is_depleted()
-                        || defender_unit.sub_trigger_hp().is_depleted()
-                    {
-                        is_defeated = true;
-                    }
                 }
                 GuardPattern::MainOnly => {
                     // 行動力があればメイントリガーのシールドを貼り直し(トリガーHPを全回復)
@@ -320,7 +313,7 @@ impl Combat {
                 }
                 GuardPattern::None => {
                     // 両トリガーが防御トリガーでないときは即撃墜
-                    is_defeated = true;
+                    defender_unit.bailout();
                 }
             }
         }
@@ -345,7 +338,7 @@ impl Combat {
             defender_unit.main_trigger_hp().clone(),
             defender_unit.sub_trigger_hp().clone(),
             is_avoided,
-            is_defeated,
+            defender_unit.is_bailed_out(),
         ))
     }
 

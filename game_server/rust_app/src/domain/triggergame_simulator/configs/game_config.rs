@@ -38,7 +38,7 @@ impl GameConfig {
             gameboard_width: 36,
             gameboard_height: 36,
             avoid_weight: 100,
-            damage_weight: 1.0,
+            damage_weight: 2.5,
             defend_weight: 1.0,
             min_damage: 20,
             motion_lab_seconds: 80, // 動きの設定時間を80秒に

@@ -285,11 +285,21 @@ impl Unit {
     /// メイントリガーHPを減少
     pub fn decrease_main_trigger_hp(&mut self, amount: i32) {
         self.main_trigger_hp.decrease(amount);
+
+        if self.main_trigger_hp.value() <= 0 {
+            // メイントリガーが破壊された場合、ユニットはベイルアウトする
+            self.bailout();
+        }
     }
 
     /// サブトリガーHPを減少
     pub fn decrease_sub_trigger_hp(&mut self, amount: i32) {
         self.sub_trigger_hp.decrease(amount);
+
+        if self.sub_trigger_hp.value() <= 0 {
+            // サブトリガーが破壊された場合、ユニットはベイルアウトする
+            self.bailout();
+        }
     }
 
     /// ベイルアウト

@@ -16,6 +16,16 @@ impl UnitTypeSpec {
     pub fn get_spec(unit_type_id: &str) -> Option<Self> {
         let specs: HashMap<&str, UnitTypeSpec> = [
             (
+                "AVERAGE_MEMBER",
+                UnitTypeSpec {
+                    unit_type_id: "AVERAGE_MEMBER".to_string(),
+                    base_attack: 5,
+                    base_defense: 5,
+                    base_avoid: 5,
+                    action_points: 14,
+                },
+            ),
+            (
                 "MIKUMO_OSAMU",
                 UnitTypeSpec {
                     unit_type_id: "MIKUMO_OSAMU".to_string(),

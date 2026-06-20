@@ -201,6 +201,122 @@ use crate::domain::unit_management::models::unit::wait_time::wait_time::WaitTime
         assert!(combat.is_some());
     }
 
+    /// 行動力がない状態かつHPギリギリの状態から攻撃されて撃墜されるテスト
+    #[test]
+    fn test_bailout_no_action_points() {
+        let mut visibility = create_test_visiblity();
+        let mut attacker_unit = Unit::create(
+            UnitTypeId::new("AMATORI_CHIKA".to_string()),
+            GameId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            Position::new(6, 35),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
+            HavingTriggerIds::new(vec![TriggerId::new("IBIS".to_string())]),
+            HavingTriggerIds::new(vec![TriggerId::new("BAGWORM".to_string())]),
+            100,
+            100,
+            8,
+            3,
+        );
+        attacker_unit.set_main_trigger_azimuth(TriggerAzimuth::new(354));
+        attacker_unit.set_sub_trigger_azimuth(TriggerAzimuth::new(3));
+
+        let mut defender_unit = Unit::create(
+            UnitTypeId::new("KUGA_YUMA".to_string()),
+            GameId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            Position::new(29, 4),
+            TriggerId::new("SCORPION".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            HavingTriggerIds::new(vec![TriggerId::new("SCORPION".to_string())]),
+            HavingTriggerIds::new(vec![TriggerId::new("SHIELD".to_string())]),
+            100,
+            15,
+            8,
+            0,
+        );
+        defender_unit.set_main_trigger_azimuth(TriggerAzimuth::new(5));
+        defender_unit.set_sub_trigger_azimuth(TriggerAzimuth::new(352));
+
+        let combat = Combat::create(
+            &mut attacker_unit,
+            2,
+            &mut defender_unit,
+            8,
+            0,
+            &mut visibility,
+        );
+        println!("Combat creation result: {:?}", combat);
+
+        // Combatの生成に成功するか
+        let combat = combat.unwrap();
+        assert!(
+            combat.is_avoided() == false // 回避されていないこと
+                && combat.is_defeated() == true // 撃墜されていること
+        );
+    }
+
+    /// アイビスは片手防御では受けきれないので即撃墜テスト
+    /// 攻撃者の攻撃力：5
+    /// 防御者の防御力：5
+    /// アイビスの攻撃力：10
+    /// シールドの防御力：5
+    #[test]
+    fn test_ibis_bailout() {
+        let mut visibility = create_test_visiblity();
+        let mut attacker_unit = Unit::create(
+            UnitTypeId::new("AVERAGE_MEMBER".to_string()),
+            GameId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            Position::new(6, 35),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("BAGWORM".to_string()),
+            HavingTriggerIds::new(vec![TriggerId::new("IBIS".to_string())]),
+            HavingTriggerIds::new(vec![TriggerId::new("BAGWORM".to_string())]),
+            100,
+            100,
+            8,
+            3,
+        );
+        attacker_unit.set_main_trigger_azimuth(TriggerAzimuth::new(354));
+        attacker_unit.set_sub_trigger_azimuth(TriggerAzimuth::new(3));
+
+        let mut defender_unit = Unit::create(
+            UnitTypeId::new("AVERAGE_MEMBER".to_string()),
+            GameId::new(Uuid::new_v4().to_string()),
+            PlayerId::new(Uuid::new_v4().to_string()),
+            Position::new(29, 4),
+            TriggerId::new("SCORPION".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            HavingTriggerIds::new(vec![TriggerId::new("SCORPION".to_string())]),
+            HavingTriggerIds::new(vec![TriggerId::new("SHIELD".to_string())]),
+            100,
+            100,
+            8,
+            5,
+        );
+        defender_unit.set_main_trigger_azimuth(TriggerAzimuth::new(5));
+        defender_unit.set_sub_trigger_azimuth(TriggerAzimuth::new(352));
+
+        let combat = Combat::create(
+            &mut attacker_unit,
+            5,
+            &mut defender_unit,
+            5,
+            0,
+            &mut visibility,
+        );
+        println!("Combat creation result: {:?}", combat);
+
+        // Combatの生成に成功するか
+        let combat = combat.unwrap();
+        assert!(
+            combat.is_avoided() == false // 回避されていないこと
+                && combat.is_defeated() == true // 撃墜されていること
+        );
+    }
+
     /// 両攻撃パターンテスト
     #[test]
     fn test_determine_attack_pattern_full() {

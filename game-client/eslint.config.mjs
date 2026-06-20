@@ -21,7 +21,8 @@ const eslintConfig = defineConfig([
     // 対象にするテストファイルのパターンを指定
     files: [
       "**/__tests__/**/*.[jt]s?(x)", 
-      "**/?(*.)+(spec|test).[jt]s?(x)"
+      "**/?(*.)+(spec|test).[jt]s?(x)",
+      "**/*.stories.[jt]s?(x)"
     ],
     // テストファイルでは any を許可する
     rules: {

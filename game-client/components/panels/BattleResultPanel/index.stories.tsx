@@ -2,20 +2,22 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import BattleResultPanel from "./index";
 import { UnitType } from "@/types/UnitType";
 import './index.module.css';
+import { FriendUnit } from "@/types/FriendUnit";
+import { EnemyUnit } from "@/types/EnemyUnit";
 
-const friendUnits = [
-	{ unitId: "p1", unitTypeId: UnitType.MIKUMO_OSAMU, position: { col: 0, row: 0 }, usingMainTriggerId: "t1", usingSubTriggerId: "t2", havingMainTriggerIds: ["t1"], havingSubTriggerIds: ["t2"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: false },
-	{ unitId: "p2", unitTypeId: UnitType.KUGA_YUMA, position: { col: 1, row: 0 }, usingMainTriggerId: "t3", usingSubTriggerId: "t4", havingMainTriggerIds: ["t3"], havingSubTriggerIds: ["t4"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: true },
-	{ unitId: "p3", unitTypeId: UnitType.AMATORI_CHIKA, position: { col: 2, row: 0 }, usingMainTriggerId: "t5", usingSubTriggerId: "t6", havingMainTriggerIds: ["t5"], havingSubTriggerIds: ["t6"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: true },
-	{ unitId: "p4", unitTypeId: UnitType.HYUSE_KURONIN, position: { col: 3, row: 0 }, usingMainTriggerId: "t7", usingSubTriggerId: "t8", havingMainTriggerIds: ["t7"], havingSubTriggerIds: ["t8"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: false },
+const friendUnits: FriendUnit[] = [
+	{ unitId: "p1", unitTypeId: UnitType.MIKUMO_OSAMU, position: { col: 0, row: 0 }, usingMainTriggerId: "t1", usingSubTriggerId: "t2", havingMainTriggerIds: ["t1"], havingSubTriggerIds: ["t2"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: false, currentActionPoints: 3 },
+	{ unitId: "p2", unitTypeId: UnitType.KUGA_YUMA, position: { col: 1, row: 0 }, usingMainTriggerId: "t3", usingSubTriggerId: "t4", havingMainTriggerIds: ["t3"], havingSubTriggerIds: ["t4"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: true, currentActionPoints: 0 },
+	{ unitId: "p3", unitTypeId: UnitType.AMATORI_CHIKA, position: { col: 2, row: 0 }, usingMainTriggerId: "t5", usingSubTriggerId: "t6", havingMainTriggerIds: ["t5"], havingSubTriggerIds: ["t6"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: true, currentActionPoints: 0 },
+	{ unitId: "p4", unitTypeId: UnitType.HYUSE_KURONIN, position: { col: 3, row: 0 }, usingMainTriggerId: "t7", usingSubTriggerId: "t8", havingMainTriggerIds: ["t7"], havingSubTriggerIds: ["t8"], mainTriggerHp: 100, subTriggerHp: 100, sightRange: 8, isBailout: false, currentActionPoints: 3 },
 
 ];
 
-const enemyUnits = [
-	{ unitId: "e1", unitTypeId: UnitType.MIKUMO_OSAMU, position: { col: 0, row: 1 }, usingMainTriggerId: "t9", usingSubTriggerId: "t10", isBailout: false },
-	{ unitId: "e2", unitTypeId: UnitType.KUGA_YUMA, position: { col: 1, row: 1 }, usingMainTriggerId: "t11", usingSubTriggerId: "t12", isBailout: true },
-	{ unitId: "e3", unitTypeId: UnitType.AMATORI_CHIKA, position: { col: 2, row: 1 }, usingMainTriggerId: "t13", usingSubTriggerId: "t14", isBailout: true },
-	{ unitId: "e4", unitTypeId: UnitType.HYUSE_KURONIN, position: { col: 3, row: 1 }, usingMainTriggerId: "t15", usingSubTriggerId: "t16", isBailout: false },
+const enemyUnits: EnemyUnit[] = [
+	{ unitId: "e1", unitTypeId: UnitType.MIKUMO_OSAMU, position: { col: 0, row: 1 }, usingMainTriggerId: "t9", usingSubTriggerId: "t10", isBailout: false, currentActionPoints: 3 },
+	{ unitId: "e2", unitTypeId: UnitType.KUGA_YUMA, position: { col: 1, row: 1 }, usingMainTriggerId: "t11", usingSubTriggerId: "t12", isBailout: true, currentActionPoints: 0 },
+	{ unitId: "e3", unitTypeId: UnitType.AMATORI_CHIKA, position: { col: 2, row: 1 }, usingMainTriggerId: "t13", usingSubTriggerId: "t14", isBailout: true, currentActionPoints: 0 },
+	{ unitId: "e4", unitTypeId: UnitType.HYUSE_KURONIN, position: { col: 3, row: 1 }, usingMainTriggerId: "t15", usingSubTriggerId: "t16", isBailout: false, currentActionPoints: 3 },
 ];
 
 const meta: Meta<typeof BattleResultPanel> = {

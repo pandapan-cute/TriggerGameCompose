@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="4.7624974mm"
+   height="5.2916641mm"
+   viewBox="0 0 4.7624974 5.2916641"
+   version="1.1"
+   id="svg5"
+   xml:space="preserve"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs2"><linearGradient
+       id="linearGradient3631"><stop
+         style="stop-color:#2b2b00;stop-opacity:1;"
+         offset="0"
+         id="stop3627" /><stop
+         style="stop-color:#767600;stop-opacity:1;"
+         offset="1"
+         id="stop3629" /></linearGradient><linearGradient
+       xlink:href="#linearGradient3631"
+       id="linearGradient3633"
+       x1="120"
+       y1="-480"
+       x2="840"
+       y2="-480"
+       gradientUnits="userSpaceOnUse" /></defs><g
+     id="layer1"
+     transform="translate(-104.32928,-55.906872)"><g
+       style="fill:#e3e3e3"
+       id="g141"
+       transform="matrix(0.00661458,0,0,0.00661458,103.53553,61.727702)"><path
+         d="M 280,-80 391.48801,-386.20349 120,-420 600,-880 h 80 L 526.84976,-545.77862 840,-540 360,-80 Z m 68.70876,-59.38185 390.25086,-363.35739 -312.05536,20.80429 193.0035,-367.89527 -411.89197,405.92189 266.23612,11.99905 z"
+         id="path132"
+         style="fill:url(#linearGradient3633);fill-opacity:1;stroke:none;stroke-opacity:1" /><path
+         style="fill:#f4d83f;fill-opacity:1;stroke:none;stroke-width:0.092774;stroke-linecap:square;stroke-linejoin:round;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 5.7776626,18.410499 c 0.00845,-0.02053 0.7047377,-1.642897 1.5473173,-3.60527 0.8425796,-1.962373 1.5319627,-3.576444 1.5319627,-3.586823 0,-0.0317 -0.2058943,-0.04279 -3.4333092,-0.184911 C 3.7063568,10.957875 2.1574229,10.873372 2.1404785,10.870232 2.1235345,10.867132 4.604131,8.5295972 7.3988217,5.7771385 10.193513,3.02468 12.607601,0.6239156 12.488366,0.78059101 12.597625,0.66337104 11.348488,2.9272208 10.040349,5.4153357 l -2.3323722,4.5238457 0.047651,0.00719 C 10.464294,9.7763745 12.594494,9.6224303 15.462816,9.4383016 c 0.01495,0.00387 -2.133469,1.9706124 -4.682788,4.3446964 -5.1635998,4.808664 -5.0236268,4.67918 -5.0023651,4.627504 z"
+         id="path1848"
+         transform="matrix(40.00002,0,0,40.00002,120.00006,-879.99994)" /></g></g></svg>

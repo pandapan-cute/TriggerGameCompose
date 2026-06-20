@@ -7,6 +7,7 @@ import { EnemyCharacterState } from "./entities/EnemyCharacterState";
 import { PlayerCharacterState } from "./entities/PlayerCharacterState";
 import { Position } from "./types";
 import { FriendUnit } from "@/types/FriendUnit";
+import { MAX_UNIT_EXEC_SECONDS } from "./config/game-config";
 
 /**
  * キャラクター管理クラス
@@ -152,27 +153,31 @@ export class CharacterManager {
   //////////////////////////////////////
 
   /**
-   * すべてのキャラクターの行動力表示を削除する
+   * すべてのキャラクターの残り時間表示を削除する
+   * アクションポイントはユニットの行動中にも表示させておきたい
    */
-  setAllActionPointsTextToNull = () => {
+  setAllActionPointsRemainSecondsTextToNull = () => {
     this.playerCharacters.forEach(character => {
       character.getCompleteText()?.destroy();
       character.setCompleteText(null);
-      character.setActionPointsText(null);
+      character.setRemainSecondsWidget(null);
     });
   };
 
   /**
-   * 生存中キャラクターの行動力表示を更新する
+   * 生存中キャラクターのアクションポイントと残り時間表示を更新する
    * @param scene - Phaserのシーン
    */
-  setAllActionPointsText = (scene: Phaser.Scene) => {
+  setAllActionPointsRemainSecondsText = (scene: Phaser.Scene) => {
     this.playerCharacters.forEach(character => {
       if (character.getIsBailedOut()) {
         character.setActionPointsText(null);
+        character.setRemainSecondsWidget(null);
         return;
       }
       character.updateActionPointsDisplay(scene);
+      // 行動可能秒数表示も更新
+      character.updateRemainSecondsDisplay(scene);
     });
   };
 
@@ -185,6 +190,7 @@ export class CharacterManager {
         // ベイルアウト済みユニットは次ターン以降も行動設定対象外にする。
         character.setActionPoints(0);
         character.setActionPointsText(null);
+        character.setRemainSecondsWidget(null);
         character.getCompleteText()?.destroy();
         character.setCompleteText(null);
         character.resetCurrentStep();
@@ -198,7 +204,9 @@ export class CharacterManager {
         character.getCompleteText()?.destroy();
         character.setCompleteText(null);
         // 行動力を最大値にリセット
-        character.setActionPoints(characterStatus.activeCount);
+        character.setActionPointsText(character.getUnitMaxActionPoints());
+        // 行動可能秒数を最大値にリセット
+        character.setRemainSeconds(MAX_UNIT_EXEC_SECONDS);
         // ターン切り替え時にステップ番号をリセット
         character.resetCurrentStep();
       } else {

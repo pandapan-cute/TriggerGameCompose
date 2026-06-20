@@ -150,6 +150,7 @@ mod tests {
             TriggerId::new("BAGWORM".to_string()),
             TriggerAzimuth::new(0),
             TriggerAzimuth::new(0),
+            enemy_unit.current_action_points().clone(),
         )
     }
 

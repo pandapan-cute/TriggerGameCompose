@@ -1,4 +1,4 @@
-import { GridConfig } from "@/app/game/[gameId]/page";
+import { GridConfig } from "@/game-logics/types";
 
 /**
  * ユニットの画像を表すクラス

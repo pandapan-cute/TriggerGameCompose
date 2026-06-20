@@ -2,9 +2,10 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use crate::domain::triggergame_simulator::models::action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
 use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
-use crate::domain::unit_management::models::unit;
+use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::unit_type_id::unit_type_id::UnitTypeId;
+use crate::domain::unit_management::models::unit::{self, current_action_points};
 use crate::domain::unit_management::models::unit::{
     position::position::Position, trigger_id::trigger_id::TriggerId, Unit,
 };
@@ -30,6 +31,8 @@ pub struct Action {
     using_sub_trigger_id: TriggerId,
     main_trigger_azimuth: TriggerAzimuth,
     sub_trigger_azimuth: TriggerAzimuth,
+    #[serde(default)]
+    current_action_points: CurrentActionPoints, // リクエストはない。デフォルト値0が入る
 }
 
 impl Action {
@@ -44,6 +47,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         Self {
             action_id,
@@ -55,6 +59,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         }
     }
 
@@ -68,6 +73,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         let action_id = ActionId::new(Uuid::new_v4().to_string());
         Self::new(
@@ -80,6 +86,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         )
     }
 
@@ -94,6 +101,7 @@ impl Action {
         using_sub_trigger_id: TriggerId,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
+        current_action_points: CurrentActionPoints,
     ) -> Self {
         Self::new(
             action_id,
@@ -105,6 +113,7 @@ impl Action {
             using_sub_trigger_id,
             main_trigger_azimuth,
             sub_trigger_azimuth,
+            current_action_points,
         )
     }
 
@@ -114,32 +123,24 @@ impl Action {
     /// unit: 防御側ユニット情報
     pub fn generate_combats(
         &self,
+        attacker_unit: &mut Unit,
         defence_unit: &mut Unit,
         visibility: &mut Visibility,
     ) -> Option<Combat> {
         // ユニットのステータス取得
-        let unit_status = UnitTypeSpec::get_spec(&self.unit_type_id.value()).unwrap();
+        let attacker_unit_status =
+            UnitTypeSpec::get_spec(&attacker_unit.unit_type_id().value()).unwrap();
+        let defence_unit_status =
+            UnitTypeSpec::get_spec(&defence_unit.unit_type_id().value()).unwrap();
         // アクションタイプに応じてcombatを生成
         if self.is_attack() {
             // action主を攻撃者、引数の防御側ユニットを防御者とするcombatを生成
             let combat = Combat::create(
-                self.unit_id.clone(),
-                self.position.clone(),
-                self.using_main_trigger_id.clone(),
-                self.using_sub_trigger_id.clone(),
-                self.main_trigger_azimuth.clone(),
-                self.sub_trigger_azimuth.clone(),
-                unit_status.base_attack(),
-                defence_unit.unit_id().clone(),
-                defence_unit.position().clone(),
-                defence_unit.using_main_trigger_id().clone(),
-                defence_unit.using_sub_trigger_id().clone(),
-                defence_unit.main_trigger_hp().value(),
-                defence_unit.sub_trigger_hp().value(),
-                defence_unit.main_trigger_azimuth().clone(),
-                defence_unit.sub_trigger_azimuth().clone(),
-                unit_status.base_defense(),
-                unit_status.base_avoid(),
+                attacker_unit,
+                attacker_unit_status.base_attack(),
+                defence_unit,
+                defence_unit_status.base_defense(),
+                defence_unit_status.base_avoid(),
                 visibility,
             );
 
@@ -218,6 +219,11 @@ impl Action {
         true
     }
 
+    /// セッター
+    pub fn set_current_action_points(&mut self, current_action_points: CurrentActionPoints) {
+        self.current_action_points = current_action_points;
+    }
+
     // ゲッター
     pub fn action_id(&self) -> &ActionId {
         &self.action_id
@@ -251,6 +257,9 @@ impl Action {
     }
     pub fn sub_trigger_azimuth(&self) -> &TriggerAzimuth {
         &self.sub_trigger_azimuth
+    }
+    pub fn current_action_points(&self) -> &CurrentActionPoints {
+        &self.current_action_points
     }
 }
 

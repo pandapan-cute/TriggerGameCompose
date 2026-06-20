@@ -11,10 +11,8 @@ mod tests {
                 models::unit::{
                     current_action_points::current_action_points::CurrentActionPoints,
                     having_trigger_ids::having_trigger_ids::HavingTriggerIds,
-                    is_bailout::is_bailout::IsBailout,
-                    main_trigger_hp::main_trigger_hp::MainTriggerHP, position::position::Position,
-                    sight_range::sight_range::SightRange,
-                    sub_trigger_hp::sub_trigger_hp::SubTriggerHP,
+                    is_bailout::is_bailout::IsBailout, position::position::Position,
+                    sight_range::sight_range::SightRange, trigger_hp::TriggerHP,
                     trigger_id::trigger_id::TriggerId, unit_id::unit_id::UnitId,
                     unit_type_id::unit_type_id::UnitTypeId, wait_time::wait_time::WaitTime, Unit,
                 },

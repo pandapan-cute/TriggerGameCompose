@@ -2,15 +2,14 @@ use crate::domain::player_management::models::player::player_id::player_id::Play
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
+use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
 use crate::domain::unit_management::models::unit_type::unit_type_spec::UnitTypeSpec;
 
 use super::current_action_points::current_action_points::CurrentActionPoints;
 use super::having_trigger_ids::having_trigger_ids::HavingTriggerIds;
 use super::is_bailout::is_bailout::IsBailout;
-use super::main_trigger_hp::main_trigger_hp::MainTriggerHP;
 use super::position::position::Position;
 use super::sight_range::sight_range::SightRange;
-use super::sub_trigger_hp::sub_trigger_hp::SubTriggerHP;
 use super::trigger_id::trigger_id::TriggerId;
 use super::unit_id::unit_id::UnitId;
 use super::unit_type_id::unit_type_id::UnitTypeId;
@@ -33,8 +32,8 @@ pub struct Unit {
     using_sub_trigger_id: TriggerId,
     having_main_trigger_ids: HavingTriggerIds,
     having_sub_trigger_ids: HavingTriggerIds,
-    main_trigger_hp: MainTriggerHP,
-    sub_trigger_hp: SubTriggerHP,
+    main_trigger_hp: TriggerHP,
+    sub_trigger_hp: TriggerHP,
     main_trigger_azimuth: TriggerAzimuth,
     sub_trigger_azimuth: TriggerAzimuth,
     sight_range: SightRange,
@@ -56,8 +55,8 @@ impl Unit {
         using_sub_trigger_id: TriggerId,
         having_main_trigger_ids: HavingTriggerIds,
         having_sub_trigger_ids: HavingTriggerIds,
-        main_trigger_hp: MainTriggerHP,
-        sub_trigger_hp: SubTriggerHP,
+        main_trigger_hp: TriggerHP,
+        sub_trigger_hp: TriggerHP,
         main_trigger_azimuth: TriggerAzimuth,
         sub_trigger_azimuth: TriggerAzimuth,
         sight_range: SightRange,
@@ -102,8 +101,8 @@ impl Unit {
         let unit_id = UnitId::new(Uuid::new_v4().to_string());
         let current_action_points = CurrentActionPoints::new(initial_action_points);
         let wait_time = WaitTime::new(0);
-        let main_trigger_hp = MainTriggerHP::new(initial_main_hp);
-        let sub_trigger_hp = SubTriggerHP::new(initial_sub_hp);
+        let main_trigger_hp = TriggerHP::new(initial_main_hp);
+        let sub_trigger_hp = TriggerHP::new(initial_sub_hp);
         let main_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
         let sub_trigger_azimuth = TriggerAzimuth::new(0); // 初期値は0にしておく
         let sight_range = SightRange::new(initial_sight_range);
@@ -144,8 +143,8 @@ impl Unit {
         using_sub_trigger_id: TriggerId,
         having_main_trigger_ids: HavingTriggerIds,
         having_sub_trigger_ids: HavingTriggerIds,
-        main_trigger_hp: MainTriggerHP,
-        sub_trigger_hp: SubTriggerHP,
+        main_trigger_hp: TriggerHP,
+        sub_trigger_hp: TriggerHP,
         sight_range: SightRange,
         is_bailout: IsBailout,
     ) -> Self {
@@ -222,10 +221,8 @@ impl Unit {
         if !self.having_sub_trigger_ids.contains(sub_trigger_id) {
             return Err("指定されたサブトリガーIDは所持していません".to_string());
         }
-        if self.current_action_points.value() > 0 {
-            self.using_main_trigger_id = main_trigger_id.clone();
-            self.using_sub_trigger_id = sub_trigger_id.clone();
-        }
+        self.using_main_trigger_id = main_trigger_id.clone();
+        self.using_sub_trigger_id = sub_trigger_id.clone();
         Ok(())
     }
 
@@ -250,6 +247,10 @@ impl Unit {
         self.current_action_points = CurrentActionPoints::new(new_value);
     }
 
+    pub fn set_current_action_points(&mut self, action_points: CurrentActionPoints) {
+        self.current_action_points = action_points;
+    }
+
     pub fn set_main_trigger_azimuth(&mut self, azimuth: TriggerAzimuth) {
         self.main_trigger_azimuth = azimuth;
     }
@@ -260,6 +261,34 @@ impl Unit {
 
     pub fn set_position(&mut self, position: Position) {
         self.position = position;
+    }
+
+    pub fn set_main_trigger_hp(&mut self, hp: TriggerHP) {
+        self.main_trigger_hp = hp;
+    }
+
+    pub fn set_sub_trigger_hp(&mut self, hp: TriggerHP) {
+        self.sub_trigger_hp = hp;
+    }
+
+    /// メイントリガーHPを回復
+    pub fn restore_main_trigger_hp(&mut self) {
+        self.main_trigger_hp.restore();
+    }
+
+    /// サブトリガーHPを回復
+    pub fn restore_sub_trigger_hp(&mut self) {
+        self.sub_trigger_hp.restore();
+    }
+
+    /// メイントリガーHPを減少
+    pub fn decrease_main_trigger_hp(&mut self, amount: i32) {
+        self.main_trigger_hp.decrease(amount);
+    }
+
+    /// サブトリガーHPを減少
+    pub fn decrease_sub_trigger_hp(&mut self, amount: i32) {
+        self.sub_trigger_hp.decrease(amount);
     }
 
     /// ベイルアウト
@@ -327,7 +356,7 @@ impl Unit {
         &self.having_sub_trigger_ids
     }
 
-    pub fn main_trigger_hp(&self) -> &MainTriggerHP {
+    pub fn main_trigger_hp(&self) -> &TriggerHP {
         &self.main_trigger_hp
     }
 
@@ -339,7 +368,7 @@ impl Unit {
         &self.sub_trigger_azimuth
     }
 
-    pub fn sub_trigger_hp(&self) -> &SubTriggerHP {
+    pub fn sub_trigger_hp(&self) -> &TriggerHP {
         &self.sub_trigger_hp
     }
 

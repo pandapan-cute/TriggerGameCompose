@@ -1,6 +1,7 @@
 // infrastructure/dynamodb/player_dynamodb_repository.rs
 
 use crate::config::env::resolve_table_name;
+use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
@@ -160,6 +161,15 @@ impl DynamoDbTurnRepository {
                                                             .to_string(),
                                                     ),
                                                 );
+                                                action_map.insert(
+                                                    "current_action_points".to_string(),
+                                                    AttributeValue::N(
+                                                        action
+                                                            .current_action_points()
+                                                            .value()
+                                                            .to_string(),
+                                                    ),
+                                                );
                                                 action_map
                                             })
                                         })
@@ -181,9 +191,9 @@ impl TurnRepository for DynamoDbTurnRepository {
     async fn save(&self, turn: &Turn) -> Result<(), String> {
         // Turnアイテムを保存
         let turn_item = self.turn_to_item(turn);
-            self.client
-                .put_item()
-                .table_name(self.turns_table.as_str())
+        self.client
+            .put_item()
+            .table_name(self.turns_table.as_str())
             .set_item(Some(turn_item))
             .send()
             .await
@@ -204,7 +214,7 @@ impl TurnRepository for DynamoDbTurnRepository {
         let request = self
             .client
             .update_item()
-                .table_name(self.turns_table.as_str())
+            .table_name(self.turns_table.as_str())
             .key(
                 "turn_id",
                 AttributeValue::S(turn.turn_id().value().to_string()),
@@ -355,6 +365,10 @@ impl TurnRepository for DynamoDbTurnRepository {
                             .get("sub_trigger_azimuth")
                             .and_then(|v| v.as_n().ok())
                             .ok_or("sub_trigger_azimuth not found")?;
+                        let current_action_points_str = action_map
+                            .get("current_action_points")
+                            .and_then(|v| v.as_n().ok())
+                            .ok_or("current_action_points not found")?;
 
                         let action = Action::reconstruct(
                             ActionId::new(action_id_str.to_string()),
@@ -377,6 +391,11 @@ impl TurnRepository for DynamoDbTurnRepository {
                             TriggerAzimuth::new(sub_trigger_azimuth_str.parse::<i32>().map_err(
                                 |e| format!("Failed to parse sub_trigger_azimuth: {}", e),
                             )?),
+                            CurrentActionPoints::new(
+                                current_action_points_str.parse::<i32>().map_err(|e| {
+                                    format!("Failed to parse current_action_points: {}", e)
+                                })?,
+                            ),
                         );
                         actions.push(action);
                     }

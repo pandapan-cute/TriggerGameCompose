@@ -1,5 +1,5 @@
 'use client';
-import { GridConfig } from "@/app/game/[gameId]/page";
+import { GridConfig } from "@/game-logics/types";
 import "phaser";
 
 /**

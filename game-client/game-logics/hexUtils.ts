@@ -155,30 +155,32 @@ export class HexUtils {
    * 六角形グリッドの移動可能なマスを取得
    * @param col 中心の列
    * @param row 中心の行
-   * @param activeCount キャラクターの残り行動力
+   * @param actionPoints キャラクターの残り行動力
    * @returns 移動可能なマスの座標と移動後の残り行動力の配列
    */
   getAdjacentHexes(
     col: number,
     row: number,
-    activeCount: number
-  ): { col: number; row: number; remainActiveCount: number; }[] {
-    if (activeCount <= 0) {
+    actionPoints: number,
+    remainSeconds: number
+  ): { col: number; row: number; remainActionPoints: number; remainSeconds: number; }[] {
+    if (actionPoints <= 0) {
       return [];
     }
 
-    const reachableHexes = new Map<string, number>(); // key: "col,row", value: remainingMoves
+    const reachableHexes = new Map<string, { remainActionPoints: number; remainSeconds: number; }>(); // key: "col,row", value: remainingMoves
     const queue: Array<{
       position: { col: number; row: number; };
       remainingMoves: number;
+      remainSeconds: number;
     }> = [];
 
     // 開始位置を追加（現在位置は移動可能なマスに含めない）
-    queue.push({ position: { col, row }, remainingMoves: activeCount });
-    reachableHexes.set(`${col},${row}`, activeCount);
+    queue.push({ position: { col, row }, remainingMoves: actionPoints, remainSeconds });
+    reachableHexes.set(`${col},${row}`, { remainActionPoints: actionPoints, remainSeconds });
 
     while (queue.length > 0) {
-      const { position, remainingMoves } = queue.shift()!;
+      const { position, remainingMoves, remainSeconds } = queue.shift()!;
 
       if (remainingMoves > 0) {
         // 隣接するマスを取得
@@ -190,17 +192,20 @@ export class HexUtils {
           const afterBuildingHeight = FIELD_STEPS[neighbor.row][neighbor.col]; // 建物の高さを取得
           const moveHeightDiff = Math.max(0, afterBuildingHeight - beforeBuildingHeight); // 高さの差分を計算
           const newRemainingMoves = remainingMoves - (moveHeightDiff + 1); // 移動コストを計算
+          const newRemainSeconds = remainSeconds - 1; // 残り秒数を1減らす
 
-          // まだ訪問していないマス、またはより多くの行動力で到達できる場合
+          // まだ訪問していないマス、またはより多くの残り行動力で到達できる場合
+          // 行動力を多く残すのを優先。残り時間はあんまり考えなくてOK。残り時間が0以下になったら移動できないので、残り時間も考慮する。
           if (
             (!reachableHexes.has(key) ||
-              reachableHexes.get(key)! < newRemainingMoves) &&
-            newRemainingMoves >= 0
+              reachableHexes.get(key)!.remainActionPoints < newRemainingMoves) &&
+            newRemainingMoves >= 0 && newRemainSeconds >= 0
           ) {
-            reachableHexes.set(key, newRemainingMoves);
+            reachableHexes.set(key, { remainActionPoints: newRemainingMoves, remainSeconds: newRemainSeconds });
             queue.push({
               position: neighbor,
               remainingMoves: newRemainingMoves,
+              remainSeconds: newRemainSeconds
             });
           }
         }
@@ -208,13 +213,14 @@ export class HexUtils {
     }
 
     // 開始位置を除いて結果を返す
-    const result: { col: number; row: number; remainActiveCount: number; }[] = [];
+    const result: { col: number; row: number; remainActionPoints: number; remainSeconds: number; }[] = [];
     for (const [key, value] of reachableHexes) {
       const [c, r] = key.split(",").map(Number);
       result.push({
         col: c,
         row: r,
-        remainActiveCount: Math.max(0, value)
+        remainActionPoints: Math.max(0, value.remainActionPoints),
+        remainSeconds: Math.max(0, value.remainSeconds)
       });
     }
     return result;

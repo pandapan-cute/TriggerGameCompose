@@ -67,13 +67,10 @@ export const useManageMatching = () => {
   // 接続リスナーのクリーンアップ
   useEffect(() => {
     // コンポーネントマウント時に接続を試みる
-    connect();
-
-    return () => {
-      removeConnectionListener("disconnect", () => { });
-      removeConnectionListener("connect", () => { });
-    };
-  }, [removeConnectionListener, connect]);
+    if (!isConnected) {
+      connect();
+    }
+  }, [connect, isConnected]);
 
   // 画面の向きが変わったときの処理
   const { isMobilePortrait } = useDeviceOrientation({
@@ -89,21 +86,6 @@ export const useManageMatching = () => {
     }
   });
 
-  // ws切断したらマッチング中断にする
-  addConnectionListener("disconnect", () => {
-    if (matchingStatus === "InProgress") {
-      setMatchingStatus("Interrupted");
-    }
-  });
-
-  // ws接続したらマッチング開始する（ただしモバイル縦画面のときは開始しない）
-  addConnectionListener("connect", () => {
-    console.log("WebSocketに接続されました。");
-    if (matchingStatus !== "InProgress" && isMobilePortrait === false) {
-      startMatchmaking();
-    }
-  });
-
   /** マッチングキャンセル送信処理 */
   const sendCancelMatching = useCallback(() => {
     sendMessage({
@@ -116,6 +98,11 @@ export const useManageMatching = () => {
   const startMatchmaking = useCallback(() => {
     if (!playerId) {
       console.error("プレイヤーIDが存在しません。マッチングを開始できません。");
+      return;
+    }
+
+    if (matchingStatus === "InProgress") {
+      console.warn("すでにマッチングが進行中です。");
       return;
     }
 
@@ -165,13 +152,36 @@ export const useManageMatching = () => {
     // Stateの更新は、この関数が「呼び出されたとき」に1回だけ行う
     setMatchingStatus("InProgress");
     console.log("マッチング開始メッセージを送信しました");
-  }, [playerId, sendMessage]);
+  }, [matchingStatus, playerId, sendMessage]);
 
   // --- マッチングをキャンセルする専用の関数 ---
   const handleCancelMatching = useCallback(() => {
     sendCancelMatching();
     setMatchingStatus("NotStarted");
   }, [sendCancelMatching]);
+
+  // 接続イベントはここで1回だけ登録してクリーンアップする
+  useEffect(() => {
+    const onDisconnect = () => {
+      if (matchingStatus === "InProgress") {
+        setMatchingStatus("Interrupted");
+      }
+    };
+
+    const onConnect = () => {
+      if (matchingStatus !== "InProgress" && isMobilePortrait === false) {
+        startMatchmaking();
+      }
+    };
+
+    addConnectionListener("disconnect", onDisconnect);
+    addConnectionListener("connect", onConnect);
+
+    return () => {
+      removeConnectionListener("disconnect", onDisconnect);
+      removeConnectionListener("connect", onConnect);
+    };
+  }, [addConnectionListener, removeConnectionListener, matchingStatus, isMobilePortrait, startMatchmaking]);
 
   /** マッチングのキャンセルと画面の移動 */
   const cancelMatching = useCallback(() => {

@@ -5,9 +5,12 @@ use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::{
     configs::game_config::GameConfig, models::game::visibility,
 };
+use crate::domain::unit_management::models::unit::current_action_points::current_action_points::CurrentActionPoints;
 use crate::domain::unit_management::models::unit::position::position::Position;
+use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
 use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
 use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
+use crate::domain::unit_management::models::unit::{current_action_points, Unit};
 
 use super::combat_id::combat_id::CombatId;
 use super::is_avoided::is_avoided::IsAvoided;
@@ -33,8 +36,8 @@ pub struct Combat {
     defender_sub_trigger_id: TriggerId,
     defender_main_trigger_azimuth: TriggerAzimuth,
     defender_sub_trigger_azimuth: TriggerAzimuth,
-    main_trigger_hp: i32,
-    sub_trigger_hp: i32,
+    main_trigger_hp: TriggerHP,
+    sub_trigger_hp: TriggerHP,
     defender_base_defense: i32,
     defender_base_avoid: i32,
     is_avoided: IsAvoided,
@@ -72,8 +75,8 @@ impl Combat {
         defender_sub_trigger_azimuth: TriggerAzimuth,
         defender_base_defense: i32,
         defender_base_avoid: i32,
-        main_trigger_hp: i32,
-        sub_trigger_hp: i32,
+        main_trigger_hp: TriggerHP,
+        sub_trigger_hp: TriggerHP,
         is_avoided: IsAvoided,
         is_defeated: bool,
     ) -> Self {
@@ -103,64 +106,66 @@ impl Combat {
 
     /// 新規戦闘の生成
     pub fn create(
-        attacking_unit_id: UnitId,
-        attacker_position: Position,
-        attacker_main_trigger_id: TriggerId,
-        attacker_sub_trigger_id: TriggerId,
-        attacker_main_trigger_azimuth: TriggerAzimuth,
-        attacker_sub_trigger_azimuth: TriggerAzimuth,
+        attacker_unit: &mut Unit,
         attacker_base_attack: i32,
-        defending_unit_id: UnitId,
-        defender_position: Position,
-        defender_main_trigger_id: TriggerId,
-        defender_sub_trigger_id: TriggerId,
-        main_trigger_hp: i32,
-        sub_trigger_hp: i32,
-        defender_main_trigger_azimuth: TriggerAzimuth,
-        defender_sub_trigger_azimuth: TriggerAzimuth,
+        defender_unit: &mut Unit,
         defender_base_defense: i32,
         defender_base_avoid: i32,
         visibility: &mut Visibility,
     ) -> Option<Self> {
         // 攻撃側のメイントリガーが防御側に当たる可能性があるか確認
         let is_main_trigger_hit = Self::check_trigger_in_range_and_angle(
-            &attacker_position,
-            &attacker_main_trigger_id,
-            &attacker_main_trigger_azimuth,
-            &defender_position,
+            &attacker_unit.position(),
+            &attacker_unit.using_main_trigger_id(),
+            &attacker_unit.main_trigger_azimuth(),
+            &defender_unit.position(),
         );
         // 攻撃側のサブトリガーが防御側に当たる可能性があるか確認
         let is_sub_trigger_hit = Self::check_trigger_in_range_and_angle(
-            &attacker_position,
-            &attacker_sub_trigger_id,
-            &attacker_sub_trigger_azimuth,
-            &defender_position,
+            &attacker_unit.position(),
+            &attacker_unit.using_sub_trigger_id(),
+            &attacker_unit.sub_trigger_azimuth(),
+            &defender_unit.position(),
         );
         // 攻撃側側から見て防御側が見えているか確認
-        let is_defender_visible =
-            visibility.check_combat_visibility(&attacker_position, &defender_position);
+        let is_defender_visible = visibility
+            .check_combat_visibility(&attacker_unit.position(), &defender_unit.position());
         if (!is_main_trigger_hit && !is_sub_trigger_hit) || !is_defender_visible {
             // 射程外 かつ 角度の範囲外　または 視界外の場合はNoneを返す
             return None;
         }
 
+        // 以降の処理に進む場合、攻撃は実行されたものとするため、攻撃側の行動力を消費する
+        if is_main_trigger_hit {
+            let _ = attacker_unit.consume_action_points(
+                TriggerStatus::get_trigger_status(attacker_unit.using_main_trigger_id().value())
+                    .action_points(),
+            );
+        }
+        if is_sub_trigger_hit {
+            let _ = attacker_unit.consume_action_points(
+                TriggerStatus::get_trigger_status(attacker_unit.using_sub_trigger_id().value())
+                    .action_points(),
+            );
+        }
+
         let defender_main_trigger_status =
-            TriggerStatus::get_trigger_status(defender_main_trigger_id.value());
+            TriggerStatus::get_trigger_status(defender_unit.using_main_trigger_id().value());
         let defender_sub_trigger_status =
-            TriggerStatus::get_trigger_status(defender_sub_trigger_id.value());
+            TriggerStatus::get_trigger_status(defender_unit.using_sub_trigger_id().value());
 
         // 防御側のメイントリガーが攻撃者に向いているか確認
         let is_defender_facing_attacker_main = Self::check_trigger_in_angle(
-            &defender_position,
-            &attacker_position,
-            defender_main_trigger_azimuth.value(),
+            &defender_unit.position(),
+            &attacker_unit.position(),
+            defender_unit.main_trigger_azimuth().value(),
             defender_main_trigger_status.angle(),
         );
         // 防御側のサブトリガーが攻撃者に向いているか確認
         let is_defender_facing_attacker_sub = Self::check_trigger_in_angle(
-            &defender_position,
-            &attacker_position,
-            defender_sub_trigger_azimuth.value(),
+            &defender_unit.position(),
+            &attacker_unit.position(),
+            defender_unit.sub_trigger_azimuth().value(),
             defender_sub_trigger_status.angle(),
         );
 
@@ -182,11 +187,6 @@ impl Combat {
         };
         let is_avoided = Self::calculate_avoidance(defender_base_avoid, trigger_avoid);
 
-        // メイントリガーの残HP
-        let mut main_trigger_hp = main_trigger_hp;
-        // サブトリガーの残HP
-        let mut sub_trigger_hp = sub_trigger_hp;
-
         if !is_avoided.value() {
             // ダメージ量の計算
             let guard_pattern = Self::determine_guard_pattern(
@@ -198,55 +198,91 @@ impl Combat {
 
             match guard_pattern {
                 GuardPattern::Full => {
-                    // 両防御の場合
-                    let (main_trigger_damage, sub_trigger_damage) =
-                        Self::calculate_full_guard_damage(
-                            attacker_base_attack,
-                            defender_base_defense,
-                            TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
-                                .attack()
-                                + TriggerStatus::get_trigger_status(
-                                    attacker_sub_trigger_id.value(),
-                                )
-                                .attack(),
-                            defender_main_trigger_status.defense(),
-                            defender_sub_trigger_status.defense(),
-                            main_trigger_hp,
-                            sub_trigger_hp,
+                    // 行動力があれば２つのシールドを貼り直し(トリガーHPを全回復)
+                    if defender_unit.current_action_points().value()
+                        >= defender_main_trigger_status.action_points()
+                            + defender_sub_trigger_status.action_points()
+                    {
+                        defender_unit.restore_main_trigger_hp();
+                        defender_unit.restore_sub_trigger_hp();
+                        let _ = defender_unit.consume_action_points(
+                            defender_main_trigger_status.action_points()
+                                + defender_sub_trigger_status.action_points(),
                         );
+                    }
 
-                    main_trigger_hp -= main_trigger_damage;
-                    sub_trigger_hp -= sub_trigger_damage;
+                    // 両防御の場合
+                    Self::calculate_full_guard_damage(
+                        attacker_base_attack,
+                        defender_base_defense,
+                        TriggerStatus::get_trigger_status(
+                            attacker_unit.using_main_trigger_id().value(),
+                        )
+                        .attack()
+                            + TriggerStatus::get_trigger_status(
+                                attacker_unit.using_sub_trigger_id().value(),
+                            )
+                            .attack(),
+                        defender_main_trigger_status.defense(),
+                        defender_sub_trigger_status.defense(),
+                        defender_unit,
+                    );
 
-                    if main_trigger_hp <= 0 || sub_trigger_hp <= 0 {
+                    if defender_unit.main_trigger_hp().is_depleted()
+                        || defender_unit.sub_trigger_hp().is_depleted()
+                    {
                         is_defeated = true;
                     }
                 }
                 GuardPattern::MainOnly => {
+                    // 行動力があればメイントリガーのシールドを貼り直し(トリガーHPを全回復)
+                    if defender_unit.current_action_points().value()
+                        >= defender_main_trigger_status.action_points()
+                    {
+                        defender_unit.restore_main_trigger_hp();
+                        let _ = defender_unit
+                            .consume_action_points(defender_main_trigger_status.action_points());
+                    }
                     // 片方防御の場合（メイントリガーのみ防御）
                     let damage = Self::calculate_partial_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
-                        TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
-                            .attack()
-                            + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
-                                .attack(),
+                        TriggerStatus::get_trigger_status(
+                            attacker_unit.using_main_trigger_id().value(),
+                        )
+                        .attack()
+                            + TriggerStatus::get_trigger_status(
+                                attacker_unit.using_sub_trigger_id().value(),
+                            )
+                            .attack(),
                         defender_main_trigger_status.defense(),
                     );
-                    main_trigger_hp -= damage;
+                    defender_unit.decrease_main_trigger_hp(damage);
                 }
                 GuardPattern::SubOnly => {
+                    // 行動力があればサブトリガーのシールドを貼り直し(トリガーHPを全回復)
+                    if defender_unit.current_action_points().value()
+                        >= defender_sub_trigger_status.action_points()
+                    {
+                        defender_unit.restore_sub_trigger_hp();
+                        let _ = defender_unit
+                            .consume_action_points(defender_sub_trigger_status.action_points());
+                    }
                     // 片方防御の場合（サブトリガーのみ防御）
                     let damage = Self::calculate_partial_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
-                        TriggerStatus::get_trigger_status(attacker_main_trigger_id.value())
-                            .attack()
-                            + TriggerStatus::get_trigger_status(attacker_sub_trigger_id.value())
-                                .attack(),
+                        TriggerStatus::get_trigger_status(
+                            attacker_unit.using_main_trigger_id().value(),
+                        )
+                        .attack()
+                            + TriggerStatus::get_trigger_status(
+                                attacker_unit.using_sub_trigger_id().value(),
+                            )
+                            .attack(),
                         defender_sub_trigger_status.defense(),
                     );
-                    sub_trigger_hp -= damage;
+                    defender_unit.decrease_sub_trigger_hp(damage);
                 }
                 GuardPattern::None => {
                     // 両トリガーが防御トリガーでないときは即撃墜
@@ -257,23 +293,23 @@ impl Combat {
 
         Some(Self::new(
             CombatId::new(Uuid::new_v4().to_string()),
-            attacking_unit_id,
-            attacker_position,
-            attacker_main_trigger_id,
-            attacker_sub_trigger_id,
-            attacker_main_trigger_azimuth,
-            attacker_sub_trigger_azimuth,
+            attacker_unit.unit_id().clone(),
+            attacker_unit.position().clone(),
+            attacker_unit.using_main_trigger_id().clone(),
+            attacker_unit.using_sub_trigger_id().clone(),
+            attacker_unit.main_trigger_azimuth().clone(),
+            attacker_unit.sub_trigger_azimuth().clone(),
             attacker_base_attack,
-            defending_unit_id,
-            defender_position,
-            defender_main_trigger_id,
-            defender_sub_trigger_id,
-            defender_main_trigger_azimuth,
-            defender_sub_trigger_azimuth,
+            defender_unit.unit_id().clone(),
+            defender_unit.position().clone(),
+            defender_unit.using_main_trigger_id().clone(),
+            defender_unit.using_sub_trigger_id().clone(),
+            defender_unit.main_trigger_azimuth().clone(),
+            defender_unit.sub_trigger_azimuth().clone(),
             defender_base_defense,
             defender_base_avoid,
-            main_trigger_hp,
-            sub_trigger_hp,
+            defender_unit.main_trigger_hp().clone(),
+            defender_unit.sub_trigger_hp().clone(),
             is_avoided,
             is_defeated,
         ))
@@ -417,9 +453,8 @@ impl Combat {
         trigger_attack: i32,
         main_trigger_defense: i32,
         sub_trigger_defense: i32,
-        main_trigger_hp: i32,
-        sub_trigger_hp: i32,
-    ) -> (i32, i32) {
+        defender_unit: &mut Unit,
+    ) {
         let game_config = GameConfig::get_game_config();
 
         let mut damage = ((attack * trigger_attack) as f64) * game_config.damage_weight()
@@ -433,14 +468,20 @@ impl Combat {
         }
 
         // ダメージを HP の比率で分散
-        let total_hp = (main_trigger_hp + sub_trigger_hp) as f64;
-        let main_trigger_damage = damage * (main_trigger_hp as f64) / total_hp;
-        let sub_trigger_damage = damage * (sub_trigger_hp as f64) / total_hp;
+        let total_hp = (defender_unit.main_trigger_hp().value()
+            + defender_unit.sub_trigger_hp().value()) as f64;
+        let main_trigger_damage =
+            damage * (defender_unit.main_trigger_hp().value() as f64) / total_hp;
+        let sub_trigger_damage =
+            damage * (defender_unit.sub_trigger_hp().value() as f64) / total_hp;
 
-        (
-            main_trigger_damage.floor() as i32,
-            sub_trigger_damage.floor() as i32,
-        )
+        // (
+        //     main_trigger_damage.floor() as i32,
+        //     sub_trigger_damage.floor() as i32,
+        // )
+
+        defender_unit.decrease_main_trigger_hp(main_trigger_damage.floor() as i32);
+        defender_unit.decrease_sub_trigger_hp(sub_trigger_damage.floor() as i32);
     }
 
     /// 片方トリガーでの防御の場合のダメージを計算
@@ -465,12 +506,12 @@ impl Combat {
     }
 
     // ゲッター
-    pub fn main_trigger_hp(&self) -> i32 {
-        self.main_trigger_hp
+    pub fn main_trigger_hp(&self) -> &TriggerHP {
+        &self.main_trigger_hp
     }
 
-    pub fn sub_trigger_hp(&self) -> i32 {
-        self.sub_trigger_hp
+    pub fn sub_trigger_hp(&self) -> &TriggerHP {
+        &self.sub_trigger_hp
     }
 
     pub fn is_avoided(&self) -> bool {

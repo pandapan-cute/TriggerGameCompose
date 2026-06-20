@@ -23,6 +23,7 @@ pub struct EnemyUnitDto {
     pub using_main_trigger_id: String,
     pub using_sub_trigger_id: String,
     pub is_bailout: bool,
+    pub current_action_points: i32,
 }
 
 impl EnemyUnitDto {
@@ -54,6 +55,7 @@ impl EnemyUnitDto {
                 using_main_trigger_id: TriggerId::new("UNKNOWN".to_string()).value().to_string(), // トリガーIDも不明にする
                 using_sub_trigger_id: TriggerId::new("UNKNOWN".to_string()).value().to_string(), // トリガーのIDも不明にする
                 is_bailout: enemy_unit.is_bailout_value().value(),
+                current_action_points: enemy_unit.current_action_points().value(),
             };
         }
         if action_visible == false {
@@ -65,6 +67,7 @@ impl EnemyUnitDto {
                 using_main_trigger_id: TriggerId::new("UNKNOWN".to_string()).value().to_string(), // トリガーIDも不明にする
                 using_sub_trigger_id: TriggerId::new("UNKNOWN".to_string()).value().to_string(), // トリガーのIDも不明にする
                 is_bailout: enemy_unit.is_bailout_value().value(),
+                current_action_points: enemy_unit.current_action_points().value(),
             };
         }
 
@@ -76,6 +79,7 @@ impl EnemyUnitDto {
             using_main_trigger_id: enemy_unit.using_main_trigger_id().value().to_string(),
             using_sub_trigger_id: enemy_unit.using_sub_trigger_id().value().to_string(),
             is_bailout: enemy_unit.is_bailout_value().value(),
+            current_action_points: enemy_unit.current_action_points().value(),
         };
     }
 

@@ -47,6 +47,8 @@ impl StepExecutionService {
         // 3) 有効射程に基づいてcombatを生成する。
         self.generate_combats(step, units, visibility)?;
 
+        // 4) actionの行動力を更新
+        self.update_action_points(step, units);
         Ok(())
     }
 
@@ -123,24 +125,12 @@ impl StepExecutionService {
 
             unit.move_to(action.position().clone(), visibility);
 
-            // 目的: トリガー更新に必要な行動ポイントを満たしているか判定する。
-            if unit.current_action_points().value() >= ACTION_POINT_CAN_UPDATE_TRIGGER {
-                // この分岐に入る条件: 行動ポイントが必要値以上でトリガー更新可能な場合。
-                let _ = unit.set_using_triggers(
-                    &action.using_main_trigger_id(),
-                    &action.using_sub_trigger_id(),
-                );
-                unit.set_main_trigger_azimuth(action.main_trigger_azimuth().clone());
-                unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
-            } else {
-                // この分岐に入る条件: 行動ポイント不足でトリガー更新不可な場合。
-                println!(
-                    "トリガーの更新に必要な行動ポイントが不足しています。unit_id={:?}, current_action_points={}, required_action_points={}",
-                    unit.unit_id(),
-                    unit.current_action_points().value(),
-                    ACTION_POINT_CAN_UPDATE_TRIGGER
-                );
-            }
+            let _ = unit.set_using_triggers(
+                &action.using_main_trigger_id(),
+                &action.using_sub_trigger_id(),
+            );
+            unit.set_main_trigger_azimuth(action.main_trigger_azimuth().clone());
+            unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
         }
 
         // actionが未指定のユニットには待機アクションを補完する。
@@ -167,6 +157,7 @@ impl StepExecutionService {
                     unit.using_sub_trigger_id().clone(),
                     unit.main_trigger_azimuth().clone(),
                     unit.sub_trigger_azimuth().clone(),
+                    unit.current_action_points().clone(),
                 )
             })
             .collect::<Vec<_>>();
@@ -199,7 +190,7 @@ impl StepExecutionService {
         const ACTION_POINT_CAN_ATTACK: i32 = 1;
 
         // 攻撃側の検索を安定させるため、探索用にユニットをクローンする。
-        let attack_units = units.clone();
+        let mut attack_units = units.clone();
         let mut generated_combats = Vec::new();
 
         // 各攻撃側アクションごとに:
@@ -208,7 +199,7 @@ impl StepExecutionService {
         // - combatを生成してpush
         for action in step.actions() {
             let Some(attack_unit) = attack_units
-                .iter()
+                .iter_mut()
                 .find(|u| u.unit_id() == action.unit_id())
             else {
                 return Err(format!(
@@ -244,7 +235,8 @@ impl StepExecutionService {
                 }
 
                 // 目的: 射程・視界などの条件を満たす場合のみcombatを生成する。
-                if let Some(combat) = action.generate_combats(defence_unit, visibility) {
+                if let Some(combat) = action.generate_combats(attack_unit, defence_unit, visibility)
+                {
                     // この分岐に入る条件: combat生成条件を満たし、Some(combat)が返る場合。
                     generated_combats.push(combat);
                 }
@@ -256,6 +248,26 @@ impl StepExecutionService {
         }
 
         Ok(())
+    }
+
+    /// actionの行動力を更新する
+    ///
+    /// # 引数
+    /// - `step`: 更新対象アクションを持つStep。
+    /// - `units`: 行動力が保持されているユニット一覧配列
+    pub fn update_action_points(&self, step: &mut Step, units: &Vec<Unit>) {
+        // 移動元:
+        // - src/domain/triggergame_simulator/models/step/step.rs
+        // - Step::step_start の「1. アクションとユニットの整合性チェック」
+
+        // action -> unit の対応を検証し、不一致時はドメインエラーを返す。
+        for action in step.actions_mut() {
+            // 目的: 各アクションが存在するユニットを参照しているかを検証する。
+            if let Some(unit) = units.iter().find(|u| u.unit_id() == action.unit_id()) {
+                // actionの行動力を更新
+                action.set_current_action_points(unit.current_action_points().clone());
+            }
+        }
     }
 }
 
@@ -312,6 +324,7 @@ mod tests {
             TriggerId::new("BAGWORM".to_string()),
             TriggerAzimuth::new(45),
             TriggerAzimuth::new(270),
+            unit.current_action_points().clone(),
         );
 
         Step::create(
@@ -340,27 +353,6 @@ mod tests {
         assert_eq!(
             units[0].using_sub_trigger_id(),
             &TriggerId::new("BAGWORM".to_string())
-        );
-    }
-
-    #[test]
-    fn test_apply_action_movements_does_not_update_trigger_when_ap_is_less_than_boundary() {
-        // 仕様: APが1未満ならトリガー更新は拒否される。
-        let mut units = vec![create_unit_with_ap(0)];
-        let mut step = create_step_for(&units[0]);
-        let mut visibility = Visibility::create();
-
-        StepExecutionService::new()
-            .apply_action_movements(&mut step, &mut units, &mut visibility)
-            .unwrap();
-
-        assert_eq!(
-            units[0].using_main_trigger_id(),
-            &TriggerId::new("KOGETSU".to_string())
-        );
-        assert_eq!(
-            units[0].using_sub_trigger_id(),
-            &TriggerId::new("SHIELD".to_string())
         );
     }
 }

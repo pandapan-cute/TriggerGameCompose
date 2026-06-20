@@ -217,7 +217,10 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   });
 
   useEffect(() => {
-    onRenderEffectEvent();
+    const cleanup = onRenderEffectEvent();
+    return () => {
+      if (typeof cleanup === "function") cleanup();
+    };
   }, []);  // 空の依存配列で初回のみ実行
 
   return (

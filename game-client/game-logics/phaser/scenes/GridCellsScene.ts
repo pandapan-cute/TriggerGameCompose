@@ -3,13 +3,11 @@ import { FieldViewState } from "../../entities/FieldViewState";
 import { GameView } from "../../GameView";
 import { HexUtils } from "../../hexUtils";
 import { BackCanvasTexture } from "../textures/BackCanvasTexture";
-import { GridConfig } from "../../types";
 import "phaser";
 import { UnitImageLoader } from "./loader/UnitImageLoader";
 import { GameAssetsLoader } from "./loader/GameAssetsLoader";
 import { GameCamera } from "../cameras/GameCamera";
 import { CharacterManager } from "@/game-logics/characterManager";
-import { CHARACTER_STATUS } from "@/game-logics/config/status";
 import { PlayerCharacterState } from "@/game-logics/entities/PlayerCharacterState";
 import { EnemyCharacterState } from "@/game-logics/entities/EnemyCharacterState";
 import { HighLightCell } from "../game-objects/graphics/HighLightCell";
@@ -31,6 +29,7 @@ import {
 import { FieldViewService } from "./services/FieldViewService";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { GameResult } from "@/types/GameTypes";
+import { GRID_CONFIG, MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
 
 /**
  * グリッドセルを管理するPhaserのシーン
@@ -72,16 +71,7 @@ export class GridCellsScene extends Phaser.Scene {
   private pendingTurn: Turn | null = null;
 
   /** グリッドの設定値 */
-  private gridConfig: GridConfig = {
-    gridSize: 32,
-    gridWidth: 36,
-    gridHeight: 36,
-    hexRadius: 24,
-    hexWidth: 24 * 2,
-    hexHeight: 24 * Math.sqrt(3),
-    marginLeft: 0,
-    marginTop: 0,
-  };
+  private gridConfig = GRID_CONFIG;
   /** グリッドフィールドの関数群 */
   private hexUtils!: HexUtils;
   /** ゲーム表示関連のクラス */
@@ -248,8 +238,8 @@ export class GridCellsScene extends Phaser.Scene {
       fieldViewState: this.fieldViewState,
       hexUtils: this.hexUtils,
       gridConfig: this.gridConfig,
-      consumeActionPoint: (remainingMoves: number) => {
-        this.turnPlanner?.consumeActionPoint(remainingMoves);
+      consumeActionPoint: (remainingMoves: number, remainingSeconds: number) => {
+        this.turnPlanner?.consumeActionPointRemainSeconds(remainingMoves, remainingSeconds);
       },
       startTriggerSetting: () => {
         this.triggerSettingController?.startTriggerSetting();
@@ -321,6 +311,9 @@ export class GridCellsScene extends Phaser.Scene {
       characterManager: this.characterManager,
       turn: this.turn,
       hexUtils: this.hexUtils,
+      clearSelection: () => {
+        this.selectionService?.clearSelection();
+      },
       sendServerTurn: (steps: Step[]) => {
         this.sendServerTurn(steps);
       },
@@ -335,6 +328,9 @@ export class GridCellsScene extends Phaser.Scene {
       scene: this,
       hexUtils: this.hexUtils,
       characterManager: this.characterManager,
+      clearSelection: () => {
+        this.selectionService?.clearSelection();
+      },
       onReplayCompleted: (turnNumber: number) => {
         this.handleFinishMotionExecute(turnNumber);
       },
@@ -351,8 +347,8 @@ export class GridCellsScene extends Phaser.Scene {
       clearPlannedSteps: () => {
         this.turnPlanner?.clearPlannedSteps();
       },
-      restoreActionPointsText: () => {
-        this.characterManager.setAllActionPointsText(this);
+      restoreActionPointsRemainSecondsText: () => {
+        this.characterManager.setAllActionPointsRemainSecondsText(this);
       },
       updateFieldViewVisibility: () => {
         return this.fieldViewService?.updateVisibility();
@@ -457,9 +453,8 @@ export class GridCellsScene extends Phaser.Scene {
   private createCharacters() {
     // 自分のキャラクターを配置
     this.friendUnits.forEach((unit) => {
-      const status = CHARACTER_STATUS[unit.unitTypeId as keyof typeof CHARACTER_STATUS];
       const playerCharacterState = new PlayerCharacterState(
-        status.activeCount,
+        MAX_UNIT_EXEC_SECONDS, // 初期の行動可能秒数を設定
         this,
         unit,
         this.hexUtils,

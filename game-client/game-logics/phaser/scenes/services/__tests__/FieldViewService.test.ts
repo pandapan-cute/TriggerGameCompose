@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { FieldViewService } from "../FieldViewService";
 import { HexUtils } from "@/game-logics/hexUtils";
-import { GridConfig } from "@/game-logics/types";
+import { GRID_CONFIG } from "@/game-logics/config/game-config";
 
 /**
  * FieldViewService の視界計算ロジックをテストする。
@@ -11,16 +11,7 @@ import { GridConfig } from "@/game-logics/types";
  */
 describe("FieldViewService visibility checks", () => {
   /** グリッドの設定値 */
-  const gridConfig: GridConfig = {
-    gridSize: 32,
-    gridWidth: 36,
-    gridHeight: 36,
-    hexRadius: 24,
-    hexWidth: 24 * 2,
-    hexHeight: 24 * Math.sqrt(3),
-    marginLeft: 0,
-    marginTop: 0,
-  };
+  const gridConfig = GRID_CONFIG;
   const makeService = () => {
     const deps = {
       characterManager: { playerCharacters: [] } as any,

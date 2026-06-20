@@ -17,7 +17,7 @@ export interface SelectionServiceDeps {
   fieldViewState: FieldViewState;
   hexUtils: HexUtils;
   gridConfig: GridConfig;
-  consumeActionPoint: (remainingMoves: number) => void;
+  consumeActionPoint: (remainingMoves: number, remainingSeconds: number) => void;
   startTriggerSetting: () => void;
   resetTriggerSettingState: () => void;
   updateFieldViewVisibility: () => boolean[][] | undefined;
@@ -55,7 +55,9 @@ export class SelectionService {
           "選択中のキャラクターをクリック: トリガー設定モードに入ります"
         );
         const actionPoints = characterAtPosition.getActionPoints() || 0;
-        this.deps.consumeActionPoint(actionPoints - 1);
+        const remainingSeconds = characterAtPosition.getRemainSeconds() || 0;
+        // 行動力は消費せず、残り秒数のみを消費する
+        this.deps.consumeActionPoint(actionPoints, remainingSeconds - 1);
         this.deps.startTriggerSetting();
       } else {
         // 未選択の別キャラクターをクリックした場合: 対象を選択状態にする。
@@ -71,10 +73,15 @@ export class SelectionService {
         this.deps.characterManager.playerCharacters.find(
           (char) => char.image === this.deps.characterManager.selectedCharacter?.image
         )?.getActionPoints() || 0;
+      const remainSeconds =
+        this.deps.characterManager.playerCharacters.find(
+          (char) => char.image === this.deps.characterManager.selectedCharacter?.image
+        )?.getRemainSeconds() || 0;
       const adjacentHexes = this.deps.hexUtils.getAdjacentHexes(
         this.deps.characterManager.selectedCharacter.position.col,
         this.deps.characterManager.selectedCharacter.position.row,
-        actionPoints
+        actionPoints,
+        remainSeconds
       );
 
       const movableHex = adjacentHexes.find(
@@ -92,9 +99,9 @@ export class SelectionService {
         this.moveSelectedCharacter(col, row);
         this.deps.startTriggerSetting();
         console.log(
-          `キャラクターを移動: (${col}, ${row}, AP残り:${movableHex.remainActiveCount})`
+          `キャラクターを移動: (${col}, ${row}, AP残り:${movableHex.remainActionPoints}, 残り秒数:${movableHex.remainSeconds})`
         );
-        this.deps.consumeActionPoint(movableHex.remainActiveCount);
+        this.deps.consumeActionPoint(movableHex.remainActionPoints, movableHex.remainSeconds);
       } else {
         // 移動不可マスをクリックした場合: 選択を解除する。
         this.clearSelection();
@@ -113,8 +120,8 @@ export class SelectionService {
   public selectCharacter(characterImage: Phaser.GameObjects.Image): void {
     const selectedCharacter =
       this.deps.characterManager.findPlayerCharacterByImage(characterImage);
-    // 行動力が残っているキャラクターかを判定する。
-    if (selectedCharacter && selectedCharacter.getActionPoints() <= 0) {
+    // 残り時間があるキャラクターかを判定する。
+    if (selectedCharacter && selectedCharacter.getRemainSeconds() <= 0) {
       console.log("このキャラクターは既に行動が完了しています。");
       return;
     }
@@ -156,10 +163,12 @@ export class SelectionService {
     }
 
     const actionPoints = selectedCharacter.getActionPoints() || 0;
+    const remainSeconds = selectedCharacter.getRemainSeconds() || 0;
     const adjacentHexes = this.deps.hexUtils.getAdjacentHexes(
       this.deps.characterManager.selectedCharacter.position.col,
       this.deps.characterManager.selectedCharacter.position.row,
-      actionPoints
+      actionPoints,
+      remainSeconds
     );
 
     const currentPos = this.deps.hexUtils.getHexPosition(
@@ -196,7 +205,7 @@ export class SelectionService {
               fillAlpha: 0.4,
               lineColor: 0x00aa00,
               lineAlpha: 1.0,
-              lineWidth: 2,
+              lineWidth: 2.4,
               depth: 0.8,
             }
           );

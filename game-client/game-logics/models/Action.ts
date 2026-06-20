@@ -27,6 +27,7 @@ export class Action {
   private usingSubTriggerId: string;
   private mainTriggerAzimuth: number;
   private subTriggerAzimuth: number;
+  private currentActionPoints?: number;
 
   constructor(
     actionType: ActionType,
@@ -36,7 +37,8 @@ export class Action {
     usingMainTriggerId: string,
     usingSubTriggerId: string,
     mainTriggerAzimuth: number,
-    subTriggerAzimuth: number
+    subTriggerAzimuth: number,
+    currentActionPoints?: number
   ) {
     this.actionId = crypto.randomUUID();
     this.actionType = actionType;
@@ -47,6 +49,7 @@ export class Action {
     this.usingSubTriggerId = usingSubTriggerId;
     this.mainTriggerAzimuth = mainTriggerAzimuth;
     this.subTriggerAzimuth = subTriggerAzimuth;
+    this.currentActionPoints = currentActionPoints;
   }
 
   static fromJSON(rawAction: unknown): Action {
@@ -97,5 +100,9 @@ export class Action {
 
   getSubTriggerAzimuth(): number {
     return this.subTriggerAzimuth;
+  }
+
+  getCurrentActionPoints(): number {
+    return this.currentActionPoints ?? 0;
   }
 }

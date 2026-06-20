@@ -1,22 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { HexUtils } from "@/game-logics/hexUtils";
-import { GridConfig } from "@/game-logics/types";
+import { GRID_CONFIG } from "../config/game-config";
 
 /**
  * HexUtils の経路探索ロジックをテストする。
  */
 describe("HexUtils pathfinding", () => {
   /** グリッドの設定値 */
-  const gridConfig: GridConfig = {
-    gridSize: 32,
-    gridWidth: 36,
-    gridHeight: 36,
-    hexRadius: 24,
-    hexWidth: 24 * 2,
-    hexHeight: 24 * Math.sqrt(3),
-    marginLeft: 0,
-    marginTop: 0,
-  };
+  const gridConfig = GRID_CONFIG;
 
   it("findPath: (4,33)から(6,22)は高低差込みの低コスト経路を返す", () => {
     const hexUtils = new HexUtils(gridConfig);
@@ -49,16 +40,7 @@ describe("HexUtils pathfinding", () => {
  */
 describe("HexUtils distance", () => {
   /** グリッドの設定値 */
-  const gridConfig: GridConfig = {
-    gridSize: 32,
-    gridWidth: 36,
-    gridHeight: 36,
-    hexRadius: 24,
-    hexWidth: 24 * 2,
-    hexHeight: 24 * Math.sqrt(3),
-    marginLeft: 0,
-    marginTop: 0,
-  };
+  const gridConfig = GRID_CONFIG;
 
   it("calculateHexDistance: (20,27)から(27,8)の距離がバックエンド側と等しい", () => {
     const hexUtils = new HexUtils(gridConfig);

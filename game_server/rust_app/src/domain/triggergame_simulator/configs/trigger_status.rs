@@ -14,6 +14,8 @@ pub struct TriggerStatus {
     avoid: i32,
     /// 防御力
     defense: i32,
+    /// 消費行動力
+    action_points: i32,
 }
 
 impl TriggerStatus {
@@ -29,6 +31,7 @@ impl TriggerStatus {
                     attack: 8,
                     avoid: 5,
                     defense: 0,
+                    action_points: 1,
                 },
             ),
             (
@@ -40,6 +43,7 @@ impl TriggerStatus {
                     attack: 6,
                     avoid: 3,
                     defense: 10,
+                    action_points: 1,
                 },
             ),
             (
@@ -51,6 +55,7 @@ impl TriggerStatus {
                     attack: 8,
                     avoid: 10,
                     defense: 0,
+                    action_points: 1,
                 },
             ),
             (
@@ -62,6 +67,7 @@ impl TriggerStatus {
                     attack: 4,
                     avoid: 10,
                     defense: 0,
+                    action_points: 1,
                 },
             ),
             (
@@ -73,6 +79,7 @@ impl TriggerStatus {
                     attack: 10,
                     avoid: 3,
                     defense: 0,
+                    action_points: 2,
                 },
             ),
             (
@@ -84,6 +91,7 @@ impl TriggerStatus {
                     attack: 0,
                     avoid: 10,
                     defense: 5,
+                    action_points: 1,
                 },
             ),
             (
@@ -95,6 +103,7 @@ impl TriggerStatus {
                     attack: 0,
                     avoid: 10,
                     defense: 0,
+                    action_points: 1,
                 },
             ),
         ]);
@@ -128,6 +137,10 @@ impl TriggerStatus {
     pub fn avoid(&self) -> i32 {
         self.avoid
     }
+
+    pub fn action_points(&self) -> i32 {
+        self.action_points
+    }
 }
 
 impl Clone for TriggerStatus {
@@ -139,6 +152,7 @@ impl Clone for TriggerStatus {
             attack: self.attack,
             avoid: self.avoid,
             defense: self.defense,
+            action_points: self.action_points,
         }
     }
 }

@@ -18,6 +18,8 @@ export interface TurnReplayControllerDeps {
   scene: Phaser.Scene;
   hexUtils: HexUtils;
   characterManager: CharacterManager;
+  /** キャラクターの選択を解除する */
+  clearSelection: () => void;
   onReplayCompleted: (turnNumber: number) => void;
   clearTriggerArrows?: () => void;
   setActionMode?: (isActionMode: boolean) => void;
@@ -43,6 +45,8 @@ export class TurnReplayController {
    */
   public executeTurn(turn: Turn): void {
     this.deps.characterManager.setAllActionPointsRemainSecondsTextToNull();
+    // ユニットの行動開始前に選択をクリアする
+    this.deps.clearSelection();
 
     this.deps.scene.time.delayedCall(2000, () => {
       this.executeStep(turn, 0);

@@ -311,6 +311,9 @@ export class GridCellsScene extends Phaser.Scene {
       characterManager: this.characterManager,
       turn: this.turn,
       hexUtils: this.hexUtils,
+      clearSelection: () => {
+        this.selectionService?.clearSelection();
+      },
       sendServerTurn: (steps: Step[]) => {
         this.sendServerTurn(steps);
       },
@@ -325,6 +328,9 @@ export class GridCellsScene extends Phaser.Scene {
       scene: this,
       hexUtils: this.hexUtils,
       characterManager: this.characterManager,
+      clearSelection: () => {
+        this.selectionService?.clearSelection();
+      },
       onReplayCompleted: (turnNumber: number) => {
         this.handleFinishMotionExecute(turnNumber);
       },

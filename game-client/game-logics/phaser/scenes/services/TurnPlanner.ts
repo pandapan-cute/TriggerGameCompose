@@ -17,6 +17,8 @@ export interface TurnPlannerDeps {
   characterManager: CharacterManager;
   turn: Turn;
   hexUtils: HexUtils;
+  /** キャラクターの選択を解除する */
+  clearSelection: () => void;
   sendServerTurn: (steps: Step[]) => void;
 }
 
@@ -268,6 +270,7 @@ export class TurnPlanner {
     }
     this.motionLabEndTimeout = this.runAt(endTime, () => {
       this.fillIncompleteActions();
+      this.deps.clearSelection();
       this.deps.sendServerTurn(this.deps.turn.getSteps());
     });
   }

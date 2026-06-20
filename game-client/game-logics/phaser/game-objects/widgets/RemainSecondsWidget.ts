@@ -13,6 +13,12 @@ export class RemainSecondsWidget {
 
   constructor(private scene: Phaser.Scene) { }
 
+  /**
+   * 残り時間表示を更新する
+   * @param pixelPos 表示位置のピクセル座標
+   * @param remainSeconds 残り時間（秒）
+   * @returns void
+   */
   public updateRemainSecondsDisplay(pixelPos: { x: number; y: number; }, remainSeconds: number) {
     if (this.remainSecondsText && this.remainSecondsImage) {
 

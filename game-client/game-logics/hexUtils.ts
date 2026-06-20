@@ -107,7 +107,7 @@ export class HexUtils {
 
     const dx = worldMouseX - centerX;
     const dy = worldMouseY - centerY;
-    let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    let angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90; // 0度を上方向にするために90度補正
     if (angle < 0) angle += 360;
     return Math.round(angle);
   }

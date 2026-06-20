@@ -1,5 +1,6 @@
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+use crate::domain::triggergame_simulator::models::action::Action;
 use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
 use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
 use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
@@ -182,25 +183,25 @@ impl Unit {
     /// ベイルアウト済みのユニットは移動できない  
     ///
     /// 行動ポイントが不足している場合は移動できない  
-    pub fn move_to(&mut self, new_position: Position, visibility: &mut Visibility) -> bool {
+    pub fn move_to(&mut self, action: &mut Action, visibility: &mut Visibility) -> bool {
         if self.is_bailout.is_bailout() {
             return false;
         }
         // 現在位置と同じなら移動しない
-        if self.position == new_position {
+        if self.position == *action.position() {
             return false;
         }
         // 移動に必要な行動ポイントを取得
         let required_action_points =
-            visibility.get_action_points_for_move(&self.position, &new_position);
+            visibility.get_action_points_for_move(&self.position, action.position());
 
         if self.current_action_points.value() < required_action_points {
             // 行動ポイントが不足している場合は移動できない
+            action.set_position(self.position.clone()); // 移動できないので位置を元に戻す
             return false;
         }
-        self.position = new_position;
-        self.current_action_points =
-            CurrentActionPoints::new(self.current_action_points.value() - required_action_points);
+        self.position = action.position().clone();
+        let _ = self.consume_action_points(required_action_points);
         true
     }
 
@@ -284,11 +285,21 @@ impl Unit {
     /// メイントリガーHPを減少
     pub fn decrease_main_trigger_hp(&mut self, amount: i32) {
         self.main_trigger_hp.decrease(amount);
+
+        if self.main_trigger_hp.value() <= 0 {
+            // メイントリガーが破壊された場合、ユニットはベイルアウトする
+            self.bailout();
+        }
     }
 
     /// サブトリガーHPを減少
     pub fn decrease_sub_trigger_hp(&mut self, amount: i32) {
         self.sub_trigger_hp.decrease(amount);
+
+        if self.sub_trigger_hp.value() <= 0 {
+            // サブトリガーが破壊された場合、ユニットはベイルアウトする
+            self.bailout();
+        }
     }
 
     /// ベイルアウト

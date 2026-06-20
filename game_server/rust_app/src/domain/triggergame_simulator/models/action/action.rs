@@ -224,6 +224,10 @@ impl Action {
         self.current_action_points = current_action_points;
     }
 
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
+    }
+
     // ゲッター
     pub fn action_id(&self) -> &ActionId {
         &self.action_id

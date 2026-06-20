@@ -3,9 +3,16 @@ mod tests {
     use crate::{
         domain::{
             player_management::models::player::player_id::player_id::PlayerId,
-            triggergame_simulator::models::game::{
-                game_id::game_id::GameId,
-                visibility::{self, Visibility},
+            triggergame_simulator::models::{
+                action::{
+                    action_type::action_type::{ActionType, ActionTypeValue},
+                    trigger_azimuth::trigger_azimuth::TriggerAzimuth,
+                    Action,
+                },
+                game::{
+                    game_id::game_id::GameId,
+                    visibility::{self, Visibility},
+                },
             },
             unit_management::{
                 models::unit::{
@@ -73,8 +80,19 @@ mod tests {
     async fn test_update_unit() {
         let mut unit = create_test_unit();
         let mut visibility = Visibility::create();
+        let mut action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            UnitId::new(Uuid::new_v4().to_string()),
+            UnitTypeId::new(Uuid::new_v4().to_string()),
+            Position::new(7, 12),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(5),
+        );
         // ユニットの状態を更新
-        unit.move_to(Position::new(7, 12), &mut visibility);
+        unit.move_to(&mut action, &mut visibility);
         unit.consume_action_points(1).unwrap();
 
         // UpdateItemの成功レスポンスをモック

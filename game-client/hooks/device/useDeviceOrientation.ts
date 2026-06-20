@@ -36,7 +36,7 @@ export default function useDeviceOrientation({ onOrientationChange }: UseDeviceO
 
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', () => {
-      setTimeout(checkOrientation, 100); // orientationchange後の遅延
+      checkOrientation();
     });
 
     return () => {

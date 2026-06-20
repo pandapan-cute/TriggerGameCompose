@@ -1,6 +1,11 @@
 #[cfg(test)]
 mod tests {
     use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
+    use crate::domain::triggergame_simulator::models::action::action_type::action_type::{
+        ActionType, ActionTypeValue,
+    };
+    use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+    use crate::domain::triggergame_simulator::models::action::Action;
     use crate::domain::triggergame_simulator::models::game::game_id::game_id::GameId;
     use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use crate::domain::unit_management::models::unit::trigger_hp::TriggerHP;
@@ -35,11 +40,21 @@ mod tests {
 
     #[test]
     fn test_move_to() {
+        let mut action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            UnitId::new(Uuid::new_v4().to_string()),
+            UnitTypeId::new(Uuid::new_v4().to_string()),
+            Position::new(5, 5),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(5),
+        );
         let mut unit = create_test_unit();
-        let new_position = Position::new(5, 5);
         let mut visibility = Visibility::create();
 
-        unit.move_to(new_position.clone(), &mut visibility);
+        unit.move_to(&mut action, &mut visibility);
 
         assert_eq!(unit.position().col(), 5);
         assert_eq!(unit.position().row(), 5);
@@ -48,10 +63,20 @@ mod tests {
 
     #[test]
     fn test_move_to_insufficient_action_points() {
+        let mut action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            UnitId::new(Uuid::new_v4().to_string()),
+            UnitTypeId::new(Uuid::new_v4().to_string()),
+            Position::new(5, 5),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(5),
+        );
         let mut unit = create_test_0_action_points_unit();
-        let new_position = Position::new(5, 5);
         let mut visibility = Visibility::create();
-        let result = unit.move_to(new_position, &mut visibility);
+        let result = unit.move_to(&mut action, &mut visibility);
         assert!(!result);
     }
 
@@ -60,9 +85,19 @@ mod tests {
         let mut unit = create_test_unit();
         unit.bailout();
 
-        let new_position = Position::new(5, 5);
+        let mut action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            UnitId::new(Uuid::new_v4().to_string()),
+            UnitTypeId::new(Uuid::new_v4().to_string()),
+            Position::new(5, 5),
+            TriggerId::new("IBIS".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(5),
+        );
         let mut visibility = Visibility::create();
-        let result = unit.move_to(new_position, &mut visibility);
+        let result = unit.move_to(&mut action, &mut visibility);
 
         assert!(!result);
     }

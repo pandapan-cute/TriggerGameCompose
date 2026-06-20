@@ -101,13 +101,11 @@ impl StepExecutionService {
         // - src/domain/triggergame_simulator/models/step/step.rs
         // - Step::step_start の「2. アクションに従ってユニットの移動と使用トリガーの設定」
 
-        const ACTION_POINT_CAN_UPDATE_TRIGGER: i32 = 1;
-
         // 各アクションごとに:
         // - 離脱済みユニットはスキップ
         // - ユニットを移動
         // - 行動ポイント条件を満たす場合にトリガーID/方位角を更新
-        for action in step.actions() {
+        for action in step.actions_mut() {
             let Some(unit) = units.iter_mut().find(|u| u.unit_id() == action.unit_id()) else {
                 return Err(format!(
                     "ユニットID {:?} がアクション {:?} に見つかりません",
@@ -123,7 +121,7 @@ impl StepExecutionService {
                 continue;
             }
 
-            unit.move_to(action.position().clone(), visibility);
+            unit.move_to(action, visibility);
 
             let _ = unit.set_using_triggers(
                 &action.using_main_trigger_id(),
@@ -189,8 +187,6 @@ impl StepExecutionService {
 
         const ACTION_POINT_CAN_ATTACK: i32 = 1;
 
-        // 攻撃側の検索を安定させるため、探索用にユニットをクローンする。
-        let mut attack_units = units.clone();
         let mut generated_combats = Vec::new();
 
         // 各攻撃側アクションごとに:
@@ -198,46 +194,59 @@ impl StepExecutionService {
         // - 敵ユニットを走査
         // - combatを生成してpush
         for action in step.actions() {
-            let Some(attack_unit) = attack_units
-                .iter_mut()
-                .find(|u| u.unit_id() == action.unit_id())
-            else {
-                return Err(format!(
+            // `units` 内のインデックスを見つける。クローンせずに直接 `units` を操作する。
+            let attack_idx = units
+                .iter()
+                .position(|u| u.unit_id() == action.unit_id())
+                .ok_or(format!(
                     "ユニットID {:?} がアクション {:?} に見つかりません",
                     action.unit_id(),
                     action.action_id()
-                ));
-            };
+                ))?;
 
-            // 目的: 攻撃可能条件(行動ポイント)を満たすか判定する。
-            if attack_unit.current_action_points().value() < ACTION_POINT_CAN_ATTACK {
-                // この分岐に入る条件: 行動ポイント不足で攻撃不可な場合。
+            // 行動ポイントや離脱状態のチェックは一時的に共有参照で行う。
+            if units[attack_idx].current_action_points().value() < ACTION_POINT_CAN_ATTACK {
+                // 行動ポイント不足で攻撃不可な場合。
+                // 各トリガーでの攻撃可能な行動力が残っているかは、combat生成時に個別に判定されるため、ここではスキップする。
                 continue;
             }
-            // 目的: 離脱済みユニットの攻撃処理を除外する。
-            if attack_unit.is_bailed_out() {
-                // この分岐に入る条件: 攻撃側ユニットが離脱済みの場合。
-                println!("ユニットID {:?} の攻撃をスキップ", attack_unit.unit_id());
+            if units[attack_idx].is_bailed_out() {
+                println!(
+                    "ユニットID {:?} の攻撃をスキップ",
+                    units[attack_idx].unit_id()
+                );
                 continue;
             }
 
-            for defence_unit in units.iter_mut() {
-                // 目的: 同一プレイヤー間の戦闘判定を除外する。
-                if attack_unit.owner_player_id() == defence_unit.owner_player_id() {
-                    // この分岐に入る条件: 攻撃側と防御側が同一プレイヤー所属の場合。
+            // 防御側は全ユニットを走査する（同一プレイヤーや離脱済みを除外）。
+            for defence_idx in 0..units.len() {
+                if attack_idx == defence_idx {
                     continue;
                 }
-                // 目的: 離脱済みの防御側ユニットは戦闘対象外にする。
+
+                // `split_at_mut` によって同じベクタから同時に2つの可変参照を作る。
+                // (指定したインデックスを境界にして「左側」と「右側」の2つの可変スライスに分割する関数)
+                let (attack_unit, defence_unit) = if attack_idx < defence_idx {
+                    let (left, right) = units.split_at_mut(defence_idx);
+                    (&mut left[attack_idx], &mut right[0])
+                } else {
+                    let (left, right) = units.split_at_mut(attack_idx);
+                    (&mut right[0], &mut left[defence_idx])
+                };
+
+                // 同一プレイヤー間の戦闘判定を除外する。
+                if attack_unit.owner_player_id() == defence_unit.owner_player_id() {
+                    continue;
+                }
+                // 離脱済みの防御側ユニットは戦闘対象外にする。
                 if defence_unit.is_bailed_out() {
-                    // この分岐に入る条件: 防御側ユニットが離脱済みの場合。
                     println!("ユニットID {:?} の戦闘をスキップ", defence_unit.unit_id());
                     continue;
                 }
 
-                // 目的: 射程・視界などの条件を満たす場合のみcombatを生成する。
+                // 射程・視界などの条件を満たす場合のみcombatを生成する。
                 if let Some(combat) = action.generate_combats(attack_unit, defence_unit, visibility)
                 {
-                    // この分岐に入る条件: combat生成条件を満たし、Some(combat)が返る場合。
                     generated_combats.push(combat);
                 }
             }

@@ -45,6 +45,18 @@ pub struct Combat {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AttackPattern {
+    /// 両攻撃
+    Full,
+    /// メイントリガー攻撃
+    MainOnly,
+    /// サブトリガー攻撃
+    SubOnly,
+    /// 攻撃なし
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum GuardPattern {
     /// 両防御
     Full,
@@ -114,39 +126,63 @@ impl Combat {
         visibility: &mut Visibility,
     ) -> Option<Self> {
         // 攻撃側のメイントリガーが防御側に当たる可能性があるか確認
-        let is_main_trigger_hit = Self::check_trigger_in_range_and_angle(
+        let in_main_trigger_area = Self::check_trigger_in_range_and_angle(
             &attacker_unit.position(),
             &attacker_unit.using_main_trigger_id(),
             &attacker_unit.main_trigger_azimuth(),
             &defender_unit.position(),
         );
         // 攻撃側のサブトリガーが防御側に当たる可能性があるか確認
-        let is_sub_trigger_hit = Self::check_trigger_in_range_and_angle(
+        let in_sub_trigger_area = Self::check_trigger_in_range_and_angle(
             &attacker_unit.position(),
             &attacker_unit.using_sub_trigger_id(),
             &attacker_unit.sub_trigger_azimuth(),
             &defender_unit.position(),
         );
+
+        // 攻撃者側のメイントリガーの必要行動力
+        let attacker_main_trigger_action_point =
+            TriggerStatus::get_trigger_status(attacker_unit.using_main_trigger_id().value())
+                .action_points();
+        // 攻撃者側のサブトリガーの必要行動力
+        let attacker_sub_trigger_action_point =
+            TriggerStatus::get_trigger_status(attacker_unit.using_sub_trigger_id().value())
+                .action_points();
+
+        // 攻撃パターンの判定
+        let attack_pattern = Self::determine_attack_pattern(
+            in_main_trigger_area,
+            TriggerStatus::get_trigger_status(attacker_unit.using_main_trigger_id().value())
+                .attack(),
+            in_sub_trigger_area,
+            TriggerStatus::get_trigger_status(attacker_unit.using_sub_trigger_id().value())
+                .attack(),
+            attacker_unit.current_action_points().value(),
+            attacker_main_trigger_action_point,
+            attacker_sub_trigger_action_point,
+        );
+
         // 攻撃側側から見て防御側が見えているか確認
         let is_defender_visible = visibility
             .check_combat_visibility(&attacker_unit.position(), &defender_unit.position());
-        if (!is_main_trigger_hit && !is_sub_trigger_hit) || !is_defender_visible {
-            // 射程外 かつ 角度の範囲外　または 視界外の場合はNoneを返す
+        if attack_pattern == AttackPattern::None || !is_defender_visible {
+            // 攻撃できない　または 視界外の場合はNoneを返す
             return None;
         }
 
-        // 以降の処理に進む場合、攻撃は実行されたものとするため、攻撃側の行動力を消費する
-        if is_main_trigger_hit {
-            let _ = attacker_unit.consume_action_points(
-                TriggerStatus::get_trigger_status(attacker_unit.using_main_trigger_id().value())
-                    .action_points(),
-            );
-        }
-        if is_sub_trigger_hit {
-            let _ = attacker_unit.consume_action_points(
-                TriggerStatus::get_trigger_status(attacker_unit.using_sub_trigger_id().value())
-                    .action_points(),
-            );
+        match attack_pattern {
+            AttackPattern::Full => {
+                let _ = attacker_unit.consume_action_points(
+                    attacker_main_trigger_action_point + attacker_sub_trigger_action_point,
+                );
+            }
+            AttackPattern::MainOnly => {
+                let _ = attacker_unit.consume_action_points(attacker_main_trigger_action_point);
+            }
+            AttackPattern::SubOnly => {
+                let _ = attacker_unit.consume_action_points(attacker_sub_trigger_action_point);
+            }
+            AttackPattern::None => {}
         }
 
         let defender_main_trigger_status =
@@ -188,7 +224,25 @@ impl Combat {
         let is_avoided = Self::calculate_avoidance(defender_base_avoid, trigger_avoid);
 
         if !is_avoided.value() {
-            // ダメージ量の計算
+            // まず攻撃パターンに基づき、実際に発動した攻撃の攻撃値をトリガー毎に計算する
+            let attacker_main_attack = match attack_pattern {
+                AttackPattern::Full | AttackPattern::MainOnly => {
+                    TriggerStatus::get_trigger_status(attacker_unit.using_main_trigger_id().value())
+                        .attack()
+                }
+                _ => 0,
+            };
+            let attacker_sub_attack = match attack_pattern {
+                AttackPattern::Full | AttackPattern::SubOnly => {
+                    TriggerStatus::get_trigger_status(attacker_unit.using_sub_trigger_id().value())
+                        .attack()
+                }
+                _ => 0,
+            };
+            // 攻撃値の合計
+            let total_trigger_attack = attacker_main_attack + attacker_sub_attack;
+
+            // 防御側のトリガーの向きと防御力からガードパターンを判定する
             let guard_pattern = Self::determine_guard_pattern(
                 is_defender_facing_attacker_main,
                 defender_main_trigger_status.defense(),
@@ -196,6 +250,7 @@ impl Combat {
                 defender_sub_trigger_status.defense(),
             );
 
+            // ガードパターンに基づきダメージ計算を行い、防御側のHPを減少させる
             match guard_pattern {
                 GuardPattern::Full => {
                     // 行動力があれば２つのシールドを貼り直し(トリガーHPを全回復)
@@ -215,14 +270,7 @@ impl Combat {
                     Self::calculate_full_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
-                        TriggerStatus::get_trigger_status(
-                            attacker_unit.using_main_trigger_id().value(),
-                        )
-                        .attack()
-                            + TriggerStatus::get_trigger_status(
-                                attacker_unit.using_sub_trigger_id().value(),
-                            )
-                            .attack(),
+                        total_trigger_attack,
                         defender_main_trigger_status.defense(),
                         defender_sub_trigger_status.defense(),
                         defender_unit,
@@ -247,14 +295,7 @@ impl Combat {
                     let damage = Self::calculate_partial_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
-                        TriggerStatus::get_trigger_status(
-                            attacker_unit.using_main_trigger_id().value(),
-                        )
-                        .attack()
-                            + TriggerStatus::get_trigger_status(
-                                attacker_unit.using_sub_trigger_id().value(),
-                            )
-                            .attack(),
+                        total_trigger_attack,
                         defender_main_trigger_status.defense(),
                     );
                     defender_unit.decrease_main_trigger_hp(damage);
@@ -272,14 +313,7 @@ impl Combat {
                     let damage = Self::calculate_partial_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
-                        TriggerStatus::get_trigger_status(
-                            attacker_unit.using_main_trigger_id().value(),
-                        )
-                        .attack()
-                            + TriggerStatus::get_trigger_status(
-                                attacker_unit.using_sub_trigger_id().value(),
-                            )
-                            .attack(),
+                        total_trigger_attack,
                         defender_sub_trigger_status.defense(),
                     );
                     defender_unit.decrease_sub_trigger_hp(damage);
@@ -413,6 +447,85 @@ impl Combat {
         }
     }
 
+    /// 攻撃パターンの判定
+    /// * 両攻撃：
+    ///     * 攻撃者の両トリガーの範囲内に防御者がいる
+    ///     * 両トリガーの攻撃力が0より大きい
+    ///     * 両トリガーの必要行動力を足し合わせた値が、攻撃者の現在の行動力以下である
+    /// * メイントリガー攻撃：
+    ///     * 攻撃者のメイントリガーの範囲内に防御者がいる
+    ///     * メイントリガーの攻撃力が0より大きい
+    ///     * メイントリガーの必要行動力が、攻撃者の現在の行動力以下である
+    ///     * 以下のいずれかの条件を満たす：
+    ///         * サブトリガーの範囲内に防御者がいない、またはサブトリガーの攻撃力が0である、またはサブトリガーの必要行動力が攻撃者の現在の行動力を超えている（サブで攻撃不可能）
+    ///         * サブトリガー単体は発動可能だが、メインとサブの必要行動力を足し合わせた値が攻撃者の現在の行動力を超えている（両方は撃てないためメインを優先）
+    /// * サブトリガー攻撃：
+    ///     * 攻撃者のサブトリガーの範囲内に防御者がいる
+    ///     * サブトリガーの攻撃力が0より大きい
+    ///     * サブトリガーの必要行動力が、攻撃者の現在の行動力以下である
+    ///     * メイントリガーの範囲内に防御者がいない、またはメイントリガーの攻撃力が0である、またはメイントリガーの必要行動力が、攻撃者の現在の行動力を超えている
+    ///      （メインが攻撃不可能な場合のみ、サブ単独攻撃が発生する）
+    /// * 攻撃なし：
+    ///     * 攻撃者の両トリガーの範囲内に防御者がいない、または両トリガーの攻撃力が0である、または攻撃者の現在の行動力が、有効なトリガーの最低必要行動力を下回っている
+    ///
+    /// # Arguments
+    /// * `in_main_trigger_area` - 攻撃者のメイントリガーの範囲内にが防御者がいるか
+    /// * `attacker_main_trigger_attack` - 攻撃者のメイントリガーの攻撃力
+    /// * `in_sub_trigger_area` - 攻撃者のサブトリガーの範囲内に防御者がいるか
+    /// * `attacker_sub_trigger_attack` - 攻撃者のサブトリガーの攻撃力
+    /// * `attacker_current_action_points` - 攻撃者の現在の行動力
+    /// * `attacker_main_trigger_action_points` - 攻撃者のメイントリガーの必要行動力
+    /// * `attacker_sub_trigger_action_points` - 攻撃者のサブトリガーの必要行動力
+    pub(super) fn determine_attack_pattern(
+        in_main_trigger_area: bool,
+        attacker_main_trigger_attack: i32,
+        in_sub_trigger_area: bool,
+        attacker_sub_trigger_attack: i32,
+        attacker_current_action_points: i32,
+        attacker_main_trigger_action_points: i32,
+        attacker_sub_trigger_action_points: i32,
+    ) -> AttackPattern {
+        // 両攻撃: 両方のトリガーが有効かつ合計行動力以内
+        if in_main_trigger_area
+            && attacker_main_trigger_attack > 0
+            && in_sub_trigger_area
+            && attacker_sub_trigger_attack > 0
+            && attacker_current_action_points
+                >= (attacker_main_trigger_action_points + attacker_sub_trigger_action_points)
+        {
+            AttackPattern::Full
+        // メイントリガー攻撃:
+        // メインが発動可能で、かつ以下のいずれかを満たす場合
+        // - サブが範囲外、またはサブの攻撃力が0、またはサブが行動不能
+        // - サブ単体は発動可能だが、メイン+サブの合計が現在の行動力を超える（両方撃てないためメインを優先）
+        } else if in_main_trigger_area
+            && attacker_main_trigger_attack > 0
+            && attacker_current_action_points >= attacker_main_trigger_action_points
+            && (!in_sub_trigger_area
+                || attacker_sub_trigger_attack == 0
+                || attacker_current_action_points < attacker_sub_trigger_action_points
+                || (in_sub_trigger_area
+                    && attacker_sub_trigger_attack > 0
+                    && attacker_current_action_points >= attacker_sub_trigger_action_points
+                    && attacker_current_action_points
+                        < (attacker_main_trigger_action_points
+                            + attacker_sub_trigger_action_points)))
+        {
+            AttackPattern::MainOnly
+        // サブトリガー攻撃: サブが発動可能で、かつメインが発動不能な場合のみ
+        } else if in_sub_trigger_area
+            && attacker_sub_trigger_attack > 0
+            && attacker_current_action_points >= attacker_sub_trigger_action_points
+            && (!in_main_trigger_area
+                || attacker_main_trigger_attack == 0
+                || attacker_current_action_points < attacker_main_trigger_action_points)
+        {
+            AttackPattern::SubOnly
+        } else {
+            AttackPattern::None
+        }
+    }
+
     /// ガードパターンの判定
     /// * 両防御：攻撃者に向いているトリガーが両方とも防御トリガーで、防御力が0より大きい
     /// * メイントリガー防御：攻撃者に向いているトリガーがメイントリガーで、防御力が0より大きい、かつサブトリガーが攻撃者に向いていないか、防御力が0のとき
@@ -474,11 +587,6 @@ impl Combat {
             damage * (defender_unit.main_trigger_hp().value() as f64) / total_hp;
         let sub_trigger_damage =
             damage * (defender_unit.sub_trigger_hp().value() as f64) / total_hp;
-
-        // (
-        //     main_trigger_damage.floor() as i32,
-        //     sub_trigger_damage.floor() as i32,
-        // )
 
         defender_unit.decrease_main_trigger_hp(main_trigger_damage.floor() as i32);
         defender_unit.decrease_sub_trigger_hp(sub_trigger_damage.floor() as i32);

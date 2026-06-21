@@ -252,20 +252,29 @@ impl Combat {
             // ガードパターンに基づきダメージ計算を行い、防御側のHPを減少させる
             match guard_pattern {
                 GuardPattern::Full => {
-                    // 行動力があれば２つのシールドを貼り直し(トリガーHPを全回復)
+                    // メイントリガー貼り直せる行動力がある かつ このステップでまだ防御していない場合はメイントリガーのシールドを貼り直す
                     if defender_unit.current_action_points().value()
                         >= defender_main_trigger_status.action_points()
-                            + defender_sub_trigger_status.action_points()
+                        && !defender_unit.is_main_trigger_guarded()
                     {
                         defender_unit.restore_main_trigger_hp();
-                        defender_unit.restore_sub_trigger_hp();
-                        let _ = defender_unit.consume_action_points(
-                            defender_main_trigger_status.action_points()
-                                + defender_sub_trigger_status.action_points(),
-                        );
+                        defender_unit.set_is_main_trigger_guarded(true);
+                        let _ = defender_unit
+                            .consume_action_points(defender_main_trigger_status.action_points());
                     }
 
-                    // 両防御の場合
+                    // サブトリガー貼り直せる行動力がある かつ このステップでまだ防御していない場合はサブトリガーのシールドを貼り直す
+                    if defender_unit.current_action_points().value()
+                        >= defender_sub_trigger_status.action_points()
+                        && !defender_unit.is_sub_trigger_guarded()
+                    {
+                        defender_unit.restore_sub_trigger_hp();
+                        defender_unit.set_is_sub_trigger_guarded(true);
+                        let _ = defender_unit
+                            .consume_action_points(defender_sub_trigger_status.action_points());
+                    }
+
+                    // 両防御の場合のダメージ計算を行う
                     Self::calculate_full_guard_damage(
                         attacker_base_attack,
                         defender_base_defense,
@@ -276,11 +285,13 @@ impl Combat {
                     );
                 }
                 GuardPattern::MainOnly => {
-                    // 行動力があればメイントリガーのシールドを貼り直し(トリガーHPを全回復)
+                    // メイントリガー貼り直せる行動力がある かつ このステップでまだ防御していない場合はメイントリガーのシールドを貼り直す
                     if defender_unit.current_action_points().value()
                         >= defender_main_trigger_status.action_points()
+                        && !defender_unit.is_main_trigger_guarded()
                     {
                         defender_unit.restore_main_trigger_hp();
+                        defender_unit.set_is_main_trigger_guarded(true);
                         let _ = defender_unit
                             .consume_action_points(defender_main_trigger_status.action_points());
                     }
@@ -297,8 +308,10 @@ impl Combat {
                     // 行動力があればサブトリガーのシールドを貼り直し(トリガーHPを全回復)
                     if defender_unit.current_action_points().value()
                         >= defender_sub_trigger_status.action_points()
+                        && !defender_unit.is_sub_trigger_guarded()
                     {
                         defender_unit.restore_sub_trigger_hp();
+                        defender_unit.set_is_sub_trigger_guarded(true);
                         let _ = defender_unit
                             .consume_action_points(defender_sub_trigger_status.action_points());
                     }
@@ -430,9 +443,10 @@ impl Combat {
     /// 回避計算の実行
     fn calculate_avoidance(defender_base_avoid: i32, trigger_avoid: i32) -> IsAvoided {
         // 仮の実装、ランダムで回避成功・失敗を決定
-        let random_value = rand::random::<f64>();
-        let avoid_chance = (defender_base_avoid as f64) * (trigger_avoid as f64)
-            / (GameConfig::get_game_config().avoid_weight() as f64);
+        let random_value = rand::random::<f64>() * 100.0; // 0から100のランダムな値を生成
+        let avoid_chance = (defender_base_avoid as f64)
+            * (trigger_avoid as f64)
+            * GameConfig::get_game_config().avoid_weight();
         if random_value < avoid_chance {
             IsAvoided::new(true)
         } else {

@@ -39,6 +39,10 @@ pub struct Unit {
     sub_trigger_azimuth: TriggerAzimuth,
     sight_range: SightRange,
     is_bailout: IsBailout,
+    /// ステップ内でメイントリガーでガードしたか
+    is_main_trigger_guarded: bool,
+    /// ステップ内でサブトリガーでガードしたか
+    is_sub_trigger_guarded: bool,
 }
 
 impl Unit {
@@ -81,6 +85,8 @@ impl Unit {
             sub_trigger_azimuth,
             sight_range,
             is_bailout,
+            is_main_trigger_guarded: false,
+            is_sub_trigger_guarded: false,
         }
     }
 
@@ -272,6 +278,14 @@ impl Unit {
         self.sub_trigger_hp = hp;
     }
 
+    pub fn set_is_main_trigger_guarded(&mut self, is_guarded: bool) {
+        self.is_main_trigger_guarded = is_guarded;
+    }
+
+    pub fn set_is_sub_trigger_guarded(&mut self, is_guarded: bool) {
+        self.is_sub_trigger_guarded = is_guarded;
+    }
+
     /// メイントリガーHPを回復
     pub fn restore_main_trigger_hp(&mut self) {
         self.main_trigger_hp.restore();
@@ -389,6 +403,14 @@ impl Unit {
 
     pub fn is_bailout_value(&self) -> &IsBailout {
         &self.is_bailout
+    }
+
+    pub fn is_main_trigger_guarded(&self) -> bool {
+        self.is_main_trigger_guarded
+    }
+
+    pub fn is_sub_trigger_guarded(&self) -> bool {
+        self.is_sub_trigger_guarded
     }
 }
 

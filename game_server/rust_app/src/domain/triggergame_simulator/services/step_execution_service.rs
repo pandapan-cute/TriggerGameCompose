@@ -49,6 +49,9 @@ impl StepExecutionService {
 
         // 4) actionの行動力を更新
         self.update_action_points(step, units);
+
+        // 5) ステップ内でガードしたかをリセットする
+        self.reset_guard_status(units);
         Ok(())
     }
 
@@ -276,6 +279,17 @@ impl StepExecutionService {
                 // actionの行動力を更新
                 action.set_current_action_points(unit.current_action_points().clone());
             }
+        }
+    }
+
+    /// ステップ内でガードしたかをリセットする
+    ///
+    ///  # Arguments
+    /// - `units`: ガード状態をリセットするユニットのリスト
+    fn reset_guard_status(&self, units: &mut Vec<Unit>) {
+        for unit in units.iter_mut() {
+            unit.set_is_main_trigger_guarded(false);
+            unit.set_is_sub_trigger_guarded(false);
         }
     }
 }

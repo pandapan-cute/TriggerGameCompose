@@ -13,7 +13,7 @@ pub struct GameConfig {
     /// ゲームの縦のセル数
     gameboard_height: i32,
     /// 回避能力の重み付け
-    avoid_weight: i32,
+    avoid_weight: f64,
     /// ダメージの重み付け
     damage_weight: f64,
     /// 防御能力の重み付け
@@ -37,7 +37,7 @@ impl GameConfig {
             hex_height: 24.0 * 3.0_f64.sqrt(),
             gameboard_width: 36,
             gameboard_height: 36,
-            avoid_weight: 100,
+            avoid_weight: 1.0,
             damage_weight: 2.5,
             defend_weight: 1.0,
             min_damage: 20,
@@ -73,7 +73,7 @@ impl GameConfig {
     }
 
     /// 回避能力の重み付けを取得
-    pub fn avoid_weight(&self) -> i32 {
+    pub fn avoid_weight(&self) -> f64 {
         self.avoid_weight
     }
 

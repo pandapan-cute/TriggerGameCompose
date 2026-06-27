@@ -70,6 +70,19 @@ RUST_BACKTRACE=1 python3 main.py
 deactivate
 ```
 
+Pythonで出力した学習済みモデル（`.zip`）をRustで読み込めるONNX形式（`.onnx`）に変換する場合は、以下の手順を実行してください。
+
+```sh
+cd machine_learning
+source .venv/bin/activate
+
+# 2. ONNX形式に変換する
+python export_onnx.py
+
+# 3. Pythonの仮想環境から出る
+deactivate
+```
+
 ## ライブラリを追加したとき
 
 ```bash

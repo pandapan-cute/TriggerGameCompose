@@ -26,6 +26,11 @@ ENV DYNAMODB_ENDPOINT=http://dynamodb-local:8000
 # ローカル開発用の環境変数を設定
 ENV APP_ENV=local
 
+# モデルファイルをコンテナ内に置く（ローカル開発用）。
+COPY ../machine_learning/models /opt/models
+# モデルのパス（アプリはこの環境変数を参照してモデルを読み込みます）
+ENV MODEL_PATH=/opt/models/wt_model.onnx
+
 # ソースコードをマウント
 VOLUME /app/src
 

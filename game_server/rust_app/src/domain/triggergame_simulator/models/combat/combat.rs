@@ -14,33 +14,55 @@ use crate::domain::unit_management::models::unit::{current_action_points, Unit};
 
 use super::combat_id::combat_id::CombatId;
 use super::is_avoided::is_avoided::IsAvoided;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Combat集約
 /// 戦闘を表すエンティティ
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Combat {
+    #[pyo3(get)]
     combat_id: CombatId,
+    #[pyo3(get)]
     attacking_unit_id: UnitId,
+    #[pyo3(get)]
     attacker_position: Position,
+    #[pyo3(get)]
     attacker_main_trigger_id: TriggerId,
+    #[pyo3(get)]
     attacker_sub_trigger_id: TriggerId,
+    #[pyo3(get)]
     attacker_main_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     attacker_sub_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     attacker_base_attack: i32,
+    #[pyo3(get)]
     defending_unit_id: UnitId,
+    #[pyo3(get)]
     defender_position: Position,
+    #[pyo3(get)]
     defender_main_trigger_id: TriggerId,
+    #[pyo3(get)]
     defender_sub_trigger_id: TriggerId,
+    #[pyo3(get)]
     defender_main_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     defender_sub_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     main_trigger_hp: TriggerHP,
+    #[pyo3(get)]
     sub_trigger_hp: TriggerHP,
+    #[pyo3(get)]
     defender_base_defense: i32,
+    #[pyo3(get)]
     defender_base_avoid: i32,
+    #[pyo3(get)]
     is_avoided: IsAvoided,
+    #[pyo3(get)]
     is_defeated: bool,
 }
 
@@ -403,7 +425,7 @@ impl Combat {
         // 0.5は、ユニット中心からセルの端までの距離の補正
         if pixel_length > hex_height * (attacker_trigger_status.range() as f64 + 0.5) {
             // 射程内にいない場合はfalseを返す
-            println!("射程外です, アタッカー座標({:?},{:?}), ディフェンダー座標({:?},{:?}), トリガーID={:?}, 射程={:?}", attacker_x, attacker_y, defender_x, defender_y, attacker_trigger_id.value(), TriggerStatus::get_trigger_status(attacker_trigger_id.value()).range());
+            // println!("射程外です, アタッカー座標({:?},{:?}), ディフェンダー座標({:?},{:?}), トリガーID={:?}, 射程={:?}", attacker_x, attacker_y, defender_x, defender_y, attacker_trigger_id.value(), TriggerStatus::get_trigger_status(attacker_trigger_id.value()).range());
             return false;
         } else {
             // 射程内にいる場合はtrueを返す

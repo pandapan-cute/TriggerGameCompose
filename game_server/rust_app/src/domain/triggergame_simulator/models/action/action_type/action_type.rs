@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use pyo3::prelude::*;
+
+#[pyclass]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionTypeValue {
     Move,          // 移動
@@ -9,9 +12,11 @@ pub enum ActionTypeValue {
     PursuitMove,   // 追撃移動
 }
 
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ActionType {
+    #[pyo3(get)]
     value: ActionTypeValue,
 }
 

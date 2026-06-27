@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 # Pythonで使う用のライブラリを作成するときに使う
-# [lib]
-# name = "wt_env"
-# crate-type = ["cdylib"] 
+[lib]
+name = "wt_env"
+crate-type = ["cdylib"] 
 
 [dependencies]
 aws-config = "1.8.12"

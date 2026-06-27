@@ -15,33 +15,54 @@ use super::trigger_id::trigger_id::TriggerId;
 use super::unit_id::unit_id::UnitId;
 use super::unit_type_id::unit_type_id::UnitTypeId;
 use super::wait_time::wait_time::WaitTime;
+use pyo3::prelude::*;
 use serde::Serialize;
 use uuid::Uuid;
 
 /// Unit集約
 /// ユニットを表すルートエンティティ
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct Unit {
+    #[pyo3(get)]
     unit_id: UnitId,
+    #[pyo3(get)]
     unit_type_id: UnitTypeId,
+    #[pyo3(get)]
     game_id: GameId,
+    #[pyo3(get)]
     owner_player_id: PlayerId,
+    #[pyo3(get)]
     current_action_points: CurrentActionPoints,
+    #[pyo3(get)]
     wait_time: WaitTime,
+    #[pyo3(get)]
     position: Position,
+    #[pyo3(get)]
     using_main_trigger_id: TriggerId,
+    #[pyo3(get)]
     using_sub_trigger_id: TriggerId,
+    #[pyo3(get)]
     having_main_trigger_ids: HavingTriggerIds,
+    #[pyo3(get)]
     having_sub_trigger_ids: HavingTriggerIds,
+    #[pyo3(get)]
     main_trigger_hp: TriggerHP,
+    #[pyo3(get)]
     sub_trigger_hp: TriggerHP,
+    #[pyo3(get)]
     main_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     sub_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     sight_range: SightRange,
+    #[pyo3(get)]
     is_bailout: IsBailout,
     /// ステップ内でメイントリガーでガードしたか
+    #[pyo3(get)]
     is_main_trigger_guarded: bool,
     /// ステップ内でサブトリガーでガードしたか
+    #[pyo3(get)]
     is_sub_trigger_guarded: bool,
 }
 

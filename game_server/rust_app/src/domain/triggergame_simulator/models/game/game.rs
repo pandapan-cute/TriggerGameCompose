@@ -15,17 +15,23 @@ use crate::domain::{
 
 use super::game_id::game_id::GameId;
 use chrono::{DateTime, Utc};
+use pyo3::prelude::*;
 use uuid::Uuid;
-
 /// Game集約
 /// ゲーム全体を管理するルートエンティティ
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct Game {
+    #[pyo3(get)]
     game_id: GameId,
+    #[pyo3(get)]
     game_state: GameState,
+    #[pyo3(get)]
     current_turn_number: TurnNumber,
     motion_lab_end_time: MotionLabEndTime,
+    #[pyo3(get)]
     player1_id: PlayerId,
+    #[pyo3(get)]
     player2_id: PlayerId,
     visibility: Visibility,
 }

@@ -14,23 +14,35 @@ use crate::domain::unit_management::models::unit_type::unit_type_spec::UnitTypeS
 use super::action_id::action_id::ActionId;
 use super::action_type::action_type::{ActionType, ActionTypeValue};
 use super::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Action集約
 /// ユニットの1つの行動を表すエンティティ
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Action {
+    #[pyo3(get)]
     action_id: ActionId,
+    #[pyo3(get)]
     action_type: ActionType,
+    #[pyo3(get)]
     unit_id: UnitId,
+    #[pyo3(get)]
     unit_type_id: UnitTypeId,
+    #[pyo3(get)]
     position: Position,
+    #[pyo3(get)]
     using_main_trigger_id: TriggerId,
+    #[pyo3(get)]
     using_sub_trigger_id: TriggerId,
+    #[pyo3(get)]
     main_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     sub_trigger_azimuth: TriggerAzimuth,
+    #[pyo3(get)]
     #[serde(default)]
     current_action_points: CurrentActionPoints, // リクエストはない。デフォルト値0が入る
 }

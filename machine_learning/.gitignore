@@ -1,0 +1,11 @@
+# Pythonのキャッシュフォルダ
+__pycache__/
+
+# Pythonの仮想環境フォルダ
+.venv/
+
+# モデルフォルダ
+models/
+
+# ログフォルダ
+tensorboard_logs/

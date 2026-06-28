@@ -492,4 +492,10 @@ export class GridCellsScene extends Phaser.Scene {
 
     this.pendingTurn = turn;
   }
+
+  public sendServerTurnManual(): void {
+    if (this.turnPlanner) {
+      this.turnPlanner!.sendMotionLabTurn();
+    }
+  }
 };

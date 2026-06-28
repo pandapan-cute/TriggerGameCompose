@@ -218,6 +218,12 @@ impl Unit {
         if self.position == *action.position() {
             return false;
         }
+        // 移動先が周囲1マス以内かどうかをチェック
+        if !self.check_one_step_move(&self.position, action.position()) {
+            // 周囲1マス以内でない場合は移動できない
+            action.set_position(self.position.clone()); // 移動できないので位置を元に戻す
+            return false;
+        }
         // 移動に必要な行動ポイントを取得
         let required_action_points =
             visibility.get_action_points_for_move(&self.position, action.position());
@@ -230,6 +236,50 @@ impl Unit {
         self.position = action.position().clone();
         let _ = self.consume_action_points(required_action_points);
         true
+    }
+
+    /// 移動先が周囲1マス以内かどうかをチェックする
+    /// # Arguments
+    /// * `base_position` - 現在位置
+    /// * `target_position` - 移動先の位置
+    /// # Returns
+    /// * `true` - 移動先が周囲1マス以内の場合
+    /// * `false` - 移動先が周囲1マス以内でない場合
+    fn check_one_step_move(&self, base_position: &Position, target_position: &Position) -> bool {
+        let mut neighbors: Vec<Position> = Vec::new(); // 隣接マスの座標を格納するベクター
+        if base_position.col() % 2 == 0 {
+            // 偶数列の場合
+            neighbors.push(Position::new(
+                base_position.col() - 1,
+                base_position.row() - 1,
+            )); // 左上
+            neighbors.push(Position::new(base_position.col() - 1, base_position.row())); // 左
+            neighbors.push(Position::new(base_position.col(), base_position.row() - 1)); // 上
+            neighbors.push(Position::new(base_position.col(), base_position.row() + 1)); // 下
+            neighbors.push(Position::new(
+                base_position.col() + 1,
+                base_position.row() - 1,
+            )); // 右上
+            neighbors.push(Position::new(base_position.col() + 1, base_position.row()));
+        // 右
+        } else {
+            // 奇数列の場合
+            neighbors.push(Position::new(base_position.col() - 1, base_position.row())); // 左
+            neighbors.push(Position::new(
+                base_position.col() - 1,
+                base_position.row() + 1,
+            )); // 左下
+            neighbors.push(Position::new(base_position.col(), base_position.row() - 1)); // 上
+            neighbors.push(Position::new(base_position.col(), base_position.row() + 1)); // 下
+            neighbors.push(Position::new(base_position.col() + 1, base_position.row())); // 右
+            neighbors.push(Position::new(
+                base_position.col() + 1,
+                base_position.row() + 1,
+            )); // 右下
+        }
+
+        // 隣接マスの座標と移動先の座標を比較
+        neighbors.iter().any(|neighbor| neighbor == target_position)
     }
 
     /// 使用するトリガーを設定

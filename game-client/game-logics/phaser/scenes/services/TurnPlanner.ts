@@ -269,10 +269,16 @@ export class TurnPlanner {
       this.motionLabEndTimeout = null;
     }
     this.motionLabEndTimeout = this.runAt(endTime, () => {
-      this.fillIncompleteActions();
-      this.deps.clearSelection();
-      this.deps.sendServerTurn(this.deps.turn.getSteps());
+      this.sendMotionLabTurn();
     });
+  }
+
+  /** 動きの設定を送信する際にやること */
+  public sendMotionLabTurn(): void {
+    this.fillIncompleteActions();
+    this.deps.clearSelection();
+    this.deps.sendServerTurn(this.deps.turn.getSteps());
+    console.log("動きの設定を送信しました。");
   }
 
   /** 指定時刻にタスクを実行する */

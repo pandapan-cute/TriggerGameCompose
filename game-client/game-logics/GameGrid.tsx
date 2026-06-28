@@ -15,6 +15,7 @@ import MotionExecuteDialog, { MotionExecuteDialogHandle } from "@/components/dia
 import TurnStateMotionLabPanel from "@/components/panels/TurnStatePanel/MotionLab";
 import TurnStateMotionExecutePanel from "@/components/panels/TurnStatePanel/MotionExecute";
 import { MAX_TURN } from "./config/game-config";
+import { SkyOutlineButton } from "@/components/buttons/sky-outline";
 
 interface GameGridProps {
   currentTurn: number;
@@ -223,13 +224,35 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     };
   }, []);  // 空の依存配列で初回のみ実行
 
+  /**
+   * 動きの設定を途中送信する
+   */
+  const handleSendMotionLabTurn = () => {
+    let activeScene: GridCellsScene | null = null;
+    if (gameRef.current) {
+      try {
+        activeScene = gameRef.current.scene.getScene("GridScene") as GridCellsScene;
+      } catch {
+        activeScene = null;
+      }
+    }
+
+    const targetScene = activeScene ?? gridSceneRef.current;
+    if (!targetScene) {
+      console.warn("GridSceneが未初期化のためturnExecutionResultを処理できません");
+      return;
+    }
+    targetScene.sendServerTurnManual();
+  };
+
   return (
     <div className="game-container relative w-full h-screen overflow-hidden">
       {/* 左側ナビゲーション */}
       <GridLeftNav />
 
       {/* ゲームモード表示 */}
-      <div className="absolute top-2 right-2 p-2 z-50">
+      <div className="absolute top-2 right-2 p-2 z-50 flex flex-row items-start gap-2">
+        <SkyOutlineButton href="#" onClick={handleSendMotionLabTurn} className="text-sm text-center">動きの設定を送信<br />MotionLab Ready !</SkyOutlineButton>
         {gameMode === "lab" ? (
           <TurnStateMotionLabPanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
         ) : (

@@ -191,8 +191,8 @@ impl EnemyStrategyService for OnnxEnemyStrategyService {
         enemy_units: Vec<Unit>,
     ) -> Result<Turn, String> {
         // 環境変数からモデルのベースパスを取得（デフォルトはローカル用の "./models"）
-        let model_path = std::env::var("MODEL_PATH")
-            .unwrap_or_else(|_| "./opt/models/wt_model.onnx".to_string());
+        let model_path =
+            std::env::var("MODEL_PATH").unwrap_or_else(|_| "./models/wt_model.onnx".to_string());
         // モデルをロードして実行可能にする
         let model = tract_onnx::onnx()
             .model_for_path(&model_path)

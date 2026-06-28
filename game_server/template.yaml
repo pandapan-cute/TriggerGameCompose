@@ -40,7 +40,7 @@ Resources:
           EVENTBRIDGE_SCHEDULER_TARGET_ARN: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${TriggerGameFunctionName}-${EnvironmentName}'
           EVENTBRIDGE_SCHEDULER_ROLE_ARN: !GetAtt EventBridgeSchedulerInvokeRole.Arn
           EVENTBRIDGE_SCHEDULER_GROUP_NAME: !Ref TriggerGameSchedulerGroup
-          MODEL_PATH: /opt/models/wt_model.onnx
+          MODEL_PATH: /opt/wt_model.onnx
       Policies:
         - Statement:
           - Effect: Allow

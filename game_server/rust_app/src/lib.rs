@@ -10,37 +10,43 @@ use std::thread::current;
 use pyo3::prelude::*;
 use uuid::Uuid;
 
-use crate::domain::{
-    player_management::models::player::player_id::player_id::PlayerId,
-    triggergame_simulator::models::{
-        action::{
-            self,
-            action_type::action_type::{ActionType, ActionTypeValue},
-            trigger_azimuth::trigger_azimuth::TriggerAzimuth,
-            Action,
+use crate::{
+    domain::{
+        player_management::models::player::player_id::player_id::PlayerId,
+        triggergame_simulator::{
+            models::{
+                action::{
+                    self,
+                    action_type::action_type::{ActionType, ActionTypeValue},
+                    trigger_azimuth::trigger_azimuth::TriggerAzimuth,
+                    Action,
+                },
+                game::{
+                    game::Game,
+                    game_id::{self, game_id::GameId},
+                    game_state::GameState,
+                    game_type::GameType,
+                    motion_lab_end_time::MotionLabEndTime,
+                },
+                step::{step::Step, step_id::step_id::StepId},
+                turn::{
+                    turn_id::turn_id::TurnId,
+                    turn_number::turn_number::TurnNumber,
+                    turn_start_datetime::turn_start_datetime::TurnStartDatetime,
+                    turn_status::turn_status::{TurnStatus, TurnStatusValue},
+                    Turn,
+                },
+            },
+            services::enemy_strategy_service::EnemyStrategyService,
         },
-        game::{
-            game::Game,
-            game_id::{self, game_id::GameId},
-            game_state::GameState,
-            game_type::GameType,
-            motion_lab_end_time::MotionLabEndTime,
-        },
-        step::{step::Step, step_id::step_id::StepId},
-        turn::{
-            turn_id::turn_id::TurnId,
-            turn_number::turn_number::TurnNumber,
-            turn_start_datetime::turn_start_datetime::TurnStartDatetime,
-            turn_status::turn_status::{TurnStatus, TurnStatusValue},
-            Turn,
+        unit_management::models::unit::{
+            current_action_points::current_action_points::CurrentActionPoints,
+            having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
+            trigger_id::trigger_id::TriggerId, unit_id::unit_id::UnitId,
+            unit_type_id::unit_type_id::UnitTypeId, Unit,
         },
     },
-    unit_management::models::unit::{
-        current_action_points::current_action_points::CurrentActionPoints,
-        having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
-        trigger_id::trigger_id::TriggerId, unit_id::unit_id::UnitId,
-        unit_type_id::unit_type_id::UnitTypeId, Unit,
-    },
+    infrastructure::ai::onnx_enemy_strategy_service::OnnxEnemyStrategyService,
 };
 
 /// Python側に公開するActionのDTO
@@ -282,52 +288,31 @@ impl WtEnv {
             self.steps.clone(),
         );
 
-        // 敵側のステップを作成（まずは固定の行動を4x15設定）
-        let mut steps: Vec<Step> = Vec::new();
+        // 味方ユニットを取得
+        let before_friend_units = self
+            .units
+            .iter()
+            .filter(|u| u.owner_player_id() == &self.my_player_id)
+            .cloned()
+            .collect::<Vec<Unit>>();
 
-        for i in 0..15 {
-            // step生成のループ
-            let mut actions: Vec<Action> = Vec::new();
-            for i in 0..4 {
-                // 4体分のAction生成のループ
-                let action_unit = self
-                    .units
-                    .iter()
-                    .filter(|u| u.owner_player_id() == &self.enemy_player_id)
-                    .collect::<Vec<&Unit>>()[i];
-                let action = Action::create(
-                    ActionType::new(ActionTypeValue::Wait),
-                    action_unit.unit_id().clone(),
-                    action_unit.unit_type_id().clone(),
-                    action_unit.position().clone(),
-                    action_unit.using_main_trigger_id().clone(),
-                    action_unit.using_sub_trigger_id().clone(),
-                    TriggerAzimuth::new(0),
-                    TriggerAzimuth::new(0),
-                    CurrentActionPoints::new(0),
-                );
-                actions.push(action);
-            }
-            steps.push(Step::create(
-                StepId::new(Uuid::new_v4().to_string()),
-                actions,
-                Vec::new(),
-            ));
-        }
+        // AI操作用ユニットを取得
+        let before_enemy_units = self
+            .units
+            .iter()
+            .filter(|u| u.owner_player_id() == &self.enemy_player_id)
+            .cloned()
+            .collect::<Vec<Unit>>();
 
-        let mut enemy_turn = Turn::new(
-            self.turn_id.clone(),
-            self.game.game_id().clone(),
-            self.enemy_player_id.clone(),
-            self.turn_number.clone(),
-            TurnStartDatetime::new(chrono::Utc::now()),
-            TurnStatus::new(TurnStatusValue::StepSetting),
-            steps,
-        );
+        let service = OnnxEnemyStrategyService::new();
+
+        let mut ai_turn = service
+            .generate_ai_turn(before_friend_units.clone(), before_enemy_units.clone())
+            .unwrap();
 
         let _ = self
             .game
-            .turn_start(&mut friend_turn, &mut enemy_turn, &mut self.units);
+            .turn_start(&mut friend_turn, &mut ai_turn, &mut self.units);
 
         // 報酬（Reward）の計算
         let mut reward = -0.1; // ターン経過のペナルティ

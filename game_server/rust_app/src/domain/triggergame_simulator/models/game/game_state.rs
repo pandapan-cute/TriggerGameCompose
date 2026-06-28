@@ -1,11 +1,16 @@
+use pyo3::prelude::*;
+
+#[pyclass]
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum GameStateValue {
     InProgress, // ゲーム進行中
     Completed,  // ゲーム完了
 }
 
+#[pyclass]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GameState {
+    #[pyo3(get)]
     value: GameStateValue,
 }
 

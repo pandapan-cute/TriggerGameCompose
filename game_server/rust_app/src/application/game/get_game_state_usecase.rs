@@ -75,6 +75,7 @@ impl GetGameStateUseCase {
 
         let response = WebSocketResponse::GetGameStateResult {
             game_state: game.game_state().value().clone(),
+            game_type: game.game_type().value().clone(),
             current_turn_number: game.current_turn_number().clone(),
             motion_lab_end_time: game.motion_lab_end_time().clone(),
             enemy_units: EnemyUnitDto::from_units(
@@ -105,7 +106,10 @@ mod tests {
     use crate::{
         domain::{
             triggergame_simulator::models::{
-                game::{game::Game, game_state::GameState, motion_lab_end_time::MotionLabEndTime},
+                game::{
+                    game::Game, game_state::GameState, game_type::GameType,
+                    motion_lab_end_time::MotionLabEndTime,
+                },
                 turn::turn_number::turn_number::TurnNumber,
             },
             unit_management::models::unit::{
@@ -279,6 +283,7 @@ mod tests {
         Game::reconstruct(
             game_id,
             GameState::initial(),
+            GameType::initial(),
             TurnNumber::initial(),
             MotionLabEndTime::initial(),
             player1_id,

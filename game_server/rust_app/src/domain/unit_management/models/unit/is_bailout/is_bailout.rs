@@ -1,5 +1,9 @@
+use pyo3::prelude::*;
+
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct IsBailout {
+    #[pyo3(get)]
     value: bool,
 }
 

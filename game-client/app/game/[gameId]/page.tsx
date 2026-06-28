@@ -7,7 +7,7 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { MAX_TURN } from "@/game-logics/config/game-config";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { FriendUnit } from "@/types/FriendUnit";
-import { GameResult, GameState } from "@/types/GameTypes";
+import { GameResult, GameState, GameType } from "@/types/GameTypes";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,6 +25,7 @@ export default function GamePage() {
   const [enemyUnits, setEnemyUnits] = useState<EnemyUnit[]>([]);
   const [fieldSteps, setFieldSteps] = useState<number[][]>([]);
   const [visibility, setVisibility] = useState<boolean[][]>([]);
+  const [gameType, setGameType] = useState<GameType>("PvP");
   const [gameResult, setGameResult] = useState<GameResult>("InProgress");
   const [gameResultMsg, setGameResultMsg] = useState<string | null>(null);
   const [currentTurn, setCurrentTurn] = useState<number>(1);
@@ -76,6 +77,7 @@ export default function GamePage() {
         setVisibility(data.visibility);
         setCurrentTurn(data.currentTurnNumber);
         setMotionLabEndTime(new Date(data.motionLabEndTime));
+        setGameType(data.gameType);
         checkGameState(data.friendUnits, data.enemyUnits, data.currentTurnNumber, data.gameState);
       }
     };
@@ -133,6 +135,7 @@ export default function GamePage() {
           result={gameResult}
           turn={currentTurn}
           message={gameResultMsg}
+          gameType={gameType}
         />
       </NormalFullDialog>
       {/* ゲーム画面 */}

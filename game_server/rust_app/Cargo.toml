@@ -5,6 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# Pythonで使う用のライブラリを作成するときに使う
+# [lib]
+# name = "wt_env"
+# crate-type = ["cdylib"] 
+
 [dependencies]
 aws-config = "1.8.12"
 aws-sdk-apigatewaymanagement = "1.91.0"
@@ -24,6 +29,8 @@ aws-credential-types = "1.2.11"
 rand = "0.9.2"
 itertools = "0.14.0"
 aws-sdk-scheduler = "1.97.0"
+pyo3 = { version = "0.21", features = ["extension-module"] } # Pythonで使う用のライブラリを作成するときに使う
+tract-onnx = "0.21" # ONNXモデルを扱うためのクレート
 
 # 警告の抑制設定
 [lints.rust]

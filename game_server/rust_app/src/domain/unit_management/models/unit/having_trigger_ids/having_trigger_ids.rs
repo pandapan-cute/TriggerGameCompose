@@ -1,7 +1,10 @@
 use crate::domain::unit_management::models::unit::trigger_id::trigger_id::TriggerId;
+use pyo3::prelude::*;
 
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct HavingTriggerIds {
+    #[pyo3(get)]
     value: Vec<TriggerId>,
 }
 

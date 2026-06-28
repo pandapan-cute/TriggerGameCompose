@@ -8,6 +8,7 @@ use crate::{
         triggergame_simulator::models::{
             game::{
                 game_state::{GameState, GameStateValue},
+                game_type::GameTypeValue,
                 motion_lab_end_time::MotionLabEndTime,
             },
             turn::{turn_number::turn_number::TurnNumber, Turn},
@@ -43,6 +44,8 @@ pub enum WebSocketResponse {
     GetGameStateResult {
         /// ゲームの進行状態
         game_state: GameStateValue,
+        /// ゲームの種別
+        game_type: GameTypeValue,
         /// ゲームのターン番号
         current_turn_number: TurnNumber,
         /// 動きの設定の終了時間

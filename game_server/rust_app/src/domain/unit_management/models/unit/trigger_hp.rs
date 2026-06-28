@@ -1,7 +1,11 @@
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TriggerHP {
+    #[pyo3(get)]
     value: i32,
 }
 

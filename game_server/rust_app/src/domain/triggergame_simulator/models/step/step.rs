@@ -8,14 +8,19 @@ use crate::domain::triggergame_simulator::services::{
     visibility_projection_service::VisibilityProjectionService,
 };
 use crate::domain::unit_management::models::unit::Unit;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 /// Step集約
 /// ユニットの1つの行動を表すエンティティ
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Step {
+    #[pyo3(get)]
     step_id: StepId,
+    #[pyo3(get)]
     actions: Vec<Action>,
+    #[pyo3(get)]
     combats: Vec<Combat>,
 }
 

@@ -1,5 +1,9 @@
+use pyo3::prelude::*;
+
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct SightRange {
+    #[pyo3(get)]
     value: i32,
 }
 

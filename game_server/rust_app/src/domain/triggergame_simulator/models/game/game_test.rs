@@ -10,7 +10,8 @@ mod tests {
     };
     use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
     use crate::domain::triggergame_simulator::models::game::game_state::GameState;
-    use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
+    use crate::domain::triggergame_simulator::models::game::game_type::GameType;
+    use crate::domain::triggergame_simulator::models::game::{game_type, motion_lab_end_time};
     use crate::domain::triggergame_simulator::models::game::motion_lab_end_time::MotionLabEndTime;
     use crate::domain::triggergame_simulator::models::game::visibility::{self, Visibility};
     use crate::domain::triggergame_simulator::models::step::step::Step;
@@ -110,6 +111,7 @@ use crate::domain::unit_management::models::unit::{
     fn test_reconstruct_game() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
         let game_state = GameState::initial();
+        let game_type = GameType::initial();
         let current_turn_number = TurnNumber::new(3);
         let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
@@ -119,6 +121,7 @@ use crate::domain::unit_management::models::unit::{
         let game = Game::reconstruct(
             game_id.clone(),
             game_state,
+            game_type,
             current_turn_number.clone(),
             motion_lab_end_time,
             player1_id.clone(),
@@ -134,6 +137,7 @@ use crate::domain::unit_management::models::unit::{
     fn test_game_equality() {
         let game_id = GameId::new(Uuid::new_v4().to_string());
         let game_state = GameState::initial();
+        let game_type = GameType::initial();
         let current_turn_number = TurnNumber::new(1);
         let motion_lab_end_time = MotionLabEndTime::initial();
         let player1_id = create_player_id();
@@ -143,6 +147,7 @@ use crate::domain::unit_management::models::unit::{
         let game1 = Game::reconstruct(
             game_id.clone(),
             game_state.clone(),
+            game_type.clone(),
             current_turn_number.clone(),
             motion_lab_end_time.clone(),
             player1_id.clone(),
@@ -152,6 +157,7 @@ use crate::domain::unit_management::models::unit::{
         let game2 = Game::reconstruct(
             game_id.clone(),
             game_state,
+            game_type.clone(),
             current_turn_number.clone(),
             motion_lab_end_time.clone(),
             player1_id.clone(),

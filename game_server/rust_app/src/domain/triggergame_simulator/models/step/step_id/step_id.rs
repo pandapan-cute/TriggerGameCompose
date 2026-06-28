@@ -1,9 +1,12 @@
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct StepId {
+    #[pyo3(get)]
     value: String,
 }
 

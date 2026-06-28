@@ -1,10 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::triggergame_simulator::configs::game_config::GameConfig;
+use pyo3::prelude::*;
 
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Position {
+    #[pyo3(get)]
     col: i32,
+    #[pyo3(get)]
     row: i32,
 }
 

@@ -58,6 +58,7 @@ services:
       - "9000:9000"
     volumes:
       - ./game_server/rust_app/src:/app/src:ro
+      - ./machine_learning/models:/opt/models:ro
     environment:
       RUST_BACKTRACE: "full"           # 完全なスタックトレース
       RUST_LOG: "game_server=debug,aws_sdk_dynamodb=debug"  # ログレベル

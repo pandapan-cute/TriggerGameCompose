@@ -1,7 +1,7 @@
 import { UnitType } from "@/types/UnitType";
 import Image from "next/image";
 import styles from "./index.module.css";
-import { GameResult } from "@/types/GameTypes";
+import { GameResult, GameType } from "@/types/GameTypes";
 import { FriendUnit } from "@/types/FriendUnit";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import LonghexOutline from "@/components/outlines/LonghexOutline";
@@ -16,6 +16,8 @@ interface BattleResultPanelProps {
 	enemyUnits: EnemyUnit[];
 	turn: number;
 	message?: string | null;
+	/** ゲームの種別 (PvP または PvE) */
+	gameType?: GameType;
 }
 
 /**
@@ -135,6 +137,7 @@ const BattleResultPanel = ({
 	enemyUnits,
 	turn,
 	message,
+	gameType = "PvP",
 }: BattleResultPanelProps) => {
 
 	return (
@@ -176,7 +179,7 @@ const BattleResultPanel = ({
 					<ResultNavButton href="/" variant="back">
 						&lt; BACK TO TOP &gt;
 					</ResultNavButton>
-					<ResultNavButton href="/lobby" variant="next">
+					<ResultNavButton href={gameType === "PvE" ? "/pve-lobby" : "/lobby"} variant="next">
 						&lt; NEXT BATTLE &gt;
 					</ResultNavButton>
 				</div>

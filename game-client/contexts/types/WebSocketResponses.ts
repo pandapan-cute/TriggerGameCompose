@@ -2,7 +2,7 @@ import { FriendUnit } from "@/types/FriendUnit";
 import { Turn } from "@/game-logics/models/Turn";
 import { MatchingStatus } from "@/types/MatchingTypes";
 import { EnemyUnit } from "@/types/EnemyUnit";
-import { GameResult, GameState } from "@/types/GameTypes";
+import { GameResult, GameState, GameType } from "@/types/GameTypes";
 
 /**
  * マッチメイキングレスポンスの型定義
@@ -20,6 +20,8 @@ export interface MatchmakingResponse {
 export interface GetGameStateResponse {
   action: "getGameStateResult";
   gameState: GameState;
+  /** ゲームの種別 PvP PvE など */
+  gameType: GameType;
   enemyUnits: EnemyUnit[];
   friendUnits: FriendUnit[];
   fieldSteps: number[][];

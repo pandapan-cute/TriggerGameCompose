@@ -3,6 +3,7 @@ use crate::domain::triggergame_simulator::models::action::action_type::action_ty
     ActionType, ActionTypeValue,
 };
 use crate::domain::triggergame_simulator::models::action::trigger_azimuth::trigger_azimuth::TriggerAzimuth;
+use crate::domain::triggergame_simulator::models::action::Action;
 use crate::domain::triggergame_simulator::models::step::step::Step;
 use crate::domain::triggergame_simulator::models::step::step_id::step_id::StepId;
 use crate::domain::triggergame_simulator::models::turn::turn_number::turn_number::TurnNumber;
@@ -28,13 +29,30 @@ const MOVE_HEAD_SIZE: usize = 7;
 pub struct OnnxEnemyStrategyService {}
 
 fn build_observation(focus_idx: usize, friends: &[Unit], foes: &[Unit]) -> Vec<f32> {
+    let friend_positions: Vec<(i32, i32)> = friends
+        .iter()
+        .map(|u| (u.position().col(), u.position().row()))
+        .collect();
+    let foe_positions: Vec<(i32, i32)> = foes
+        .iter()
+        .map(|u| (u.position().col(), u.position().row()))
+        .collect();
+
+    build_observation_from_positions(focus_idx, &friend_positions, &foe_positions)
+}
+
+fn build_observation_from_positions(
+    focus_idx: usize,
+    friends_positions: &[(i32, i32)],
+    foes_positions: &[(i32, i32)],
+) -> Vec<f32> {
     let mut obs: Vec<f32> = Vec::with_capacity(OBSERVATION_SIZE);
 
     for i in 0..4 {
-        if i < friends.len() {
-            let p = friends[i].position();
-            obs.push(p.col() as f32 / 35.0);
-            obs.push(p.row() as f32 / 35.0);
+        if i < friends_positions.len() {
+            let (col, row) = friends_positions[i];
+            obs.push(col as f32 / 35.0);
+            obs.push(row as f32 / 35.0);
         } else {
             obs.push(0.0);
             obs.push(0.0);
@@ -42,10 +60,10 @@ fn build_observation(focus_idx: usize, friends: &[Unit], foes: &[Unit]) -> Vec<f
     }
 
     for i in 0..4 {
-        if i < foes.len() {
-            let p = foes[i].position();
-            obs.push(p.col() as f32 / 35.0);
-            obs.push(p.row() as f32 / 35.0);
+        if i < foes_positions.len() {
+            let (col, row) = foes_positions[i];
+            obs.push(col as f32 / 35.0);
+            obs.push(row as f32 / 35.0);
         } else {
             obs.push(0.0);
             obs.push(0.0);
@@ -118,8 +136,22 @@ fn map_logits_to_actions(logits: &[f32]) -> Result<(usize, i32, i32), String> {
 }
 
 fn apply_move(unit: &Unit, move_idx: usize, width: i32, height: i32) -> (i32, i32) {
-    let col = unit.position().col();
-    let row = unit.position().row();
+    apply_move_from_position(
+        unit.position().col(),
+        unit.position().row(),
+        move_idx,
+        width,
+        height,
+    )
+}
+
+fn apply_move_from_position(
+    col: i32,
+    row: i32,
+    move_idx: usize,
+    width: i32,
+    height: i32,
+) -> (i32, i32) {
     let d_col = [0, -1, -1, 0, 0, 1, 1];
     let d_row_even = [0, -1, 0, -1, 1, -1, 0];
     let d_row_odd = [0, 0, 1, -1, 1, 0, 1];
@@ -159,9 +191,8 @@ impl EnemyStrategyService for OnnxEnemyStrategyService {
         enemy_units: Vec<Unit>,
     ) -> Result<Turn, String> {
         // 環境変数からモデルのベースパスを取得（デフォルトはローカル用の "./models"）
-        let base_path = std::env::var("MODEL_BASE_PATH").unwrap_or_else(|_| "./models".to_string());
-        let model_path = format!("{}/wt_model.onnx", base_path);
-
+        let model_path = std::env::var("MODEL_PATH")
+            .unwrap_or_else(|_| "./opt/models/wt_model.onnx".to_string());
         // モデルをロードして実行可能にする
         let model = tract_onnx::onnx()
             .model_for_path(&model_path)
@@ -175,52 +206,88 @@ impl EnemyStrategyService for OnnxEnemyStrategyService {
         let width = game_config.gameboard_width();
         let height = game_config.gameboard_height();
 
+        // 敵ユニットの「仮想位置」。
+        // Stepを組み立てるたびにこの配列を更新し、次Stepの観測入力に使う。
+        // これにより 15 step が連続した移動計画としてつながる。
+        let mut simulated_enemy_positions: Vec<(i32, i32)> = enemy_units
+            .iter()
+            .map(|u| (u.position().col(), u.position().row()))
+            .collect();
+
+        // プレイヤー側はこの関数内では固定スナップショットとして扱う。
+        let player_positions: Vec<(i32, i32)> = player_units
+            .iter()
+            .map(|u| (u.position().col(), u.position().row()))
+            .collect();
+
         let mut steps: Vec<Step> = Vec::new();
 
-        // AIが操作するユニットごとに観測を作って推論を実行
-        for (idx, unit) in enemy_units.iter().enumerate() {
-            // 学習時とは視点が逆なので、friends=enemy_units, foes=player_units
-            let obs = build_observation(idx, &enemy_units, &player_units);
+        // 15ステップ分のAIの行動を生成
+        for _step_idx in 0..15 {
+            // AIが作成したActionを格納するベクター
+            let mut actions: Vec<Action> = Vec::new();
 
-            let input = tract_ndarray::ArrayD::from_shape_vec(
-                tract_ndarray::IxDyn(&[1, obs.len()]),
-                obs.clone(),
-            )
-            .map_err(|e| format!("Failed to build input tensor: {}", e))?;
-            let input_tensor = tract_onnx::prelude::Tensor::from(input);
+            // このstepで確定した「次の仮想位置」。
+            // 全ユニット分の推論が終わった後に一括で反映することで、
+            // 同じstep中は全員が同一時刻の状態を見て意思決定できる。
+            let mut next_enemy_positions = simulated_enemy_positions.clone();
 
-            let result = model
-                .run(tvec!(input_tensor.into()))
-                .map_err(|e| format!("Inference failed: {}", e))?;
+            // AIが操作するユニットごとに観測を作って推論を実行
+            for (idx, unit) in enemy_units.iter().enumerate() {
+                // 観測には「現在の仮想位置」を使う。
+                // 学習時の並びと合わせて friends=敵, foes=プレイヤー。
+                let obs = build_observation_from_positions(
+                    idx,
+                    &simulated_enemy_positions,
+                    &player_positions,
+                );
 
-            let output = &result[0];
-            let arr = output
-                .to_array_view::<f32>()
-                .map_err(|e| format!("Output to array failed: {}", e))?;
-            let logits: Vec<f32> = arr.iter().cloned().collect();
+                let input = tract_ndarray::ArrayD::from_shape_vec(
+                    tract_ndarray::IxDyn(&[1, obs.len()]),
+                    obs.clone(),
+                )
+                .map_err(|e| format!("Failed to build input tensor: {}", e))?;
+                let input_tensor = tract_onnx::prelude::Tensor::from(input);
 
-            let (move_idx, main_angle, sub_angle) = map_logits_to_actions(&logits)?;
-            let (target_col, target_row) = apply_move(unit, move_idx, width, height);
+                let result = model
+                    .run(tvec!(input_tensor.into()))
+                    .map_err(|e| format!("Inference failed: {}", e))?;
 
-            // Action を作成して Step に詰める
-            let action = crate::domain::triggergame_simulator::models::action::Action::create(
-                ActionType::new(ActionTypeValue::Move),
-                unit.unit_id().clone(),
-                unit.unit_type_id().clone(),
-                Position::new(target_col, target_row),
-                unit.using_main_trigger_id().clone(),
-                unit.using_sub_trigger_id().clone(),
-                TriggerAzimuth::new(main_angle),
-                TriggerAzimuth::new(sub_angle),
-                CurrentActionPoints::new(0),
-            );
+                let output = &result[0];
+                let arr = output
+                    .to_array_view::<f32>()
+                    .map_err(|e| format!("Output to array failed: {}", e))?;
+                let logits: Vec<f32> = arr.iter().cloned().collect();
 
-            let step = Step::create(
-                StepId::new(Uuid::new_v4().to_string()),
-                vec![action],
-                Vec::new(),
-            );
+                let (move_idx, main_angle, sub_angle) = map_logits_to_actions(&logits)?;
+
+                // 実ユニットではなく「仮想位置」から次位置を計算する。
+                let (current_col, current_row) = simulated_enemy_positions[idx];
+                let (target_col, target_row) =
+                    apply_move_from_position(current_col, current_row, move_idx, width, height);
+
+                // 次stepで使う仮想位置を更新。
+                next_enemy_positions[idx] = (target_col, target_row);
+
+                // Action を作成して Step に詰める
+                let action = Action::create(
+                    ActionType::new(ActionTypeValue::Move),
+                    unit.unit_id().clone(),
+                    unit.unit_type_id().clone(),
+                    Position::new(target_col, target_row),
+                    unit.using_main_trigger_id().clone(),
+                    unit.using_sub_trigger_id().clone(),
+                    TriggerAzimuth::new(main_angle),
+                    TriggerAzimuth::new(sub_angle),
+                    CurrentActionPoints::new(0),
+                );
+                actions.push(action);
+            }
+
+            // このstepの行動を保存し、次step用の仮想位置を反映する。
+            let step = Step::create(StepId::new(Uuid::new_v4().to_string()), actions, Vec::new());
             steps.push(step);
+            simulated_enemy_positions = next_enemy_positions;
         }
 
         if enemy_units.is_empty() {

@@ -29,11 +29,11 @@ export default function TopPage() {
           />
           <p className={styles.catchCopy}>戦闘シミュレーション演習に挑戦せよ</p>
           <div className={styles.heroButtons}>
-            <SkyOutlineButton href="https://github.com/users/pandapan-cute/projects/2">
-              開発に参加
-            </SkyOutlineButton>
+            <WhiteFillButton href="/pve-lobby">
+              AIとの演習 | PvE
+            </WhiteFillButton>
             <WhiteFillButton href="/lobby">
-              演習開始
+              オンライン対戦 | PvP
             </WhiteFillButton>
           </div>
         </div>

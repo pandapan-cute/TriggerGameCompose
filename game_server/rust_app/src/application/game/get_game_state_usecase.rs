@@ -75,6 +75,7 @@ impl GetGameStateUseCase {
 
         let response = WebSocketResponse::GetGameStateResult {
             game_state: game.game_state().value().clone(),
+            game_type: game.game_type().value().clone(),
             current_turn_number: game.current_turn_number().clone(),
             motion_lab_end_time: game.motion_lab_end_time().clone(),
             enemy_units: EnemyUnitDto::from_units(

@@ -20,6 +20,24 @@ interface MatchMakingRequest {
 }
 
 /**
+ * PVEマッチメイキングリクエストの型定義
+ */
+interface PveMatchMakingRequest {
+  action: "pveMatchmaking";
+  playerId: string;
+  units:
+  Array<{
+    unitTypeId: string;
+    initialX: number;
+    initialY: number;
+    usingMainTriggerId: string;
+    usingSubTriggerId: string;
+    mainTriggerIds: string[];
+    subTriggerIds: string[];
+  }>;
+}
+
+/**
  * マッチングキャンセルリクエストの型定義
  */
 interface CancelMatchingRequest {
@@ -49,4 +67,4 @@ interface ConcedeGameRequest {
 }
 
 /** WebSocketリクエストの型 */
-export type WebSocketRequestType = MatchMakingRequest | CancelMatchingRequest | GetGameStateRequest | TurnActionsRequest | ConcedeGameRequest;
+export type WebSocketRequestType = MatchMakingRequest | PveMatchMakingRequest | CancelMatchingRequest | GetGameStateRequest | TurnActionsRequest | ConcedeGameRequest;

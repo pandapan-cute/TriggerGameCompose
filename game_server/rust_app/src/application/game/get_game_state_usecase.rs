@@ -105,7 +105,10 @@ mod tests {
     use crate::{
         domain::{
             triggergame_simulator::models::{
-                game::{game::Game, game_state::GameState, motion_lab_end_time::MotionLabEndTime},
+                game::{
+                    game::Game, game_state::GameState, game_type::GameType,
+                    motion_lab_end_time::MotionLabEndTime,
+                },
                 turn::turn_number::turn_number::TurnNumber,
             },
             unit_management::models::unit::{
@@ -279,6 +282,7 @@ mod tests {
         Game::reconstruct(
             game_id,
             GameState::initial(),
+            GameType::initial(),
             TurnNumber::initial(),
             MotionLabEndTime::initial(),
             player1_id,

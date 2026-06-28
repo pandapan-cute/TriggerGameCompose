@@ -12,6 +12,11 @@ impl TurnStartDatetime {
         Self { value }
     }
 
+    pub fn initial() -> Self {
+        let now = Utc::now();
+        Self { value: now }
+    }
+
     pub fn value(&self) -> &DateTime<Utc> {
         &self.value
     }

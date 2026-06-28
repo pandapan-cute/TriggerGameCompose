@@ -23,6 +23,7 @@ use crate::domain::{
             game::Game,
             game_id::{self, game_id::GameId},
             game_state::GameState,
+            game_type::GameType,
             motion_lab_end_time::MotionLabEndTime,
         },
         step::{step::Step, step_id::step_id::StepId},
@@ -460,6 +461,7 @@ fn create_test_game(game_id: &GameId, my_player_id: &PlayerId, enemy_player_id: 
     let game = Game::new(
         game_id.clone(),
         GameState::initial(),
+        GameType::initial_pve(),
         TurnNumber::new(1),
         MotionLabEndTime::new(chrono::Utc::now()),
         my_player_id.clone(),

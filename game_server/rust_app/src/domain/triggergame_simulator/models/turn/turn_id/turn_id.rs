@@ -16,6 +16,13 @@ impl TurnId {
         Self { value }
     }
 
+    pub fn initial() -> Self {
+        let uuid = Uuid::new_v4();
+        Self {
+            value: uuid.to_string(),
+        }
+    }
+
     pub fn value(&self) -> &str {
         &self.value
     }

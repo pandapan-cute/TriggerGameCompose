@@ -36,6 +36,12 @@ pub enum WebSocketRequest {
         units: Vec<CreateUnitDto>,
     },
 
+    /// PvEマッチメイキングリクエスト
+    PveMatchmaking {
+        player_id: String,
+        units: Vec<CreateUnitDto>,
+    },
+
     /// マッチングキャンセルリクエスト
     /// マッチング待機中のプレイヤーがマッチングをキャンセルするために送信される
     CancelMatching {},

@@ -22,6 +22,7 @@ use crate::{
         matchmaking::{
             match_cancel_usecase::MatchCancelUseCase,
             matchmaking_application_service::MatchmakingApplicationService,
+            pve_matchmaking_application_service::PveMatchmakingApplicationService,
         },
         schedule::{
             motion_lab_limit_usecase::MotionLabLimitUseCase, schedule_maker::ScheduleMaker,
@@ -41,6 +42,7 @@ use crate::{
         },
     },
     infrastructure::{
+        ai::onnx_enemy_strategy_service::OnnxEnemyStrategyService,
         aws::{
             eventbridge_schedule_maker::EventBridgeScheduleMaker,
             websocketapi_sender::WebSocketapiSender,
@@ -207,6 +209,8 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                 let turn_repository = DynamoDbTurnRepository::new(dynamo_client.clone());
                 // スケジュールイベント作例用クラス
                 let schedule_maker = EventBridgeScheduleMaker::new().await;
+                // AI戦略サービスの作成
+                let enemy_strategy_service = OnnxEnemyStrategyService::new();
 
                 // アクションごとの処理
                 match message {
@@ -228,6 +232,28 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                             Arc::new(game_repository),
                             Arc::new(websocket_sender),
                             Arc::new(schedule_maker),
+                        );
+                        // マッチメイキング処理を実行
+                        service
+                            .execute(&player_id, &event.request_context.connection_id, units)
+                            .await?;
+                    }
+
+                    // PvEマッチメイキングリクエストの処理
+                    WebSocketRequest::PveMatchmaking { player_id, units } => {
+                        // コネクションIDとPlayerIDの紐付けを保存
+                        connection_repository
+                            .save(&player_id, &event.request_context.connection_id)
+                            .await?;
+
+                        // マッチングリポジトリとサービスの作成
+                        let matching_repository =
+                            DynamoDbMatchingRepository::new(dynamo_client.clone());
+                        let service = PveMatchmakingApplicationService::new(
+                            Arc::new(connection_repository),
+                            Arc::new(unit_repository),
+                            Arc::new(game_repository),
+                            Arc::new(websocket_sender),
                         );
                         // マッチメイキング処理を実行
                         service
@@ -280,6 +306,7 @@ async fn handle_websocket_event(event: WebSocketEvent) -> Result<Response, Error
                             Arc::new(unit_repository),
                             Arc::new(websocket_sender),
                             Arc::new(schedule_maker),
+                            Arc::new(enemy_strategy_service),
                         );
                         service.execute(game_id, player_id, steps).await?;
                     }

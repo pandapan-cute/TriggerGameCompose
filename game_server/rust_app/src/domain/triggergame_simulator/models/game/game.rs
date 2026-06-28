@@ -1,6 +1,7 @@
 use crate::application::game;
 use crate::domain::triggergame_simulator::configs::game_config::GameConfig;
 use crate::domain::triggergame_simulator::models::game::game_state::{GameState, GameStateValue};
+use crate::domain::triggergame_simulator::models::game::game_type::{self, GameType};
 use crate::domain::triggergame_simulator::models::game::motion_lab_end_time;
 use crate::domain::triggergame_simulator::models::game::visibility::Visibility;
 use crate::domain::triggergame_simulator::models::step::step::Step;
@@ -26,6 +27,8 @@ pub struct Game {
     game_id: GameId,
     #[pyo3(get)]
     game_state: GameState,
+    /// ゲームの種類（PvP or PvE）
+    game_type: GameType,
     #[pyo3(get)]
     current_turn_number: TurnNumber,
     motion_lab_end_time: MotionLabEndTime,
@@ -43,6 +46,7 @@ impl Game {
     pub fn new(
         game_id: GameId,
         game_state: GameState,
+        game_type: GameType,
         current_turn_number: TurnNumber,
         motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
@@ -52,6 +56,7 @@ impl Game {
         Self {
             game_id,
             game_state,
+            game_type,
             current_turn_number,
             player1_id,
             player2_id,
@@ -60,7 +65,7 @@ impl Game {
         }
     }
 
-    /// 新規ゲームの生成
+    /// 新規ゲームの生成 (デフォルトはPvP)
     pub fn create(game_id: GameId, player1_id: &PlayerId, player2_id: &PlayerId) -> Self {
         let game_state = GameState::initial();
         let current_turn_number = TurnNumber::initial();
@@ -68,6 +73,23 @@ impl Game {
         Self::new(
             game_id,
             game_state,
+            GameType::initial(), // PvP用の初期化
+            current_turn_number,
+            motion_lab_end_time,
+            player1_id.clone(),
+            player2_id.clone(),
+        )
+    }
+
+    /// 新規ゲームの生成（PvE用）
+    pub fn create_pve(game_id: GameId, player1_id: &PlayerId, player2_id: &PlayerId) -> Self {
+        let game_state = GameState::initial();
+        let current_turn_number = TurnNumber::initial();
+        let motion_lab_end_time = MotionLabEndTime::initial();
+        Self::new(
+            game_id,
+            game_state,
+            GameType::initial_pve(), // PvE用の初期化
             current_turn_number,
             motion_lab_end_time,
             player1_id.clone(),
@@ -79,6 +101,7 @@ impl Game {
     pub fn reconstruct(
         game_id: GameId,
         game_state: GameState,
+        game_type: GameType,
         current_turn_number: TurnNumber,
         motion_lab_end_time: MotionLabEndTime,
         player1_id: PlayerId,
@@ -88,6 +111,7 @@ impl Game {
         Self {
             game_id,
             game_state,
+            game_type,
             current_turn_number,
             motion_lab_end_time,
             player1_id,
@@ -204,6 +228,10 @@ impl Game {
 
     pub fn game_state(&self) -> &GameState {
         &self.game_state
+    }
+
+    pub fn game_type(&self) -> &GameType {
+        &self.game_type
     }
 
     pub fn current_turn_number(&self) -> &TurnNumber {

@@ -21,7 +21,7 @@ use crate::{
             models::{
                 game::{
                     game::Game, game_id::game_id::GameId, game_state::GameState,
-                    motion_lab_end_time::MotionLabEndTime, visibility,
+                    game_type::GameType, motion_lab_end_time::MotionLabEndTime, visibility,
                 },
                 turn::turn_number::turn_number::TurnNumber,
             },
@@ -128,6 +128,7 @@ impl MatchmakingApplicationService {
                 let game = Game::new(
                     game_id.clone(),
                     GameState::initial(),
+                    GameType::initial(), // PvP用の初期化
                     TurnNumber::initial(),
                     MotionLabEndTime::initial_matching(),
                     matching.player1_id().clone(),

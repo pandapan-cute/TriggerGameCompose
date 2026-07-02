@@ -8,8 +8,6 @@ use crate::{
     config::env::AppEnv,
 };
 
-const MAX_WEBSOCKET_MESSAGE_BYTES: usize = 32 * 1024;
-
 pub struct WebSocketapiSender {
     client: Client,
 }
@@ -31,16 +29,6 @@ impl WebSocketSender for WebSocketapiSender {
         let data =
             serde_json::to_vec(response).map_err(|e| format!("Serialization error: {}", e))?;
         let payload_len = data.len();
-
-        // API Gateway WebSocket の 1メッセージ上限(32KB)を超えると 413 が返る。
-        if payload_len > MAX_WEBSOCKET_MESSAGE_BYTES
-            && AppEnv::from_env().unwrap_or(AppEnv::Local) == AppEnv::Prod
-        {
-            return Err(format!(
-                "Failed to send message. connection_id={}, payload_bytes={} exceeds 32KB limit",
-                connection_id, payload_len
-            ));
-        }
 
         self.client
             .post_to_connection()

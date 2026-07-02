@@ -28,7 +28,7 @@ Resources:
       CodeUri: ./rust_app
       FunctionName: !Sub '${TriggerGameFunctionName}-${EnvironmentName}'
       Handler: bootstrap
-      Runtime: provided.al2
+      Runtime: provided.al2023
       Architectures:
       - x86_64
       Layers:
@@ -86,11 +86,11 @@ Resources:
   WtModelLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: wt-model-layer
+      LayerName: !Sub 'wt-model-layer-${EnvironmentName}'
       Description: ONNX model files for wt ai
       ContentUri: ../machine_learning/models/   # パッケージに含めるローカルフォルダ
       CompatibleRuntimes:
-        - provided.al2
+        - provided.al2023
 
   # EventBridge Scheduler のスケジュールグループ
   TriggerGameSchedulerGroup:

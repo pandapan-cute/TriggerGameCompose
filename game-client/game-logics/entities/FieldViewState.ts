@@ -18,9 +18,9 @@ interface FieldViewCell {
  */
 export class FieldViewState {
   /** フィールド状態を保持する2次元配列 */
-  private fieldView: FieldViewCell[][];
+  protected fieldView: FieldViewCell[][];
 
-  constructor(private hexUtils: HexUtils, private scene: Phaser.Scene, private gridConfig: GridConfig, private fieldSteps: number[][], visibility: boolean[][]) {
+  constructor(protected hexUtils: HexUtils, protected scene: Phaser.Scene, protected gridConfig: GridConfig, protected fieldSteps: number[][], visibility: boolean[][]) {
     // フィールドビューを初期化（列×行）
     this.fieldView = Array.from({ length: gridConfig.gridWidth }, () =>
       Array.from({ length: gridConfig.gridHeight }, (): FieldViewCell => ({
@@ -40,7 +40,7 @@ export class FieldViewState {
   /**
    * 背景画像を作成・配置する
    */
-  private createBackground() {
+  protected createBackground() {
     const position = this.hexUtils.getHexPosition(
       0,
       0
@@ -56,7 +56,7 @@ export class FieldViewState {
   /**
    * 背景タイルを六角形グリッドに敷き詰める
    */
-  private createBackgroundTiles() {
+  protected createBackgroundTiles() {
     // 各グリッドセルに六角形の背景を配置
     for (let col = 0; col < this.gridConfig.gridWidth; col++) {
       for (let row = 0; row < this.gridConfig.gridHeight; row++) {
@@ -94,7 +94,7 @@ export class FieldViewState {
    * 視認可能エリアのフィールドビューを設定する
    * @param visibilty 視認可能エリアの2次元配列
    */
-  setSightAreaFieldView(visibilty: boolean[][]) {
+  protected setSightAreaFieldView(visibilty: boolean[][]) {
 
     if (this.scene === null) {
       console.warn("Sceneが未初期化のため、視認可能エリアのフィールドビューを設定できません。");

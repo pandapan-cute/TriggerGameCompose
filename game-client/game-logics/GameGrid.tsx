@@ -16,6 +16,9 @@ import TurnStateMotionLabPanel from "@/components/panels/TurnStatePanel/MotionLa
 import TurnStateMotionExecutePanel from "@/components/panels/TurnStatePanel/MotionExecute";
 import { MAX_TURN } from "./config/game-config";
 import { SkyOutlineButton } from "@/components/buttons/sky-outline";
+import { ThreeDGridCellsScene } from "./3d-version/scenes/ThreeDGridCellsScene";
+import { enable3d } from "@enable3d/phaser-extension/dist/enable3d";
+import { Canvas } from "@enable3d/common/dist/customCanvas";
 
 interface GameGridProps {
   currentTurn: number;
@@ -25,6 +28,7 @@ interface GameGridProps {
   visibility: boolean[][];
   motionLabEndTime: Date;
   gameResult: GameResult | null;
+  gameDimention: "2D" | "3D";
   setGameResult: (result: GameResult) => void;
   checkGameState: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], currentTurn: number) => void;
   setCurrentTurn: (turn: number) => void;
@@ -34,7 +38,7 @@ interface GameGridProps {
  * PhaserゲームのReactコンポーネント
  * SSR（Server-Side Rendering）対応のため、動的インポートを使用
  */
-const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, setGameResult, checkGameState, setCurrentTurn }) => {
+const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnits, fieldSteps, visibility, motionLabEndTime, gameResult, gameDimention = "3D", setGameResult, checkGameState, setCurrentTurn }) => {
 
   // PhaserゲームインスタンスのRef（型安全性のため動的インポートの型を使用）
   const gameRef = useRef<import("phaser").Game | null>(null);
@@ -160,6 +164,8 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     // 既にゲームインスタンスが存在する場合は何もしない
     if (gameRef.current) return;
 
+    let cancelled = false;
+
     /**
      * Phaserライブラリを動的に読み込む関数
      * SSR時にwindowオブジェクトが存在しないため、クライアント側でのみ実行
@@ -169,30 +175,63 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         // Phaserライブラリを動的にインポート
         const Phaser = await import("phaser");
 
-        const gridScene = new GridCellsScene(motionLabEndTime, friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame, handleFinishMotionExecute);
-        gridSceneRef.current = gridScene;
 
-        // Phaserゲームの設定（画面サイズに合わせて調整）
-        const config: Phaser.Types.Core.GameConfig = {
-          type: Phaser.AUTO, // 自動的にWebGLまたはCanvasを選択
-          width: window.innerWidth, // 画面幅に合わせて調整（余白を考慮）
-          height: window.innerHeight, // 画面高さに合わせて調整（余白を考慮）
-          backgroundColor: "#ffffff", // 背景色（真っ白）
-          parent: containerRef.current, // ゲームを表示するDOM要素
-          scene: gridScene, // 使用するシーン
-          physics: {
-            default: "arcade", // 物理エンジン（今回は使用しないがデフォルト設定）
-            arcade: {
-              gravity: { y: 0, x: 0 }, // 重力なし
-              debug: false, // デバッグ表示なし
+        if (cancelled || !containerRef.current || gameRef.current) return;
+
+        if (gameDimention === "2D") {
+          // 2Dの場合の設定
+          const gridScene = new GridCellsScene(motionLabEndTime, friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame, handleFinishMotionExecute);
+          gridSceneRef.current = gridScene;
+
+          // Phaserゲームの設定（画面サイズに合わせて調整）
+          const config: Phaser.Types.Core.GameConfig = {
+            type: Phaser.AUTO, // 自動的にWebGLまたはCanvasを選択
+            width: window.innerWidth, // 画面幅に合わせて調整（余白を考慮）
+            height: window.innerHeight, // 画面高さに合わせて調整（余白を考慮）
+            backgroundColor: "#ffffff", // 背景色（真っ白）
+            parent: containerRef.current, // ゲームを表示するDOM要素
+            scene: gridScene, // 使用するシーン
+            physics: {
+              default: "arcade", // 物理エンジン（今回は使用しないがデフォルト設定）
+              arcade: {
+                gravity: { y: 0, x: 0 }, // 重力なし
+                debug: false, // デバッグ表示なし
+              },
             },
-          },
-        };
+          };
 
-        // 二重チェック：再度ゲームインスタンスが存在しないことを確認
-        if (!gameRef.current) {
-          // Phaserゲームインスタンスを作成
-          gameRef.current = new Phaser.Game(config);
+          // 二重チェック：再度ゲームインスタンスが存在しないことを確認
+          if (!gameRef.current) {
+            // Phaserゲームインスタンスを作成
+            gameRef.current = new Phaser.Game(config);
+          }
+        } else if (gameDimention === "3D") {
+          // 3Dの場合の設定
+          const gridScene = new ThreeDGridCellsScene(motionLabEndTime, friendUnits, enemyUnits, fieldSteps, visibility, handleTurnExecution, handleCompleteGame, handleFinishMotionExecute);
+          gridSceneRef.current = gridScene;
+
+          // Phaserゲームの設定（画面サイズに合わせて調整）
+          const config: Phaser.Types.Core.GameConfig = {
+            type: Phaser.WEBGL, // WebGLを選択
+            transparent: true, // 背景を透明にするかどうか
+            scale: {
+              mode: Phaser.Scale.FIT, // 画面サイズに合わせてスケーリング
+              autoCenter: Phaser.Scale.CENTER_BOTH, // 画面中央に配置
+            },
+            width: window.innerWidth, // 画面幅に合わせて調整（余白を考慮）
+            height: window.innerHeight, // 画面高さに合わせて調整（余白を考慮）
+            backgroundColor: "#ffffff", // 背景色（真っ白）
+            parent: containerRef.current, // ゲームを表示するDOM要素
+            scene: gridScene, // 使用するシーン
+            ...Canvas(),
+          };
+
+          enable3d(() => {
+            if (cancelled || gameRef.current) return;
+
+            // Ammo物理の初期化後に Phaser.Game を作成する
+            gameRef.current = new Phaser.Game(config);
+          }).withPhysics('/lib/ammo');
         }
       } catch (error) {
         console.error("Phaserの読み込みに失敗しました:", error);
@@ -209,6 +248,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
     // コンポーネントのクリーンアップ関数
     return () => {
+      cancelled = true;
       if (gameRef.current) {
         gameRef.current.destroy(true); // Phaserゲームインスタンスを破棄
         gameRef.current = null;

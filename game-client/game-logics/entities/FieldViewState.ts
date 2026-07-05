@@ -94,7 +94,7 @@ export class FieldViewState {
    * 視認可能エリアのフィールドビューを設定する
    * @param visibilty 視認可能エリアの2次元配列
    */
-  protected setSightAreaFieldView(visibilty: boolean[][]) {
+  public setSightAreaFieldView(visibilty: boolean[][]) {
 
     if (this.scene === null) {
       console.warn("Sceneが未初期化のため、視認可能エリアのフィールドビューを設定できません。");

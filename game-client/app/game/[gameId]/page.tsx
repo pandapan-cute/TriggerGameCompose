@@ -141,7 +141,7 @@ export default function GamePage() {
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && gameResult === "InProgress" && (
         <div className="w-full h-full">
-          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} setGameResult={setGameResult} checkGameState={checkGameState} setCurrentTurn={setCurrentTurn} />
+          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} gameDimention="3D" setGameResult={setGameResult} checkGameState={checkGameState} setCurrentTurn={setCurrentTurn} />
         </div>
       )}
     </div>

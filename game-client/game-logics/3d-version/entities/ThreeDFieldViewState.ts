@@ -1,8 +1,8 @@
 import { HexUtils } from "@/game-logics/hexUtils";
-import { OnGridCellText } from "@/game-logics/phaser/game-objects/texts/OnGridCellText";
 import { GridConfig } from "@/game-logics/types";
 import { ThreeDHexagonCell } from "../graphics/ThreeDHexagonCell";
 import { Scene3D } from "@enable3d/phaser-extension/dist/scene3d";
+import { ThreeDCharacterPlacementService } from "../services/ThreeDCharacterPlacementService";
 
 interface FieldViewCell {
   /** 可視性の色付けグラフィック */
@@ -17,11 +17,11 @@ interface FieldViewCell {
 export class ThreeDFieldViewState {
   /** フィールド状態を保持する2次元配列 */
   protected fieldView: FieldViewCell[][];
-  /** 3D配置を原点基準に寄せるためのオフセット */
-  private readonly gridOriginOffset: { x: number; y: number; };
+  /** 3D配置の座標変換サービス */
+  private readonly placementService: ThreeDCharacterPlacementService;
 
   constructor(protected hexUtils: HexUtils, protected scene: Scene3D, protected gridConfig: GridConfig, protected fieldSteps: number[][], visibility: boolean[][]) {
-    this.gridOriginOffset = this.calculateGridOriginOffset();
+    this.placementService = new ThreeDCharacterPlacementService(gridConfig);
 
     // フィールドビューを初期化（列×行）
     this.fieldView = Array.from({ length: gridConfig.gridWidth }, () =>
@@ -43,7 +43,7 @@ export class ThreeDFieldViewState {
     // 各グリッドセルに六角形の背景を配置
     for (let col = 0; col < this.gridConfig.gridWidth; col++) {
       for (let row = 0; row < this.gridConfig.gridHeight; row++) {
-        const pos = this.toLocalGridPosition(this.hexUtils.getHexPosition(col, row));
+        const pos = this.placementService.fromGrid(this.hexUtils, col, row);
 
         // ★ 作成したHexagonCellを保存
         const hexagon = new ThreeDHexagonCell(this.hexUtils, this.scene, pos);
@@ -57,7 +57,7 @@ export class ThreeDFieldViewState {
    * 視認可能エリアのフィールドビューを設定する
    * @param visibilty 視認可能エリアの2次元配列
    */
-  protected setSightAreaFieldView(visibilty: boolean[][]) {
+  public setSightAreaFieldView(visibilty: boolean[][]) {
 
     if (this.scene === null) {
       console.warn("Sceneが未初期化のため、視認可能エリアのフィールドビューを設定できません。");
@@ -78,26 +78,4 @@ export class ThreeDFieldViewState {
     }
   }
 
-  /**
-   * グリッド全体の中心を原点に合わせるためのオフセットを計算する
-   */
-  private calculateGridOriginOffset(): { x: number; y: number; } {
-    const gridWidth = this.gridConfig.gridWidth * this.gridConfig.hexWidth * 0.75 + this.gridConfig.hexWidth;
-    const gridHeight = this.gridConfig.gridHeight * this.gridConfig.hexHeight + this.gridConfig.hexHeight;
-
-    return {
-      x: gridWidth / 2,
-      y: gridHeight / 2,
-    };
-  }
-
-  /**
-   * 2D の画面座標を 3D のローカル座標へ変換する
-   */
-  private toLocalGridPosition(position: { x: number; y: number; }): { x: number; y: number; } {
-    return {
-      x: position.x - this.gridOriginOffset.x,
-      y: position.y - this.gridOriginOffset.y,
-    };
-  }
 }

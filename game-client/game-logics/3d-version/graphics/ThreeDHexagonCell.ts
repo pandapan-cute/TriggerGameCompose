@@ -43,9 +43,10 @@ export class ThreeDHexagonCell extends ExtendedObject3D {
     this.add(this.mesh);
 
     // 5. 3D空間のシーン（親）に自身を登録
-    // ExtrudeGeometry は初期状態だと XY 平面に立つので、地面として使うために寝かせる
+    // ExtrudeGeometry は初期状態だと XY 平面に立つので、地面として使うために寝かせる。
+    // ジオメトリ自体は hexUtils.getHexVertices() の値、つまり hexWidth/hexRadius ベースで
+    // すでにサイズが決まっているため、ここで追加の縮尺はかけない。
     this.rotation.x = -Math.PI / 2;
-    this.scale.set(0.1, 0.1, 0.1); // 必要に応じてスケールを調整
     this.position.set(0, 0, 0); // 必要に応じて位置を調整
     scene.third.add.existing(this);
   }

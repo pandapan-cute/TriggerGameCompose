@@ -55,7 +55,7 @@ export class GridCellsScene extends Scene3D {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], protected fieldSteps: number[][], protected visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: (turnNumber: number) => void) {
+  constructor(private firstMotionLabEndtime: Date, protected friendUnits: FriendUnit[], protected enemyUnits: EnemyUnit[], protected fieldSteps: number[][], protected visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: (turnNumber: number) => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -88,7 +88,7 @@ export class GridCellsScene extends Scene3D {
   /** ターン再生コントローラ */
   private turnReplayController: TurnReplayController | null = null;
   /** 視界情報管理サービス */
-  private fieldViewService: FieldViewService | null = null;
+  protected fieldViewService: FieldViewService | null = null;
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -455,7 +455,7 @@ export class GridCellsScene extends Scene3D {
   /**
    * キャラクターを六角形グリッドに配置する
    */
-  private createCharacters() {
+  protected createCharacters() {
     // 自分のキャラクターを配置
     this.friendUnits.forEach((unit) => {
       const playerCharacterState = new PlayerCharacterState(

@@ -1,10 +1,16 @@
-import { Scene3D, ExtendedObject3D } from "@enable3d/phaser-extension";
 import { GridCellsScene } from "../../phaser/scenes/GridCellsScene";
 import { ThreeDFieldViewState } from "../entities/ThreeDFieldViewState";
+import { ThreeDCharacterPlacementService } from "../services/ThreeDCharacterPlacementService";
+import { ThreeDUnitObject } from "../graphics/ThreeDUnitObject";
+import { FriendUnit } from "@/types/FriendUnit";
+import { EnemyUnit } from "@/types/EnemyUnit";
+import { ThreeDCharacterManager } from "../characterManager";
 
 export class ThreeDGridCellsScene extends GridCellsScene {
 
   private threeDFieldViewState!: ThreeDFieldViewState;
+  /** 3Dユニット表示オブジェクトの一覧 */
+  private threeDCharacterManager: ThreeDCharacterManager = new ThreeDCharacterManager();
 
   public init() {
     // 💡 4. ここで3DモードをONにする！
@@ -23,60 +29,58 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     );
   }
 
+  /** 3D版のキャラクターを配置する */
+  protected createCharacters() {
+    const placementService = new ThreeDCharacterPlacementService(this.gridConfig);
+
+    this.friendUnits.forEach((unit) => {
+      const unitObject = this.placeUnit(unit, placementService);
+      if (unitObject) {
+        this.threeDCharacterManager.player3DCharacters.push(unitObject);
+      }
+    });
+
+    // 相手のキャラクターは既存2D仕様と同様に反転座標で配置する
+    this.enemyUnits.forEach((unit) => {
+      const invertedPosition = this.hexUtils.invertPosition(unit.position);
+      const unitObject = this.placeUnit({ ...unit, position: invertedPosition }, placementService);
+      if (unitObject) {
+        this.threeDCharacterManager.enemy3DCharacters.push(unitObject);
+      }
+    });
+  }
+
   async create(): Promise<void> {
     // もとの2Dクラスのcreate（通信初期化など）をそのまま再利用して実行！
     super.create();
 
     await this.third.warpSpeed();
     this.third.camera.position.set(20, 20, 40);
+    this.third.camera.lookAt(0, 0, 0);
+  }
 
-    const robot = new ExtendedObject3D();
-    const animations = ['Jumping', 'LookingAround', 'Running', 'BodyJabCross', 'HipHopDancing'];
-    const pos = { x: 0, y: 5, z: 0 };
+  private placeUnit(unit: FriendUnit | EnemyUnit, placementService: ThreeDCharacterPlacementService): ThreeDUnitObject | undefined {
+    const { col, row } = unit.position;
+    if (col < 0 || row < 0 || col >= this.gridConfig.gridWidth || row >= this.gridConfig.gridHeight) {
+      return;
+    }
 
-    await this.third.load.fbx('/character/3d/Idle.fbx').then(object => {
-      robot.add(object);
+    const position = placementService.fromGridOnGround(this.hexUtils, col, row, 0.1);
+    const unitObject = new ThreeDUnitObject(this, unit.unitTypeId, position.x, position.y, position.z);
+    unitObject.updateVisibility(!unit.isBailout);
 
-      this.third.animationMixers.add(robot.anims.mixer);
+    unitObject.loadModel("/character/3d/Idle.fbx", 0.5);
+    this.registerDefaultAnimations(unitObject);
 
-      robot.anims.add('Idle', object.animations[0]);
-      robot.anims.play('Idle');
+    return unitObject;
+  }
 
-      // attach a cube to the left hand
-      robot.traverse(child => {
-        if (child.name === 'mixamorigLeftHandIndex1') {
-          child.add(this.third.add.box({ width: 20, height: 20, depth: 20 }));
-        }
-      });
+  private async registerDefaultAnimations(unitObject: ThreeDUnitObject): Promise<void> {
+    const animationNames = ["Jumping", "LookingAround", "Running", "BodyJabCross", "HipHopDancing"];
 
-      robot.traverse(child => {
-        if (child.isMesh) child.castShadow = child.receiveShadow = true;
-      });
-
-      robot.scale.set(0.05, 0.05, 0.05);
-      robot.position.set(pos.x, pos.y, pos.z);
-
-
-      this.third.add.existing(robot);
-
-      // load more animations
-      animations.forEach(key => {
-        if (key === 'Idle') return;
-        this.third.load.fbx(`/character/3d/${key}.fbx`).then(object => {
-          robot.anims.add(key, object.animations[0]);
-        });
-      });
-
-      this.time.addEvent({
-        delay: 2500,
-        loop: true,
-        callback: () => {
-          const anim = Phaser.Math.RND.pick(animations);
-          console.log(`Set animation ${anim}`);
-          robot.anims.play(anim, 350);
-        }
-      });
-    });
+    await Promise.all(
+      animationNames.map((name) => unitObject.addAnimation(name, `/character/3d/${name}.fbx`))
+    );
   }
 
 }

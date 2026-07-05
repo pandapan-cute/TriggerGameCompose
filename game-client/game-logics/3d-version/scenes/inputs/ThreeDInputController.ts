@@ -5,6 +5,8 @@ import "phaser";
 export interface ThreeDInputControllerDeps {
   getSelectableUnits: () => ThreeDUnitObject[];
   onSelectUnit: (unit: ThreeDUnitObject) => void;
+  getMovableCells: () => THREE.Mesh[];
+  onSelectMovableCell: (cell: THREE.Mesh) => void;
 }
 
 /**
@@ -43,21 +45,42 @@ export class ThreeDInputController {
 
     const units = this.deps.getSelectableUnits();
     const intersections = this.raycaster.intersectObjects(units, true);
-    if (!intersections.length) return;
+    if (intersections.length) {
+      const clickedObject = intersections[0].object;
+      const selectedUnit = units.find((unit) => {
+        let node: THREE.Object3D | null = clickedObject;
+        while (node) {
+          if (node === unit) return true;
+          node = node.parent;
+        }
+        return false;
+      });
 
-    const clickedObject = intersections[0].object;
-    const selectedUnit = units.find((unit) => {
-      let node: THREE.Object3D | null = clickedObject;
+      if (!selectedUnit) return;
+
+      selectedUnit.triggerSelectUnit();
+      this.deps.onSelectUnit(selectedUnit);
+      return;
+    }
+
+    const movableCells = this.deps.getMovableCells();
+    if (!movableCells.length) return;
+
+    const cellIntersections = this.raycaster.intersectObjects(movableCells, true);
+    if (!cellIntersections.length) return;
+
+    const clickedCellObject = cellIntersections[0].object;
+    const targetCell = movableCells.find((cell) => {
+      let node: THREE.Object3D | null = clickedCellObject;
       while (node) {
-        if (node === unit) return true;
+        if (node === cell) return true;
         node = node.parent;
       }
       return false;
     });
 
-    if (!selectedUnit) return;
+    if (!targetCell) return;
 
-    selectedUnit.triggerSelectUnit();
-    this.deps.onSelectUnit(selectedUnit);
+    this.deps.onSelectMovableCell(targetCell);
   }
 }

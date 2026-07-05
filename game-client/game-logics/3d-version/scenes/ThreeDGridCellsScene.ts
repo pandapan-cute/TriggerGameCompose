@@ -87,6 +87,12 @@ export class ThreeDGridCellsScene extends GridCellsScene {
           onSelectUnit: (unitObject) => {
             this.threeDSelectionService?.selectCharacter(unitObject);
           },
+          getMovableCells: () => {
+            return this.threeDSelectionService?.getMovableCellHighlights() ?? [];
+          },
+          onSelectMovableCell: (cell) => {
+            this.threeDSelectionService?.moveSelectedCharacterByHighlight(cell);
+          },
         }
       );
     }

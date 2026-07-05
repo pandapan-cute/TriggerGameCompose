@@ -31,9 +31,10 @@ export class ThreeDCharacterPlacementService {
       // 2D描画で使っていたワールド座標の左上基準を、3D空間の原点基準へずらす。
       // これにより盤面全体の中心が (0, 0, 0) 付近に来る。
       x: position.x - this.gridOriginOffset.x,
-      // 六角セルのShape生成は引き続き「2DのXY平面」として扱うため、
-      // 2Dのy座標はそのまま3Dオブジェクトのローカルyへ入れている。
-      y: position.y - this.gridOriginOffset.y,
+      // 六角セルは後段で X 軸回転して地面へ寝かせるため、
+      // そのまま localY を使うと row 方向の見え方が逆転する。
+      // ここで符号を反転して、地面上ユニット(fromGridOnGround)と同じ向きに揃える。
+      y: -(position.y - this.gridOriginOffset.y),
       // ここでの z は、セルの厚みや前後の微調整用の値。
       z,
     };
@@ -61,8 +62,9 @@ export class ThreeDCharacterPlacementService {
 
   /** グリッド座標を六角セル用の3Dローカル座標へ変換する */
   fromGrid(hexUtils: HexUtils, col: number, row: number, z: number = 0): ThreeDWorldPosition {
-    const invertPosion = hexUtils.invertPosition({ col, row });
-    const position2d = hexUtils.getHexPosition(invertPosion.col, invertPosion.row);
+    // 2D版と同じ座標系で盤面セルを配置する。
+    // ここで反転すると列の奇偶が逆転し、左右どちらが出っ張るかが2Dと不一致になる。
+    const position2d = hexUtils.getHexPosition(col, row);
     return this.toSurfacePosition(position2d, z);
   }
 

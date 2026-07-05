@@ -19,30 +19,49 @@ export interface ThreeDSelectionServiceDeps {
  * 3D版のユニット選択と移動可能セル表示を担当するサービス。
  */
 export class ThreeDSelectionService {
+  /** 現在シーン上に表示している移動候補セルのメッシュ一覧。 */
   private movableCellHighlights: THREE.Mesh[] = [];
+  /**
+   * 各ハイライトメッシュに対応するグリッド情報。
+   * クリックされたメッシュから移動先セルを逆引きするために保持する。
+   */
+  private readonly movableCellStateByMesh = new Map<
+    THREE.Mesh,
+    { col: number; row: number; remainActionPoints: number; remainSeconds: number; }
+  >();
+  /** 移動アニメーション中の二重操作を防止するフラグ。 */
+  private isMoving = false;
 
   constructor(private readonly deps: ThreeDSelectionServiceDeps) { }
 
   /** ユニットを選択し、移動可能セル表示を更新する。 */
   public selectCharacter(unitObject: ThreeDUnitObject): void {
+    // 現在の選択対象を差し替える。
     this.deps.characterManager.selected3DCharacter = unitObject;
+    // 選択状態に応じて移動候補セルを再生成する。
     this.showMovableHexes();
   }
 
   /** 選択中ユニットの移動可能セルを緑で表示する。 */
   public showMovableHexes(): void {
+    // 前回分の候補表示が残っていると二重描画になるため、最初に全消去する。
     this.clearMovableHexes();
 
     const selectedUnit = this.deps.characterManager.selected3DCharacter;
+    // 何も選択されていない場合は表示対象がないため終了。
     if (!selectedUnit) return;
 
     // まずは味方ユニット選択時のみ表示する。
     const playerUnit = this.deps.playerUnits.get(selectedUnit);
+    // 敵ユニット選択時は移動候補を表示しない。
     if (!playerUnit) return;
 
+    // 直近のグリッド座標を優先して取得し、なければ初期ユニット座標を使う。
     const currentPosition =
       this.deps.unitGridPositions.get(selectedUnit) ?? playerUnit.position;
+    // 残り行動力が負になることはない前提に正規化する。
     const actionPoints = Math.max(0, playerUnit.currentActionPoints ?? 0);
+    // 2D版と同じ経路探索ロジックで移動可能セルを列挙する。
     const movableHexes = this.deps.hexUtils.getAdjacentHexes(
       currentPosition.col,
       currentPosition.row,
@@ -53,13 +72,76 @@ export class ThreeDSelectionService {
     movableHexes.forEach((hex) => {
       const isCurrentCell =
         hex.col === currentPosition.col && hex.row === currentPosition.row;
+      // 現在地と占有セル（他ユニットがいるセル）は移動先として除外する。
       if (isCurrentCell || this.isUnitAt(hex.col, hex.row, selectedUnit)) {
         return;
       }
 
+      // 移動可能セルを緑メッシュとして表示し、後でクリック判定できるように保持する。
       const highlight = this.createMovableCellHighlight(hex.col, hex.row);
       this.movableCellHighlights.push(highlight);
+      this.movableCellStateByMesh.set(highlight, {
+        col: hex.col,
+        row: hex.row,
+        remainActionPoints: hex.remainActionPoints,
+        remainSeconds: hex.remainSeconds,
+      });
     });
+  }
+
+  /** 入力コントローラ向け: 現在有効な移動候補セルメッシュ一覧を返す。 */
+  public getMovableCellHighlights(): THREE.Mesh[] {
+    return this.movableCellHighlights;
+  }
+
+  /** 移動候補セルクリック時に、選択中ユニットを対象セルへ移動する。 */
+  public moveSelectedCharacterByHighlight(cellMesh: THREE.Mesh): void {
+    if (this.isMoving) return;
+
+    const selectedUnit = this.deps.characterManager.selected3DCharacter;
+    // 選択対象が無い場合は移動操作として成立しない。
+    if (!selectedUnit) return;
+
+    // クリックされたメッシュに紐づく移動先セル情報を取得する。
+    const target = this.movableCellStateByMesh.get(cellMesh);
+    // 管理外メッシュが渡された場合は無視する。
+    if (!target) return;
+
+    // グリッド座標をワールド座標へ変換し、現在の高さを保ったまま移動させる。
+    const worldPosition = this.deps.placementService.fromGridOnGround(
+      this.deps.hexUtils,
+      target.col,
+      target.row,
+      selectedUnit.position.y,
+    );
+
+    // 移動中は候補セルを一旦隠し、Running アニメーションへ切り替える。
+    this.isMoving = true;
+    this.clearMovableHexes();
+    selectedUnit.playAnimation("Running", 120);
+
+    selectedUnit.moveTo(
+      { x: worldPosition.x, y: worldPosition.y, z: worldPosition.z },
+      380,
+      () => {
+        // 移動完了後に内部状態を確定し、Idleへ戻す。
+        this.deps.unitGridPositions.set(selectedUnit, {
+          col: target.col,
+          row: target.row,
+        });
+
+        const playerUnit = this.deps.playerUnits.get(selectedUnit);
+        if (playerUnit) {
+          playerUnit.position = { col: target.col, row: target.row };
+          playerUnit.currentActionPoints = target.remainActionPoints;
+        }
+
+        selectedUnit.playAnimation("Idle", 150);
+        this.isMoving = false;
+        // 移動後の位置を基準に、次の移動候補セルを再表示する。
+        this.showMovableHexes();
+      },
+    );
   }
 
   /** シーン終了時などに選択関連オブジェクトを破棄する。 */
@@ -68,6 +150,7 @@ export class ThreeDSelectionService {
   }
 
   private clearMovableHexes(): void {
+    // シーン上のメッシュとGPUリソースを破棄してリークを防ぐ。
     this.movableCellHighlights.forEach((mesh) => {
       mesh.removeFromParent();
       mesh.geometry.dispose();
@@ -77,10 +160,13 @@ export class ThreeDSelectionService {
         mesh.material.dispose();
       }
     });
+    // 参照配列と逆引きマップを初期化する。
     this.movableCellHighlights = [];
+    this.movableCellStateByMesh.clear();
   }
 
   private isUnitAt(col: number, row: number, ignoreUnit?: ThreeDUnitObject): boolean {
+    // 管理中ユニット座標を走査し、対象セルの占有有無を判定する。
     for (const [unitObject, position] of this.deps.unitGridPositions) {
       if (ignoreUnit && unitObject === ignoreUnit) {
         continue;
@@ -93,6 +179,7 @@ export class ThreeDSelectionService {
   }
 
   private createMovableCellHighlight(col: number, row: number): THREE.Mesh {
+    // 六角形の輪郭頂点をもとにハイライト形状を生成する。
     const vertices = this.deps.hexUtils.getHexVertices(0, 0);
     const shape = new THREE.Shape();
     shape.moveTo(vertices[0], vertices[1]);
@@ -108,10 +195,12 @@ export class ThreeDSelectionService {
       color: 0x00ff00,
       transparent: true,
       opacity: 0.42,
+      // 背面セルと重なったときの見え方を優先して深度書き込みを無効化する。
       depthWrite: false,
     });
 
     const highlight = new THREE.Mesh(geometry, material);
+    // グリッド座標をワールド座標へ変換して、盤面上に少し浮かせて配置する。
     const worldPosition = this.deps.placementService.fromGridOnGround(
       this.deps.hexUtils,
       col,

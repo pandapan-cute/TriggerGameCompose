@@ -106,6 +106,40 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * 指定座標まで補間移動する
+   */
+  moveTo(
+    to: { x: number; y: number; z: number; },
+    durationMs: number,
+    onComplete?: () => void,
+  ): void {
+    const from = {
+      x: this.position.x,
+      y: this.position.y,
+      z: this.position.z,
+    };
+
+    this.scene3d.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: durationMs,
+      ease: "Linear",
+      onUpdate: (tween) => {
+        const progress = tween.getValue() ?? 0;
+        this.setWorldPosition(
+          from.x + (to.x - from.x) * progress,
+          from.y + (to.y - from.y) * progress,
+          from.z + (to.z - from.z) * progress,
+        );
+      },
+      onComplete: () => {
+        this.setWorldPosition(to.x, to.y, to.z);
+        onComplete?.();
+      },
+    });
+  }
+
+  /**
    * ユニットの可視状態を切り替える
    */
   updateVisibility(isVisible: boolean): void {

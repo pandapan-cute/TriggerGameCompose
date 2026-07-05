@@ -11,6 +11,7 @@ export class ThreeDHexagonCell extends ExtendedObject3D {
   private centerPos: { x: number; y: number; };
   private mesh: THREE.Mesh;
   private material: THREE.MeshStandardMaterial;
+  private outline: THREE.LineSegments;
 
   constructor(hexUtils: HexUtils, scene: Scene3D, pos: { x: number; y: number; }) {
     super();
@@ -41,6 +42,20 @@ export class ThreeDHexagonCell extends ExtendedObject3D {
     // 4. メッシュを生成して自身に追加
     this.mesh = new THREE.Mesh(geometry, this.material);
     this.add(this.mesh);
+
+    // 4.5 六角セルの枠線（黒）を重ねる
+    // EdgesGeometry を使うことで、ワイヤーフレームより不要線が少ない輪郭線を描画できる
+    const edgesGeometry = new THREE.EdgesGeometry(geometry);
+    const outlineMaterial = new THREE.LineBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.6,
+    });
+    this.outline = new THREE.LineSegments(edgesGeometry, outlineMaterial);
+    // 回転後の地面方向に対してほんの少しだけ浮かせ、z-fighting を抑える
+    this.outline.position.z = 0.001;
+    this.outline.renderOrder = 2;
+    this.add(this.outline);
 
     // 5. 3D空間のシーン（親）に自身を登録
     // ExtrudeGeometry は初期状態だと XY 平面に立つので、地面として使うために寝かせる。

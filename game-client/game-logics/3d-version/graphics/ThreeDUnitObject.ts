@@ -21,6 +21,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   private readonly fallbackMesh: THREE.Mesh;
   private modelRoot: THREE.Object3D | null = null;
   private readonly animationNames = new Set<string>();
+  private selectUnit?: () => void;
 
   constructor(scene: Scene3D, unitTypeId: string, x: number, y: number, z: number = 0) {
     super();
@@ -38,6 +39,16 @@ export class ThreeDUnitObject extends ExtendedObject3D {
 
     this.position.set(x, y, z);
     this.scene3d.third.add.existing(this);
+  }
+
+  /** ユニット選択時のハンドラを設定する */
+  setSelectUnitHandler(handler: () => void): void {
+    this.selectUnit = handler;
+  }
+
+  /** ユニット選択処理を実行する */
+  triggerSelectUnit(): void {
+    this.selectUnit?.();
   }
 
   /**

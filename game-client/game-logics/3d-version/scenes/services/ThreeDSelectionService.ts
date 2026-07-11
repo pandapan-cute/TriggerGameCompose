@@ -1,14 +1,13 @@
-import { MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
 import { ThreeDCharacterManager } from "@/game-logics/3d-version/characterManager";
+import { ThreeDPlayerCharacterState } from "@/game-logics/3d-version/entities/ThreeDPlayerCharacterState";
 import { ThreeDUnitObject } from "@/game-logics/3d-version/graphics/ThreeDUnitObject";
 import { ThreeDCharacterPlacementService } from "@/game-logics/3d-version/services/ThreeDCharacterPlacementService";
-import { FriendUnit } from "@/types/FriendUnit";
 import { HexUtils } from "@/game-logics/hexUtils";
 import * as THREE from "three";
 
 export interface ThreeDSelectionServiceDeps {
   characterManager: ThreeDCharacterManager;
-  playerUnits: Map<ThreeDUnitObject, FriendUnit>;
+  playerCharacterStates: Map<ThreeDUnitObject, ThreeDPlayerCharacterState>;
   unitGridPositions: Map<ThreeDUnitObject, { col: number; row: number; }>;
   hexUtils: HexUtils;
   placementService: ThreeDCharacterPlacementService;
@@ -36,6 +35,13 @@ export class ThreeDSelectionService {
 
   /** ユニットを選択し、移動可能セル表示を更新する。 */
   public selectCharacter(unitObject: ThreeDUnitObject): void {
+    const currentSelectedUnit = this.deps.characterManager.selected3DCharacter;
+    // 同じ味方ユニットを再クリックした場合は、その場に待機したものとして残り時間だけを消費する。
+    if (currentSelectedUnit === unitObject) {
+      this.consumeWaitInPlace(unitObject);
+      return;
+    }
+
     // 現在の選択対象を差し替える。
     this.deps.characterManager.selected3DCharacter = unitObject;
     // 選択状態に応じて移動候補セルを再生成する。
@@ -52,21 +58,22 @@ export class ThreeDSelectionService {
     if (!selectedUnit) return;
 
     // まずは味方ユニット選択時のみ表示する。
-    const playerUnit = this.deps.playerUnits.get(selectedUnit);
+    const playerCharacterState = this.deps.playerCharacterStates.get(selectedUnit);
     // 敵ユニット選択時は移動候補を表示しない。
-    if (!playerUnit) return;
+    if (!playerCharacterState) return;
 
     // 直近のグリッド座標を優先して取得し、なければ初期ユニット座標を使う。
     const currentPosition =
-      this.deps.unitGridPositions.get(selectedUnit) ?? playerUnit.position;
+      this.deps.unitGridPositions.get(selectedUnit) ?? playerCharacterState.getPosition();
     // 残り行動力が負になることはない前提に正規化する。
-    const actionPoints = Math.max(0, playerUnit.currentActionPoints ?? 0);
+    const actionPoints = Math.max(0, playerCharacterState.getActionPoints());
+    const remainSeconds = Math.max(0, playerCharacterState.getRemainSeconds());
     // 2D版と同じ経路探索ロジックで移動可能セルを列挙する。
     const movableHexes = this.deps.hexUtils.getAdjacentHexes(
       currentPosition.col,
       currentPosition.row,
       actionPoints,
-      MAX_UNIT_EXEC_SECONDS,
+      remainSeconds,
     );
 
     movableHexes.forEach((hex) => {
@@ -130,12 +137,12 @@ export class ThreeDSelectionService {
           row: target.row,
         });
 
-        const playerUnit = this.deps.playerUnits.get(selectedUnit);
-        if (playerUnit) {
-          playerUnit.position = { col: target.col, row: target.row };
-          playerUnit.currentActionPoints = target.remainActionPoints;
+        const playerCharacterState = this.deps.playerCharacterStates.get(selectedUnit);
+        if (playerCharacterState) {
+          playerCharacterState.setPosition({ col: target.col, row: target.row });
+          playerCharacterState.setActionPoints(target.remainActionPoints);
+          playerCharacterState.setRemainSeconds(target.remainSeconds);
         }
-
         selectedUnit.playAnimation("Idle", 150);
         this.isMoving = false;
         // 移動後の位置を基準に、次の移動候補セルを再表示する。
@@ -147,6 +154,21 @@ export class ThreeDSelectionService {
   /** シーン終了時などに選択関連オブジェクトを破棄する。 */
   public dispose(): void {
     this.clearMovableHexes();
+  }
+
+  /** 同一ユニット再クリック時の待機処理。 */
+  private consumeWaitInPlace(unitObject: ThreeDUnitObject): void {
+    const playerCharacterState = this.deps.playerCharacterStates.get(unitObject);
+    if (!playerCharacterState) return;
+
+    const currentRemainSeconds = Math.max(0, playerCharacterState.getRemainSeconds());
+    if (currentRemainSeconds <= 0) {
+      this.clearMovableHexes();
+      return;
+    }
+
+    playerCharacterState.setRemainSeconds(currentRemainSeconds - 1);
+    this.showMovableHexes();
   }
 
   private clearMovableHexes(): void {

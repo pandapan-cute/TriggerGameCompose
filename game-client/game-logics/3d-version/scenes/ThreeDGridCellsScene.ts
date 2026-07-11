@@ -6,6 +6,7 @@ import { FriendUnit } from "@/types/FriendUnit";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { ThreeDCharacterManager } from "../characterManager";
 import { ThreeDInputController } from "./inputs/ThreeDInputController";
+import { ThreeDPlayerCharacterState } from "../entities/ThreeDPlayerCharacterState";
 import {
   ThreeDSelectionService,
   type ThreeDSelectionServiceDeps,
@@ -19,7 +20,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDInputController: ThreeDInputController | null = null;
   private readonly placementService: ThreeDCharacterPlacementService = new ThreeDCharacterPlacementService(this.gridConfig);
   private readonly unitGridPositions = new Map<ThreeDUnitObject, { col: number; row: number; }>();
-  private readonly playerUnits = new Map<ThreeDUnitObject, FriendUnit>();
+  private readonly playerCharacterStates = new Map<ThreeDUnitObject, ThreeDPlayerCharacterState>();
   private threeDSelectionService: ThreeDSelectionService | null = null;
 
   public init() {
@@ -47,7 +48,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         // 味方キャラクターの向きを反転させる
         unitObject.rotation.y = Math.PI;
         this.threeDCharacterManager.player3DCharacters.push(unitObject);
-        this.playerUnits.set(unitObject, unit);
+        this.playerCharacterStates.set(unitObject, new ThreeDPlayerCharacterState(unitObject, unit));
         this.unitGridPositions.set(unitObject, { ...unit.position });
       }
     });
@@ -115,8 +116,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     unitObject.setSelectUnitHandler(() => this.selectUnit(unitObject));
     unitObject.updateVisibility(!unit.isBailout);
 
-    unitObject.loadModel("/character/3d/Idle.fbx", 0.5);
-    this.registerDefaultAnimations(unitObject);
+    unitObject.loadDefaultModel();
 
     return unitObject;
   }
@@ -129,7 +129,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private createThreeDSelectionServiceDeps(): ThreeDSelectionServiceDeps {
     return {
       characterManager: this.threeDCharacterManager,
-      playerUnits: this.playerUnits,
+      playerCharacterStates: this.playerCharacterStates,
       unitGridPositions: this.unitGridPositions,
       hexUtils: this.hexUtils,
       placementService: this.placementService,
@@ -137,14 +137,6 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         this.third.add.existing(object);
       },
     };
-  }
-
-  private async registerDefaultAnimations(unitObject: ThreeDUnitObject): Promise<void> {
-    const animationNames = ["Jumping", "LookingAround", "Running", "BodyJabCross", "HipHopDancing"];
-
-    await Promise.all(
-      animationNames.map((name) => unitObject.addAnimation(name, `/character/3d/${name}.fbx`))
-    );
   }
 
 }

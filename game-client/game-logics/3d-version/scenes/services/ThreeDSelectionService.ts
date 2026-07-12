@@ -5,6 +5,9 @@ import { ThreeDCharacterPlacementService } from "@/game-logics/3d-version/servic
 import { HexUtils } from "@/game-logics/hexUtils";
 import * as THREE from "three";
 
+/**
+ * ThreeDSelectionService が参照する依存関係。
+ */
 export interface ThreeDSelectionServiceDeps {
   characterManager: ThreeDCharacterManager;
   playerCharacterStates: Map<ThreeDUnitObject, ThreeDPlayerCharacterState>;
@@ -12,6 +15,7 @@ export interface ThreeDSelectionServiceDeps {
   hexUtils: HexUtils;
   placementService: ThreeDCharacterPlacementService;
   addObjectToScene: (object: THREE.Object3D) => void;
+  updateFieldViewVisibility?: () => boolean[][] | undefined;
 }
 
 /**
@@ -31,6 +35,9 @@ export class ThreeDSelectionService {
   /** 移動アニメーション中の二重操作を防止するフラグ。 */
   private isMoving = false;
 
+  /**
+   * @param deps ユニット選択・移動・視界更新に必要な依存関係。
+   */
   constructor(private readonly deps: ThreeDSelectionServiceDeps) { }
 
   /** ユニットを選択し、移動可能セル表示を更新する。 */
@@ -143,6 +150,7 @@ export class ThreeDSelectionService {
           playerCharacterState.setActionPoints(target.remainActionPoints);
           playerCharacterState.setRemainSeconds(target.remainSeconds);
         }
+        this.deps.updateFieldViewVisibility?.();
         selectedUnit.playAnimation("Idle", 150);
         this.isMoving = false;
         // 移動後の位置を基準に、次の移動候補セルを再表示する。
@@ -171,6 +179,9 @@ export class ThreeDSelectionService {
     this.showMovableHexes();
   }
 
+  /**
+   * 前回表示していた移動可能セルハイライトを破棄して初期化する。
+   */
   private clearMovableHexes(): void {
     // シーン上のメッシュとGPUリソースを破棄してリークを防ぐ。
     this.movableCellHighlights.forEach((mesh) => {
@@ -187,6 +198,13 @@ export class ThreeDSelectionService {
     this.movableCellStateByMesh.clear();
   }
 
+  /**
+   * 指定セルにユニットが存在するかを判定する。
+   * @param col 判定対象セルの列。
+   * @param row 判定対象セルの行。
+   * @param ignoreUnit 判定から除外したいユニット。
+   * @returns 占有されていれば true。
+   */
   private isUnitAt(col: number, row: number, ignoreUnit?: ThreeDUnitObject): boolean {
     // 管理中ユニット座標を走査し、対象セルの占有有無を判定する。
     for (const [unitObject, position] of this.deps.unitGridPositions) {
@@ -200,6 +218,12 @@ export class ThreeDSelectionService {
     return false;
   }
 
+  /**
+   * 移動可能セルを示すハイライトメッシュを生成して配置する。
+   * @param col 対象セルの列。
+   * @param row 対象セルの行。
+   * @returns 生成したハイライトメッシュ。
+   */
   private createMovableCellHighlight(col: number, row: number): THREE.Mesh {
     // 六角形の輪郭頂点をもとにハイライト形状を生成する。
     const vertices = this.deps.hexUtils.getHexVertices(0, 0);

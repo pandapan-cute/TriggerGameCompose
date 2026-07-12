@@ -11,7 +11,12 @@ import {
   ThreeDSelectionService,
   type ThreeDSelectionServiceDeps,
 } from "./services/ThreeDSelectionService";
+import { FieldViewService } from "../../phaser/scenes/services/FieldViewService";
 
+/**
+ * 3D盤面シーン。
+ * 2Dの GridCellsScene を継承しつつ、3D表示・3D入力・3D移動処理を構成する。
+ */
 export class ThreeDGridCellsScene extends GridCellsScene {
 
   private threeDFieldViewState!: ThreeDFieldViewState;
@@ -22,6 +27,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private readonly unitGridPositions = new Map<ThreeDUnitObject, { col: number; row: number; }>();
   private readonly playerCharacterStates = new Map<ThreeDUnitObject, ThreeDPlayerCharacterState>();
   private threeDSelectionService: ThreeDSelectionService | null = null;
+  private threeDFieldViewService: FieldViewService | null = null;
 
   public init() {
     // 💡 4. ここで3DモードをONにする！
@@ -71,6 +77,10 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     this.third.camera.position.set(20, 20, 40);
     this.third.camera.lookAt(0, 0, 0);
 
+    if (!this.threeDFieldViewService) {
+      this.threeDFieldViewService = this.createThreeDFieldViewService();
+    }
+
     if (!this.threeDSelectionService) {
       this.threeDSelectionService = new ThreeDSelectionService(this.createThreeDSelectionServiceDeps());
     }
@@ -105,6 +115,12 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     });
   }
 
+  /**
+   * 3Dユニットを盤面座標に配置して初期化する。
+   * @param unit 配置対象ユニット情報。
+   * @param placementService 3D座標変換サービス。
+   * @returns 生成した 3D ユニット。配置不可時は undefined。
+   */
   private placeUnit(unit: FriendUnit | EnemyUnit, placementService: ThreeDCharacterPlacementService): ThreeDUnitObject | undefined {
     const { col, row } = unit.position;
     if (col < 0 || row < 0 || col >= this.gridConfig.gridWidth || row >= this.gridConfig.gridHeight) {
@@ -121,11 +137,19 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     return unitObject;
   }
 
+  /**
+   * 3Dユニット選択イベントを SelectionService へ委譲する。
+   * @param unitObject 選択された 3D ユニット。
+   */
   private selectUnit(unitObject: ThreeDUnitObject): void {
     this.threeDSelectionService?.selectCharacter(unitObject);
     console.log("3Dユニットを選択", unitObject.name);
   }
 
+  /**
+   * ThreeDSelectionService 用の依存関係を構築する。
+   * @returns SelectionService 依存関係オブジェクト。
+   */
   private createThreeDSelectionServiceDeps(): ThreeDSelectionServiceDeps {
     return {
       characterManager: this.threeDCharacterManager,
@@ -136,7 +160,32 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       addObjectToScene: (object) => {
         this.third.add.existing(object);
       },
+      updateFieldViewVisibility: () => {
+        return this.threeDFieldViewService?.updateVisibility();
+      },
     };
+  }
+
+  /**
+   * 2D版 FieldViewService を再利用するための 3D 用アダプタを生成する。
+   * @returns 3Dシーン向けに構成した FieldViewService。
+   */
+  private createThreeDFieldViewService(): FieldViewService {
+    const visibilityCharacters = Array.from(this.playerCharacterStates.values()).map((state) => ({
+      get position() {
+        return state.getPosition();
+      },
+      getIsBailedOut: () => state.getFriendUnit().isBailout,
+    }));
+
+    return new FieldViewService({
+      characterManager: {
+        playerCharacters: visibilityCharacters,
+      },
+      fieldViewState: this.threeDFieldViewState,
+      hexUtils: this.hexUtils,
+      gridConfig: this.gridConfig,
+    });
   }
 
 }

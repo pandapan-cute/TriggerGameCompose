@@ -15,7 +15,12 @@ export interface ThreeDSelectionServiceDeps {
   hexUtils: HexUtils;
   placementService: ThreeDCharacterPlacementService;
   addObjectToScene: (object: THREE.Object3D) => void;
+  /** 移動後に視界更新を行うコールバック。 */
   updateFieldViewVisibility?: () => boolean[][] | undefined;
+  /** 移動完了後にトリガー方位設定表示を開始するコールバック。 */
+  startTriggerSettingForSelectedUnit?: () => void;
+  /** 選択変更・終了時にトリガー方位設定表示をクリアするコールバック。 */
+  clearTriggerSettingDisplay?: () => void;
 }
 
 /**
@@ -42,6 +47,8 @@ export class ThreeDSelectionService {
 
   /** ユニットを選択し、移動可能セル表示を更新する。 */
   public selectCharacter(unitObject: ThreeDUnitObject): void {
+    this.deps.clearTriggerSettingDisplay?.();
+
     const currentSelectedUnit = this.deps.characterManager.selected3DCharacter;
     // 同じ味方ユニットを再クリックした場合は、その場に待機したものとして残り時間だけを消費する。
     if (currentSelectedUnit === unitObject) {
@@ -108,6 +115,15 @@ export class ThreeDSelectionService {
     return this.movableCellHighlights;
   }
 
+  /**
+   * 移動先選択をキャンセルし、緑ハイライトと選択状態を解除する。
+   */
+  public cancelMoveSelection(): void {
+    this.clearMovableHexes();
+    this.deps.characterManager.selected3DCharacter = null;
+    this.deps.clearTriggerSettingDisplay?.();
+  }
+
   /** 移動候補セルクリック時に、選択中ユニットを対象セルへ移動する。 */
   public moveSelectedCharacterByHighlight(cellMesh: THREE.Mesh): void {
     if (this.isMoving) return;
@@ -132,6 +148,7 @@ export class ThreeDSelectionService {
     // 移動中は候補セルを一旦隠し、Running アニメーションへ切り替える。
     this.isMoving = true;
     this.clearMovableHexes();
+    selectedUnit.faceToward(worldPosition);
     selectedUnit.playAnimation("Running", 120);
 
     selectedUnit.moveTo(
@@ -151,16 +168,19 @@ export class ThreeDSelectionService {
           playerCharacterState.setRemainSeconds(target.remainSeconds);
         }
         this.deps.updateFieldViewVisibility?.();
+        // トリガー方位設定中は移動候補セルを表示しない（2D版挙動に揃える）。
+        this.clearMovableHexes();
+        this.deps.startTriggerSettingForSelectedUnit?.();
+        selectedUnit.faceEnemyTerritoryDefault();
         selectedUnit.playAnimation("Idle", 150);
         this.isMoving = false;
-        // 移動後の位置を基準に、次の移動候補セルを再表示する。
-        this.showMovableHexes();
       },
     );
   }
 
   /** シーン終了時などに選択関連オブジェクトを破棄する。 */
   public dispose(): void {
+    this.deps.clearTriggerSettingDisplay?.();
     this.clearMovableHexes();
   }
 
@@ -175,8 +195,41 @@ export class ThreeDSelectionService {
       return;
     }
 
+    // 待機でも 2D 版と同様に残り秒数を消費してトリガー設定へ遷移する。
     playerCharacterState.setRemainSeconds(currentRemainSeconds - 1);
-    this.showMovableHexes();
+    this.clearMovableHexes();
+    this.deps.startTriggerSettingForSelectedUnit?.();
+  }
+
+
+  /**
+   * 現在の選択状態、ハイライト表示、および関連UI状態をクリアする。
+   */
+  public clearSelection(): void {
+    // 選択中キャラクターがいる場合のみ表示色を元に戻す。
+    if (this.deps.characterManager.selectedCharacter) {
+      // プレイヤー/敵で復帰色を切り替える。
+      if (
+        this.deps.characterManager.playerCharacters.includes(
+          this.deps.characterManager.selectedCharacter
+        )
+      ) {
+        // プレイヤーキャラクターの場合の復帰色。
+        this.deps.characterManager.selectedCharacter.image.setTint(0xadd8e6);
+      } else {
+        // 敵キャラクターの場合の復帰色。
+        this.deps.characterManager.selectedCharacter.image.setTint(0xffb6c1);
+      }
+    }
+
+    this.deps.characterManager.movableHexes.forEach((hex) => hex.destroy());
+    this.deps.characterManager.movableHexes = [];
+
+    this.clearMovableHexes();
+
+    // TODO: トリガー方位設定表示のクリアを行う。
+
+    this.deps.characterManager.selectedCharacter = null;
   }
 
   /**

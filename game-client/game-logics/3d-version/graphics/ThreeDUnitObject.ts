@@ -20,6 +20,9 @@ const hasShadowProps = (object: THREE.Object3D): object is THREE.Object3D & {
  * - 最低限のアニメーション再生
  */
 export class ThreeDUnitObject extends ExtendedObject3D {
+  /** 到達後に向けるデフォルト向き（敵陣側）。 */
+  private static readonly DEFAULT_ENEMY_TERRITORY_YAW = Math.PI;
+
   private readonly scene3d: Scene3D;
   private readonly unitTypeId: string;
   private readonly gltfLoader: GLTFLoader;
@@ -175,6 +178,26 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    */
   setWorldPosition(x: number, y: number, z: number = 0): void {
     this.position.set(x, y, z);
+  }
+
+  /**
+   * 指定座標の方向へ体の向きを合わせる（Y軸のみ）。
+   * @param to 向き先のワールド座標。
+   */
+  faceToward(to: { x: number; y: number; z: number; }): void {
+    const deltaX = to.x - this.position.x;
+    const deltaZ = to.z - this.position.z;
+    const distanceSq = deltaX * deltaX + deltaZ * deltaZ;
+    if (distanceSq <= 1e-8) return;
+
+    this.rotation.y = Math.atan2(deltaX, deltaZ);
+  }
+
+  /**
+   * 体の向きを敵陣側を向くデフォルト角度に戻す。
+   */
+  faceEnemyTerritoryDefault(): void {
+    this.rotation.y = ThreeDUnitObject.DEFAULT_ENEMY_TERRITORY_YAW;
   }
 
   /**

@@ -12,6 +12,7 @@ import {
   type ThreeDSelectionServiceDeps,
 } from "./services/ThreeDSelectionService";
 import { FieldViewService } from "../../phaser/scenes/services/FieldViewService";
+import { ThreeDTriggerSettingController } from "./controllers/ThreeDTriggerSettingController";
 
 /**
  * 3D盤面シーン。
@@ -27,7 +28,10 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private readonly unitGridPositions = new Map<ThreeDUnitObject, { col: number; row: number; }>();
   private readonly playerCharacterStates = new Map<ThreeDUnitObject, ThreeDPlayerCharacterState>();
   private threeDSelectionService: ThreeDSelectionService | null = null;
+  /** 3D版の視界更新サービス（2D FieldViewService 再利用）。 */
   private threeDFieldViewService: FieldViewService | null = null;
+  /** 3D版のトリガー方位設定コントローラ。 */
+  private threeDTriggerSettingController: ThreeDTriggerSettingController | null = null;
 
   public init() {
     // 💡 4. ここで3DモードをONにする！
@@ -81,6 +85,20 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDFieldViewService = this.createThreeDFieldViewService();
     }
 
+    if (!this.threeDTriggerSettingController) {
+      this.threeDTriggerSettingController = new ThreeDTriggerSettingController({
+        scene3d: this,
+        characterManager: this.threeDCharacterManager,
+        playerCharacterStates: this.playerCharacterStates,
+        placementService: this.placementService,
+        hexUtils: this.hexUtils,
+        gridConfig: this.gridConfig,
+        onTriggerSettingFinished: () => {
+          this.threeDSelectionService?.showMovableHexes();
+        },
+      });
+    }
+
     if (!this.threeDSelectionService) {
       this.threeDSelectionService = new ThreeDSelectionService(this.createThreeDSelectionServiceDeps());
     }
@@ -104,6 +122,21 @@ export class ThreeDGridCellsScene extends GridCellsScene {
           onSelectMovableCell: (cell) => {
             this.threeDSelectionService?.moveSelectedCharacterByHighlight(cell);
           },
+          onCancelMoveSelection: () => {
+            this.threeDSelectionService?.cancelMoveSelection();
+          },
+          isTriggerSettingMode: () => {
+            return this.threeDTriggerSettingController?.isTriggerSettingMode() ?? false;
+          },
+          getTriggerDirectionOrigin: () => {
+            return this.threeDTriggerSettingController?.getTriggerCenterPosition() ?? null;
+          },
+          onUpdateTriggerDirection: (directionDeg) => {
+            this.threeDTriggerSettingController?.updateCurrentTriggerAngle(directionDeg);
+          },
+          onCompleteTriggerSetting: () => {
+            this.threeDTriggerSettingController?.completeCurrentTriggerSetting();
+          },
         }
       );
     }
@@ -112,6 +145,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     this.events.once("shutdown", () => {
       this.threeDInputController?.unbind();
       this.threeDSelectionService?.dispose();
+      this.threeDTriggerSettingController?.stopTriggerSetting();
     });
   }
 
@@ -162,6 +196,12 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       },
       updateFieldViewVisibility: () => {
         return this.threeDFieldViewService?.updateVisibility();
+      },
+      startTriggerSettingForSelectedUnit: () => {
+        this.threeDTriggerSettingController?.startTriggerSettingForSelectedUnit();
+      },
+      clearTriggerSettingDisplay: () => {
+        this.threeDTriggerSettingController?.stopTriggerSetting();
       },
     };
   }

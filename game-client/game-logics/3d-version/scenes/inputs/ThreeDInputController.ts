@@ -17,6 +17,8 @@ export interface ThreeDInputControllerDeps {
   onUpdateTriggerDirection?: (directionDeg: number) => void;
   /** 現在のトリガー方位設定を確定する。 */
   onCompleteTriggerSetting?: () => void;
+  /** 3Dカメラ操作を有効/無効化する。 */
+  setCameraControlEnabled?: (enabled: boolean) => void;
 }
 
 /**
@@ -26,6 +28,14 @@ export interface ThreeDInputControllerDeps {
 export class ThreeDInputController {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointerNdc = new THREE.Vector2();
+  /** トリガー方位設定中のドラッグ操作状態。 */
+  private isTriggerDragging = false;
+  /** トリガー設定のためにカメラ操作をロックしているか。 */
+  private isCameraControlLockedByTrigger = false;
+  /** トリガー設定中に固定するカメラ位置。 */
+  private lockedCameraPosition: THREE.Vector3 | null = null;
+  /** トリガー設定中に固定するカメラ姿勢。 */
+  private lockedCameraQuaternion: THREE.Quaternion | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -38,20 +48,34 @@ export class ThreeDInputController {
   public bind(): void {
     this.scene.input.on("pointerdown", this.handlePointerDown, this);
     this.scene.input.on("pointermove", this.handlePointerMove, this);
+    this.scene.input.on("pointerup", this.handlePointerUp, this);
+    this.scene.events.on("postupdate", this.handlePostUpdate, this);
   }
 
   /** pointer 系イベントを解除する */
   public unbind(): void {
     this.scene.input.off("pointerdown", this.handlePointerDown, this);
     this.scene.input.off("pointermove", this.handlePointerMove, this);
+    this.scene.input.off("pointerup", this.handlePointerUp, this);
+    this.scene.events.off("postupdate", this.handlePostUpdate, this);
+    this.isTriggerDragging = false;
+    this.unlockCameraControlIfNeeded();
+    this.clearLockedCameraPose();
   }
 
   /** クリック位置からユニットをレイキャストして選択する */
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.deps.isTriggerSettingMode?.()) {
-      this.deps.onCompleteTriggerSetting?.();
+      this.lockCameraControlForTriggerIfNeeded();
+      this.captureCameraPoseIfNeeded();
+      this.restoreLockedCameraPose();
+      this.suppressPointerEvent(pointer);
+      this.isTriggerDragging = true;
+      this.updateTriggerDirectionFromPointer(pointer);
       return;
     }
+
+    this.unlockCameraControlIfNeeded();
 
     const rect = this.renderer.domElement.getBoundingClientRect();
 
@@ -107,10 +131,119 @@ export class ThreeDInputController {
   }
 
   /**
+   * トリガー方位設定中のポインタ解放を検知し、現在角度を確定する。
+   */
+  private handlePointerUp(): void {
+    if (!this.deps.isTriggerSettingMode?.()) {
+      this.isTriggerDragging = false;
+      this.unlockCameraControlIfNeeded();
+      this.clearLockedCameraPose();
+      return;
+    }
+
+    if (!this.isTriggerDragging) return;
+
+    this.isTriggerDragging = false;
+    this.deps.onCompleteTriggerSetting?.();
+    this.syncCameraControlWithTriggerMode();
+    if (!this.deps.isTriggerSettingMode?.()) {
+      this.clearLockedCameraPose();
+    }
+  }
+
+  /**
    * ポインタ移動に応じて、トリガー方位角の更新イベントを発火する。
    * @param pointer 現在のポインタ。
    */
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.deps.isTriggerSettingMode?.()) {
+      this.unlockCameraControlIfNeeded();
+      return;
+    }
+
+    this.lockCameraControlForTriggerIfNeeded();
+    this.captureCameraPoseIfNeeded();
+    this.restoreLockedCameraPose();
+    this.suppressPointerEvent(pointer);
+    if (!this.isTriggerDragging) return;
+
+    this.updateTriggerDirectionFromPointer(pointer);
+  }
+
+  /** トリガー設定モードに合わせてカメラ操作ロック状態を同期する。 */
+  private syncCameraControlWithTriggerMode(): void {
+    if (this.deps.isTriggerSettingMode?.()) {
+      this.lockCameraControlForTriggerIfNeeded();
+      this.captureCameraPoseIfNeeded();
+      return;
+    }
+
+    this.unlockCameraControlIfNeeded();
+    this.clearLockedCameraPose();
+  }
+
+  /** トリガー設定用にカメラ操作を無効化する。 */
+  private lockCameraControlForTriggerIfNeeded(): void {
+    if (this.isCameraControlLockedByTrigger) return;
+    this.deps.setCameraControlEnabled?.(false);
+    this.isCameraControlLockedByTrigger = true;
+  }
+
+  /** トリガー設定用のカメラ操作ロックを解除する。 */
+  private unlockCameraControlIfNeeded(): void {
+    if (!this.isCameraControlLockedByTrigger) return;
+    this.deps.setCameraControlEnabled?.(true);
+    this.isCameraControlLockedByTrigger = false;
+  }
+
+  /** 可能であればネイティブポインタイベントの伝播を止める。 */
+  private suppressPointerEvent(pointer: Phaser.Input.Pointer): void {
+    const nativeEvent = (pointer as Phaser.Input.Pointer & { event?: Event; }).event;
+    nativeEvent?.preventDefault?.();
+    nativeEvent?.stopPropagation?.();
+  }
+
+  /** postupdate ごとに、トリガー設定中のカメラ姿勢を固定する。 */
+  private handlePostUpdate(): void {
+    if (!this.deps.isTriggerSettingMode?.()) {
+      if (this.lockedCameraPosition || this.lockedCameraQuaternion) {
+        this.clearLockedCameraPose();
+      }
+      return;
+    }
+
+    this.captureCameraPoseIfNeeded();
+    this.restoreLockedCameraPose();
+  }
+
+  /** まだ未固定なら、現在のカメラ姿勢を固定値として保持する。 */
+  private captureCameraPoseIfNeeded(): void {
+    if (this.lockedCameraPosition && this.lockedCameraQuaternion) return;
+
+    this.lockedCameraPosition = this.camera.position.clone();
+    this.lockedCameraQuaternion = this.camera.quaternion.clone();
+  }
+
+  /** 固定値へカメラ姿勢を戻す。 */
+  private restoreLockedCameraPose(): void {
+    if (!this.lockedCameraPosition || !this.lockedCameraQuaternion) return;
+
+    this.camera.position.copy(this.lockedCameraPosition);
+    this.camera.quaternion.copy(this.lockedCameraQuaternion);
+    this.camera.updateMatrixWorld(true);
+  }
+
+  /** カメラ固定情報をクリアする。 */
+  private clearLockedCameraPose(): void {
+    this.lockedCameraPosition = null;
+    this.lockedCameraQuaternion = null;
+  }
+
+  /**
+   * 現在のポインタ位置からトリガー方位角を計算して通知する。
+   * @param pointer 現在のポインタ。
+   */
+  private updateTriggerDirectionFromPointer(pointer: Phaser.Input.Pointer): void {
     if (!this.deps.isTriggerSettingMode?.()) return;
 
     const origin = this.deps.getTriggerDirectionOrigin?.();

@@ -77,6 +77,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   async create(): Promise<void> {
     // もとの2Dクラスのcreate（通信初期化など）をそのまま再利用して実行！
     super.create();
+    this.detachBasePointerHandlers();
     await this.third.warpSpeed("-sky", "-ground"); // 3D空間の初期化
     this.third.camera.position.set(20, 20, 40);
     this.third.camera.lookAt(0, 0, 0);
@@ -137,6 +138,9 @@ export class ThreeDGridCellsScene extends GridCellsScene {
           onCompleteTriggerSetting: () => {
             this.threeDTriggerSettingController?.completeCurrentTriggerSetting();
           },
+          setCameraControlEnabled: (enabled) => {
+            this.setThirdCameraInteractionEnabled(enabled);
+          },
         }
       );
     }
@@ -146,6 +150,58 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDInputController?.unbind();
       this.threeDSelectionService?.dispose();
       this.threeDTriggerSettingController?.stopTriggerSetting();
+    });
+  }
+
+  /**
+   * 2D版 GridCellsScene が登録した pointer ハンドラを 3D シーンでは無効化する。
+   * 3D版では ThreeDInputController のみを入力ソースとして扱う。
+   */
+  private detachBasePointerHandlers(): void {
+    this.input.off("pointerdown");
+    this.input.off("pointermove");
+    this.input.off("pointerup");
+  }
+
+  /**
+   * enable3d/Three.js 側のカメラ操作を可能な範囲で有効/無効化する。
+   * 実装差異に対応するため複数の候補プロパティを順に探索する。
+   */
+  private setThirdCameraInteractionEnabled(enabled: boolean): void {
+    const thirdLike = this.third as {
+      controls?: unknown;
+      orbitControls?: unknown;
+      cameraControls?: unknown;
+    };
+
+    const candidates: unknown[] = [
+      thirdLike.controls,
+      thirdLike.orbitControls,
+      thirdLike.cameraControls,
+    ];
+
+    candidates.forEach((candidate) => {
+      if (!candidate || typeof candidate !== "object") return;
+
+      const control = candidate as {
+        enabled?: boolean;
+        enableRotate?: boolean;
+        enablePan?: boolean;
+        enableZoom?: boolean;
+      };
+
+      if (typeof control.enabled === "boolean") {
+        control.enabled = enabled;
+      }
+      if (typeof control.enableRotate === "boolean") {
+        control.enableRotate = enabled;
+      }
+      if (typeof control.enablePan === "boolean") {
+        control.enablePan = enabled;
+      }
+      if (typeof control.enableZoom === "boolean") {
+        control.enableZoom = enabled;
+      }
     });
   }
 

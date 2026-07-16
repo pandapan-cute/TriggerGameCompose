@@ -18,6 +18,7 @@ import { Step } from "@/game-logics/models/Step";
 import { Turn } from "@/game-logics/models/Turn";
 import { GameResult } from "@/types/GameTypes";
 import { ThreeDTurnPlanner } from "./services/ThreeDTurnPlanner";
+import { ThreeDTurnReplayController } from "./controllers/ThreeDTurnReplayController";
 
 /**
  * 3D盤面シーン。
@@ -31,6 +32,9 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDInputController: ThreeDInputController | null = null;
   private readonly placementService: ThreeDCharacterPlacementService = new ThreeDCharacterPlacementService(this.gridConfig);
   private readonly unitGridPositions = new Map<ThreeDUnitObject, { col: number; row: number; }>();
+  private readonly unitObjectById = new Map<string, ThreeDUnitObject>();
+  private readonly friendUnitsById = new Map<string, FriendUnit>();
+  private readonly enemyUnitsById = new Map<string, EnemyUnit>();
   private readonly playerCharacterStates = new Map<ThreeDUnitObject, ThreeDPlayerCharacterState>();
   private threeDSelectionService: ThreeDSelectionService | null = null;
   /** 3D版の視界更新サービス（2D FieldViewService 再利用）。 */
@@ -39,6 +43,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDTriggerSettingController: ThreeDTriggerSettingController | null = null;
   /** 3D版の行動計画・送信を扱う専用 Planner。 */
   private threeDTurnPlanner: ThreeDTurnPlanner | null = null;
+  /** 3D版の受信ターン再生を扱う専用 Controller。 */
+  private threeDTurnReplayController: ThreeDTurnReplayController | null = null;
 
   constructor(
     firstMotionLabEndtime: Date,
@@ -47,8 +53,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     fieldSteps: number[][],
     visibility: boolean[][],
     private readonly sendServerTurn3D: (steps: Step[]) => void,
-    completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void,
-    handleFinishMotionExecute: (turnNumber: number) => void,
+    private readonly completeGameHandler: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void,
+    private readonly handleFinishMotionExecuteHandler: (turnNumber: number) => void,
   ) {
     super(
       firstMotionLabEndtime,
@@ -57,8 +63,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       fieldSteps,
       visibility,
       sendServerTurn3D,
-      completeGame,
-      handleFinishMotionExecute,
+      completeGameHandler,
+      handleFinishMotionExecuteHandler,
     );
   }
 
@@ -82,11 +88,13 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   /** 3D版のキャラクターを配置する */
   protected createCharacters() {
     this.friendUnits.forEach((unit) => {
+      this.friendUnitsById.set(unit.unitId, unit);
       const unitObject = this.placeUnit(unit, this.placementService);
       if (unitObject) {
         // 味方キャラクターの向きを反転させる
         unitObject.rotation.y = Math.PI;
         this.threeDCharacterManager.player3DCharacters.push(unitObject);
+        this.unitObjectById.set(unit.unitId, unitObject);
         this.playerCharacterStates.set(unitObject, new ThreeDPlayerCharacterState(unitObject, unit));
         this.unitGridPositions.set(unitObject, { ...unit.position });
       }
@@ -94,18 +102,25 @@ export class ThreeDGridCellsScene extends GridCellsScene {
 
     // 相手のキャラクターは既存2D仕様と同様に反転座標で配置する
     this.enemyUnits.forEach((unit) => {
+      this.enemyUnitsById.set(unit.unitId, unit);
       const invertedPosition = this.hexUtils.invertPosition(unit.position);
       const unitObject = this.placeUnit({ ...unit, position: invertedPosition }, this.placementService);
       if (unitObject) {
         this.threeDCharacterManager.enemy3DCharacters.push(unitObject);
+        this.unitObjectById.set(unit.unitId, unitObject);
         this.unitGridPositions.set(unitObject, { ...invertedPosition });
       }
     });
   }
 
   async create(): Promise<void> {
-    // もとの2Dクラスのcreate（通信初期化など）をそのまま再利用して実行！
-    super.create();
+    // 2D版の create は FieldViewState / SelectionService / TriggerSettingController まで初期化するため、
+    // 3D版では必要な前処理だけを明示的に行い、3D専用のコントローラ群だけを起動する。
+    this.initializeMarginsFor3D();
+    this.initializeGameConfig();
+    this.initializeFieldViewState();
+    this.createCharacters();
+
     this.detachBasePointerHandlers();
     await this.third.warpSpeed("-sky", "-ground"); // 3D空間の初期化
     this.third.camera.position.set(20, 500, 1500);
@@ -131,6 +146,37 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         },
         sendServerTurn: (steps: Step[]) => {
           this.sendServerTurn3D(steps);
+        },
+      });
+    }
+
+    if (!this.threeDTurnReplayController) {
+      this.threeDTurnReplayController = new ThreeDTurnReplayController({
+        scene3d: this,
+        hexUtils: this.hexUtils,
+        placementService: this.placementService,
+        unitObjectById: this.unitObjectById,
+        playerCharacterStates: this.playerCharacterStates,
+        friendUnitsById: this.friendUnitsById,
+        enemyUnitsById: this.enemyUnitsById,
+        clearSelection: () => {
+          this.threeDSelectionService?.clearSelection();
+        },
+        onReplayCompleted: (turnNumber) => {
+          this.handleFinishMotionExecuteHandler(turnNumber);
+        },
+        clearPlannedSteps: () => {
+          this.threeDTurnPlanner?.clearPlannedSteps();
+        },
+        restoreActionPointsRemainSecondsText: () => {
+          this.threeDSelectionService?.showMovableHexes();
+        },
+        updateFieldViewVisibility: () => {
+          return this.threeDFieldViewService?.updateVisibility();
+        },
+        completeGame: (result) => {
+          const { friendUnits, enemyUnits } = this;
+          this.completeGameHandler(friendUnits, enemyUnits, result);
         },
       });
     }
@@ -213,6 +259,20 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   }
 
   /**
+   * 3D版でも 2D版と同じ余白計算だけは必要なので、base の private 実装をここで再現する。
+   */
+  private initializeMarginsFor3D(): void {
+    const gameWidth = this.cameras.main.width;
+    const gameHeight = this.cameras.main.height;
+
+    this.gridConfig = {
+      ...this.gridConfig,
+      marginLeft: gameWidth * 0.5,
+      marginTop: gameHeight * 0.5,
+    };
+  }
+
+  /**
    * enable3d/Three.js 側のカメラ操作を可能な範囲で有効/無効化する。
    * 実装差異に対応するため複数の候補プロパティを順に探索する。
    */
@@ -290,6 +350,13 @@ export class ThreeDGridCellsScene extends GridCellsScene {
    */
   public override executeTurn(turn: Turn, motionLabEndTime: Date): void {
     this.threeDTurnPlanner?.resetPlannedTurnState();
+
+    if (this.threeDTurnReplayController && this.threeDTurnPlanner) {
+      this.threeDTurnReplayController.executeTurn(turn);
+      this.threeDTurnPlanner.setMotionLabEnd(motionLabEndTime);
+      return;
+    }
+
     super.executeTurn(turn, motionLabEndTime);
   }
 

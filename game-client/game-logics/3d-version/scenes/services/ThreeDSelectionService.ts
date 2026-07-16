@@ -230,6 +230,7 @@ export class ThreeDSelectionService {
     // TODO: トリガー方位設定表示のクリアを行う。
 
     this.deps.characterManager.selectedCharacter = null;
+    this.deps.characterManager.selected3DCharacter = null;
   }
 
   /**

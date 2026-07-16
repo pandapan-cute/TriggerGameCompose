@@ -58,7 +58,7 @@ export class ThreeDTriggerSettingController {
 
     this.triggerSettingMode = true;
     this.triggerSettingType = "main";
-    this.currentTriggerAngle = 0;
+    this.currentTriggerAngle = this.getInitialTriggerAngle(selectedUnit, "main", 0);
     this.showTriggerFan(selectedUnit, this.currentTriggerAngle);
   }
 
@@ -132,6 +132,7 @@ export class ThreeDTriggerSettingController {
 
     if (settingType === "main") {
       this.triggerSettingType = "sub";
+      this.currentTriggerAngle = this.getInitialTriggerAngle(selectedUnit, "sub", this.currentTriggerAngle);
       this.showTriggerFan(selectedUnit, this.currentTriggerAngle);
       return;
     }
@@ -212,5 +213,25 @@ export class ThreeDTriggerSettingController {
       triggerStatus.range,
       true,
     );
+  }
+
+  /**
+   * 既に設定済みのトリガー方位があれば、その角度を初期値として返す。
+   * @param unitObject 対象ユニット。
+   * @param settingType main/sub のどちらを復元するか。
+   * @param fallbackAngle 未設定時の初期角度。
+   * @returns 初期表示に使う角度。
+   */
+  private getInitialTriggerAngle(
+    unitObject: ThreeDUnitObject,
+    settingType: "main" | "sub",
+    fallbackAngle: number,
+  ): number {
+    const existingDirection = this.triggerDirections.get(unitObject);
+    if (!existingDirection) {
+      return fallbackAngle;
+    }
+
+    return existingDirection[settingType] ?? fallbackAngle;
   }
 }

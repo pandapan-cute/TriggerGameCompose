@@ -19,6 +19,8 @@ export interface ThreeDTriggerSettingControllerDeps {
   placementService: ThreeDCharacterPlacementService;
   hexUtils: HexUtils;
   gridConfig: GridConfig;
+  /** main/sub 両トリガーの確定完了時に呼び出す。 */
+  onTriggerPairConfirmed?: (unitObject: ThreeDUnitObject, direction: TriggerDirection) => void;
   /** トリガー方位設定の完了後に実行するコールバック。 */
   onTriggerSettingFinished?: () => void;
 }
@@ -134,6 +136,8 @@ export class ThreeDTriggerSettingController {
       return;
     }
 
+    // sub まで確定したタイミングで、呼び出し元へ最終方向を通知する。
+    this.deps.onTriggerPairConfirmed?.(selectedUnit, current);
     this.stopTriggerSetting();
     this.deps.onTriggerSettingFinished?.();
   }

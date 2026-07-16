@@ -12,6 +12,8 @@ export class ThreeDPlayerCharacterState {
   private position: Position;
   private actionPoints: number;
   private remainSeconds: number;
+  /** 現在ユニットが記録済みのステップ番号。 */
+  private currentStep = 0;
 
   constructor(
     private readonly unitObject: ThreeDUnitObject,
@@ -54,5 +56,20 @@ export class ThreeDPlayerCharacterState {
 
   setRemainSeconds(remainSeconds: number): void {
     this.remainSeconds = remainSeconds;
+  }
+
+  /** 現在のステップ番号を返す。 */
+  getCurrentStep(): number {
+    return this.currentStep;
+  }
+
+  /** ステップ番号を指定数だけ進める。 */
+  advanceStep(steps = 1): void {
+    this.currentStep += steps;
+  }
+
+  /** ステップ番号を初期値へ戻す。 */
+  resetCurrentStep(): void {
+    this.currentStep = 0;
   }
 }

@@ -1,4 +1,5 @@
 import { GridCellsScene } from "../../phaser/scenes/GridCellsScene";
+import * as THREE from "three";
 import { ThreeDFieldViewState } from "../entities/ThreeDFieldViewState";
 import { ThreeDCharacterPlacementService } from "../services/ThreeDCharacterPlacementService";
 import { ThreeDUnitObject } from "../graphics/ThreeDUnitObject";
@@ -13,6 +14,10 @@ import {
 } from "./services/ThreeDSelectionService";
 import { FieldViewService } from "../../phaser/scenes/services/FieldViewService";
 import { ThreeDTriggerSettingController } from "./controllers/ThreeDTriggerSettingController";
+import { Step } from "@/game-logics/models/Step";
+import { Turn } from "@/game-logics/models/Turn";
+import { GameResult } from "@/types/GameTypes";
+import { ThreeDTurnPlanner } from "./services/ThreeDTurnPlanner";
 
 /**
  * 3D盤面シーン。
@@ -32,6 +37,30 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDFieldViewService: FieldViewService | null = null;
   /** 3D版のトリガー方位設定コントローラ。 */
   private threeDTriggerSettingController: ThreeDTriggerSettingController | null = null;
+  /** 3D版の行動計画・送信を扱う専用 Planner。 */
+  private threeDTurnPlanner: ThreeDTurnPlanner | null = null;
+
+  constructor(
+    firstMotionLabEndtime: Date,
+    friendUnits: FriendUnit[],
+    enemyUnits: EnemyUnit[],
+    fieldSteps: number[][],
+    visibility: boolean[][],
+    private readonly sendServerTurn3D: (steps: Step[]) => void,
+    completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void,
+    handleFinishMotionExecute: (turnNumber: number) => void,
+  ) {
+    super(
+      firstMotionLabEndtime,
+      friendUnits,
+      enemyUnits,
+      fieldSteps,
+      visibility,
+      sendServerTurn3D,
+      completeGame,
+      handleFinishMotionExecute,
+    );
+  }
 
   public init() {
     // 💡 4. ここで3DモードをONにする！
@@ -79,11 +108,31 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     super.create();
     this.detachBasePointerHandlers();
     await this.third.warpSpeed("-sky", "-ground"); // 3D空間の初期化
-    this.third.camera.position.set(20, 20, 40);
+    this.third.camera.position.set(20, 500, 1500);
     this.third.camera.lookAt(0, 0, 0);
+
+    // ファークリッピングプレーンを広げて盤面全体が描画されるようにする
+    const cam = this.third.camera as THREE.PerspectiveCamera;
+    cam.far = 2000;
+    cam.updateProjectionMatrix();
 
     if (!this.threeDFieldViewService) {
       this.threeDFieldViewService = this.createThreeDFieldViewService();
+    }
+
+    if (!this.threeDTurnPlanner) {
+      this.threeDTurnPlanner = new ThreeDTurnPlanner({
+        scene: this,
+        characterManager: this.threeDCharacterManager,
+        playerCharacterStates: this.playerCharacterStates,
+        hexUtils: this.hexUtils,
+        clearSelection: () => {
+          this.threeDSelectionService?.clearSelection();
+        },
+        sendServerTurn: (steps: Step[]) => {
+          this.sendServerTurn3D(steps);
+        },
+      });
     }
 
     if (!this.threeDTriggerSettingController) {
@@ -94,8 +143,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         placementService: this.placementService,
         hexUtils: this.hexUtils,
         gridConfig: this.gridConfig,
-        onTriggerSettingFinished: () => {
-          this.threeDSelectionService?.showMovableHexes();
+        onTriggerPairConfirmed: (unitObject, direction) => {
+          this.handleTriggerPairConfirmed(unitObject, direction);
         },
       });
     }
@@ -203,6 +252,45 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         control.enableZoom = enabled;
       }
     });
+  }
+
+  /**
+   * 3Dトリガー（main/sub）確定後の後処理を実行する。
+   *
+   * 2D版と同じ責務として、
+   * - 行動履歴の記録
+   * - 残り秒数に応じた入力遷移
+   * - 全ユニット完了時の turnExecution 送信
+   * をまとめて行う。
+   */
+  private handleTriggerPairConfirmed(
+    unitObject: ThreeDUnitObject,
+    direction: { main: number; sub: number; },
+  ): void {
+    const remainingSeconds = this.threeDTurnPlanner?.recordActionHistory(unitObject, direction) ?? 0;
+    // 残り秒数で次の入力遷移を分岐する。
+    if (remainingSeconds > 0) {
+      this.threeDSelectionService?.showMovableHexes();
+    } else {
+      this.threeDSelectionService?.cancelMoveSelection();
+    }
+
+    this.threeDTurnPlanner?.checkAllCharactersActionPointsCompleted();
+  }
+
+  /**
+   * 2D版と同様、手動送信でも現在の計画ステップを送信する。
+   */
+  public override sendServerTurnManual(): void {
+    this.threeDTurnPlanner?.sendMotionLabTurn();
+  }
+
+  /**
+   * サーバー応答で次ターン再生へ入る前に、3D側の計画状態をリセットする。
+   */
+  public override executeTurn(turn: Turn, motionLabEndTime: Date): void {
+    this.threeDTurnPlanner?.resetPlannedTurnState();
+    super.executeTurn(turn, motionLabEndTime);
   }
 
   /**

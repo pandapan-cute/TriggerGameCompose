@@ -17,6 +17,10 @@ export interface ThreeDTriggerCenterPosition {
 export class ThreeDTriggerFanObject extends THREE.Object3D {
   /** 扇形を描画する本体メッシュ。 */
   private fanMesh: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial> | null = null;
+  /** 現在の扇形パラメータを保持し、不要なメッシュ再生成を抑制する。 */
+  private currentColor: number | null = null;
+  private currentTriggerAngleDeg: number | null = null;
+  private currentTriggerRange: number | null = null;
 
   /**
    * @param scene 3D シーン。
@@ -66,7 +70,22 @@ export class ThreeDTriggerFanObject extends THREE.Object3D {
   ): void {
     this.position.set(center.x, center.y, center.z);
     this.visible = visible;
-    this.rebuildFanMesh(directionDeg, color, triggerAngleDeg, triggerRange);
+
+    const shouldRebuild =
+      !this.fanMesh ||
+      this.currentColor !== color ||
+      this.currentTriggerAngleDeg !== triggerAngleDeg ||
+      this.currentTriggerRange !== triggerRange;
+
+    if (shouldRebuild) {
+      this.rebuildFanMesh(directionDeg, color, triggerAngleDeg, triggerRange);
+      this.currentColor = color;
+      this.currentTriggerAngleDeg = triggerAngleDeg;
+      this.currentTriggerRange = triggerRange;
+      return;
+    }
+
+    this.updateFanTransform(directionDeg);
   }
 
   /**
@@ -79,6 +98,10 @@ export class ThreeDTriggerFanObject extends THREE.Object3D {
       this.fanMesh.removeFromParent();
       this.fanMesh = null;
     }
+
+    this.currentColor = null;
+    this.currentTriggerAngleDeg = null;
+    this.currentTriggerRange = null;
     this.removeFromParent();
   }
 
@@ -103,9 +126,9 @@ export class ThreeDTriggerFanObject extends THREE.Object3D {
     }
 
     const radius = this.gridConfig.hexHeight * (triggerRange + 0.5);
-    const correctedDirectionRad = THREE.MathUtils.degToRad(directionDeg - 90);
+    const correctedDirectionRad = THREE.MathUtils.degToRad(90 - directionDeg);
     const halfAngle = THREE.MathUtils.degToRad(triggerAngleDeg / 2);
-    const thetaStart = correctedDirectionRad - halfAngle;
+    const thetaStart = -halfAngle;
     const thetaLength = THREE.MathUtils.degToRad(triggerAngleDeg);
 
     const geometry = new THREE.CircleGeometry(radius, 64, thetaStart, thetaLength);
@@ -120,7 +143,20 @@ export class ThreeDTriggerFanObject extends THREE.Object3D {
     });
 
     this.fanMesh = new THREE.Mesh(geometry, material);
+    this.fanMesh.rotation.y = correctedDirectionRad;
     this.fanMesh.renderOrder = 15;
     this.add(this.fanMesh);
+  }
+
+  /**
+   * 既存メッシュの transform のみ更新する。
+   */
+  private updateFanTransform(directionDeg: number): void {
+    if (!this.fanMesh) {
+      return;
+    }
+
+    const correctedDirectionRad = THREE.MathUtils.degToRad(90 - directionDeg);
+    this.fanMesh.rotation.y = correctedDirectionRad;
   }
 }

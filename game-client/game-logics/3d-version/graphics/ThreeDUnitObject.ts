@@ -30,7 +30,9 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   private modelRoot: THREE.Object3D | null = null;
   private bodyModel: THREE.Object3D | null = null;
   private currentHeadMesh: THREE.Object3D | null = null;
+  private currentHeadUnitTypeId: string | null = null;
   private headBone: THREE.Bone | null = null;
+  private headModelUpdateToken = 0;
   private gltfAnimationMixer: THREE.AnimationMixer | null = null;
   private currentAction: THREE.AnimationAction | null = null;
   private readonly animationNames = new Set<string>();
@@ -123,10 +125,49 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     try {
       // 共通体モデルを優先して読み込む（現行アセット配置に合わせる）。
       await this.loadModel("/character/3d/motions/Idle.glb", scale);
-      await this.attachHeadModel();
+      await this.attachHeadModel(this.unitTypeId);
       await this.registerDefaultAnimations();
     } catch (error) {
       console.error(`[ThreeDUnitObject] loadDefaultModelの実行に失敗しました。 unit=${this.unitTypeId} error=${error}`);
+    }
+  }
+
+  /**
+   * 3Dユニットの head を指定ユニット種別に差し替える。
+   *
+   * 敵ユニットが視界に入ったときなど、後から unitTypeId が判明した場合に使う。
+   */
+  public async updateHeadModel(headUnitTypeId: string): Promise<void> {
+    if (this.currentHeadUnitTypeId === headUnitTypeId) {
+      return;
+    }
+
+    await this.attachHeadModel(headUnitTypeId);
+  }
+
+  /**
+   * 3Dユニットの見た目をまとめて同期する。
+   *
+   * CharacterImageState のように、呼び出し側は 1 回の更新で
+   * 座標・可視状態・ head の差し替えをまとめて扱える。
+   */
+  public syncVisualState(options: {
+    unitTypeId?: string;
+    visible?: boolean;
+    position?: { x: number; y: number; z: number; };
+  }): void {
+    if (options.position) {
+      this.setWorldPosition(options.position.x, options.position.y, options.position.z);
+    }
+
+    if (typeof options.visible === "boolean") {
+      this.updateVisibility(options.visible);
+    }
+
+    if (options.unitTypeId) {
+      if (this.currentHeadUnitTypeId !== options.unitTypeId) {
+        void this.updateHeadModel(options.unitTypeId);
+      }
     }
   }
 
@@ -268,11 +309,12 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    * 頭部モデルをアタッチする
    * @returns {void}
    */
-  private async attachHeadModel(): Promise<void> {
+  private async attachHeadModel(headUnitTypeId: string = this.unitTypeId): Promise<void> {
     const bodyModel = this.bodyModel;
     if (!bodyModel) return;
 
-    console.info(`[ThreeDUnitObject] attachHeadModel:start unit=${this.unitTypeId}`);
+    const updateToken = ++this.headModelUpdateToken;
+    console.info(`[ThreeDUnitObject] attachHeadModel:start unit=${this.unitTypeId} headUnit=${headUnitTypeId}`);
 
     this.headBone = this.findHeadBone(bodyModel);
     if (!this.headBone) {
@@ -280,33 +322,42 @@ export class ThreeDUnitObject extends ExtendedObject3D {
       return;
     }
 
-    if (this.currentHeadMesh) {
-      this.headBone.remove(this.currentHeadMesh);
-      this.currentHeadMesh = null;
-    }
-
     try {
-      console.info(`[ThreeDUnitObject] attachHeadModel:try unitHead unit=${this.unitTypeId}`);
-      const headGltf = await this.gltfLoader.loadAsync(`/character/3d/${this.unitTypeId}/head.glb`);
+      console.info(`[ThreeDUnitObject] attachHeadModel:try unitHead unit=${this.unitTypeId} headUnit=${headUnitTypeId}`);
+      const headGltf = await this.gltfLoader.loadAsync(`/character/3d/${headUnitTypeId}/head.glb`);
+      if (updateToken !== this.headModelUpdateToken) {
+        headGltf.scene.removeFromParent();
+        return;
+      }
+
+      this.currentHeadMesh?.removeFromParent();
       this.currentHeadMesh = headGltf.scene;
       this.headBone.add(this.currentHeadMesh);
-      console.info(`[ThreeDUnitObject] attachHeadModel:done unit=${this.unitTypeId} source=unit`);
+      this.currentHeadUnitTypeId = headUnitTypeId;
+      console.info(`[ThreeDUnitObject] attachHeadModel:done unit=${this.unitTypeId} source=unit headUnit=${headUnitTypeId}`);
       return;
     } catch {
       // ユニット固有の頭部がない場合は UNKNOWN にフォールバック。
-      console.warn(`[ThreeDUnitObject] attachHeadModel:unitHeadMissing unit=${this.unitTypeId}`);
+      console.warn(`[ThreeDUnitObject] attachHeadModel:unitHeadMissing unit=${this.unitTypeId} headUnit=${headUnitTypeId}`);
     }
 
     try {
-      console.info(`[ThreeDUnitObject] attachHeadModel:try unknownHead unit=${this.unitTypeId}`);
+      console.info(`[ThreeDUnitObject] attachHeadModel:try unknownHead unit=${this.unitTypeId} headUnit=${headUnitTypeId}`);
       const unknownHeadGltf = await this.gltfLoader.loadAsync("/character/3d/UNKNOWN/head.glb");
+      if (updateToken !== this.headModelUpdateToken) {
+        unknownHeadGltf.scene.removeFromParent();
+        return;
+      }
+
+      this.currentHeadMesh?.removeFromParent();
       this.currentHeadMesh = unknownHeadGltf.scene;
       this.headBone.add(this.currentHeadMesh);
-      console.info(`[ThreeDUnitObject] attachHeadModel:done unit=${this.unitTypeId} source=unknown`);
+      this.currentHeadUnitTypeId = headUnitTypeId;
+      console.info(`[ThreeDUnitObject] attachHeadModel:done unit=${this.unitTypeId} source=unknown headUnit=${headUnitTypeId}`);
       return;
     } catch {
       // UNKNOWN 側にも頭部がない場合は警告のみ出す。
-      console.warn(`[ThreeDUnitObject] attachHeadModel:unknownHeadMissing unit=${this.unitTypeId}`);
+      console.warn(`[ThreeDUnitObject] attachHeadModel:unknownHeadMissing unit=${this.unitTypeId} headUnit=${headUnitTypeId}`);
     }
 
     console.warn(`[ThreeDUnitObject] ${this.unitTypeId} の頭部モデルが見つかりませんでした`);

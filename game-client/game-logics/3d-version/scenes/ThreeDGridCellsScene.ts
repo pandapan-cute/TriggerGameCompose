@@ -1,6 +1,7 @@
 import { GridCellsScene } from "../../phaser/scenes/GridCellsScene";
 import * as THREE from "three";
 import { ThreeDFieldViewState } from "../entities/ThreeDFieldViewState";
+import { ThreeDEnemyCharacterState } from "../entities/ThreeDEnemyCharacterState";
 import { ThreeDCharacterPlacementService } from "../services/ThreeDCharacterPlacementService";
 import { ThreeDUnitObject } from "../graphics/ThreeDUnitObject";
 import { FriendUnit } from "@/types/FriendUnit";
@@ -31,11 +32,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDCharacterManager: ThreeDCharacterManager = new ThreeDCharacterManager();
   private threeDInputController: ThreeDInputController | null = null;
   private readonly placementService: ThreeDCharacterPlacementService = new ThreeDCharacterPlacementService(this.gridConfig);
-  private readonly unitGridPositions = new Map<ThreeDUnitObject, { col: number; row: number; }>();
   private readonly unitObjectById = new Map<string, ThreeDUnitObject>();
   private readonly friendUnitsById = new Map<string, FriendUnit>();
-  private readonly enemyUnitsById = new Map<string, EnemyUnit>();
-  private readonly playerCharacterStates = new Map<ThreeDUnitObject, ThreeDPlayerCharacterState>();
   private threeDSelectionService: ThreeDSelectionService | null = null;
   /** 3D版の視界更新サービス（2D FieldViewService 再利用）。 */
   private threeDFieldViewService: FieldViewService | null = null;
@@ -95,20 +93,27 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         unitObject.rotation.y = Math.PI;
         this.threeDCharacterManager.player3DCharacters.push(unitObject);
         this.unitObjectById.set(unit.unitId, unitObject);
-        this.playerCharacterStates.set(unitObject, new ThreeDPlayerCharacterState(unitObject, unit));
-        this.unitGridPositions.set(unitObject, { ...unit.position });
+        this.threeDCharacterManager.playerCharacterStates.set(unitObject, new ThreeDPlayerCharacterState(unitObject, unit));
+        this.threeDCharacterManager.unitGridPositions.set(unitObject, { ...unit.position });
       }
     });
 
     // 相手のキャラクターは既存2D仕様と同様に反転座標で配置する
     this.enemyUnits.forEach((unit) => {
-      this.enemyUnitsById.set(unit.unitId, unit);
       const invertedPosition = this.hexUtils.invertPosition(unit.position);
       const unitObject = this.placeUnit({ ...unit, position: invertedPosition }, this.placementService);
       if (unitObject) {
         this.threeDCharacterManager.enemy3DCharacters.push(unitObject);
         this.unitObjectById.set(unit.unitId, unitObject);
-        this.unitGridPositions.set(unitObject, { ...invertedPosition });
+        this.threeDCharacterManager.unitGridPositions.set(unitObject, { ...invertedPosition });
+        this.threeDCharacterManager.enemyCharacterStatesById.set(
+          unit.unitId,
+          new ThreeDEnemyCharacterState(
+            unitObject,
+            unit,
+            this.hexUtils,
+          ),
+        );
       }
     });
   }
@@ -139,7 +144,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDTurnPlanner = new ThreeDTurnPlanner({
         scene: this,
         characterManager: this.threeDCharacterManager,
-        playerCharacterStates: this.playerCharacterStates,
+        playerCharacterStates: this.threeDCharacterManager.playerCharacterStates,
         hexUtils: this.hexUtils,
         clearSelection: () => {
           this.threeDSelectionService?.clearSelection();
@@ -157,9 +162,9 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         gridConfig: this.gridConfig,
         placementService: this.placementService,
         unitObjectById: this.unitObjectById,
-        playerCharacterStates: this.playerCharacterStates,
+        enemyCharacterStatesById: this.threeDCharacterManager.enemyCharacterStatesById,
+        playerCharacterStates: this.threeDCharacterManager.playerCharacterStates,
         friendUnitsById: this.friendUnitsById,
-        enemyUnitsById: this.enemyUnitsById,
         clearSelection: () => {
           this.threeDSelectionService?.clearSelection();
         },
@@ -186,7 +191,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDTriggerSettingController = new ThreeDTriggerSettingController({
         scene3d: this,
         characterManager: this.threeDCharacterManager,
-        playerCharacterStates: this.playerCharacterStates,
+        playerCharacterStates: this.threeDCharacterManager.playerCharacterStates,
         placementService: this.placementService,
         hexUtils: this.hexUtils,
         gridConfig: this.gridConfig,
@@ -399,8 +404,8 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private createThreeDSelectionServiceDeps(): ThreeDSelectionServiceDeps {
     return {
       characterManager: this.threeDCharacterManager,
-      playerCharacterStates: this.playerCharacterStates,
-      unitGridPositions: this.unitGridPositions,
+      playerCharacterStates: this.threeDCharacterManager.playerCharacterStates,
+      unitGridPositions: this.threeDCharacterManager.unitGridPositions,
       hexUtils: this.hexUtils,
       placementService: this.placementService,
       addObjectToScene: (object) => {
@@ -423,7 +428,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
    * @returns 3Dシーン向けに構成した FieldViewService。
    */
   private createThreeDFieldViewService(): FieldViewService {
-    const visibilityCharacters = Array.from(this.playerCharacterStates.values()).map((state) => ({
+    const visibilityCharacters = Array.from(this.threeDCharacterManager.playerCharacterStates.values()).map((state) => ({
       get position() {
         return state.getPosition();
       },

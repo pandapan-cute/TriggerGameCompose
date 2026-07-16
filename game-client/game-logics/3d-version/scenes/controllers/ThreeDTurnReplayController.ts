@@ -1,7 +1,7 @@
 import { ThreeDCharacterPlacementService } from "@/game-logics/3d-version/services/ThreeDCharacterPlacementService";
 import { ThreeDPlayerCharacterState } from "@/game-logics/3d-version/entities/ThreeDPlayerCharacterState";
+import { ThreeDEnemyCharacterState } from "@/game-logics/3d-version/entities/ThreeDEnemyCharacterState";
 import { ThreeDUnitObject } from "@/game-logics/3d-version/graphics/ThreeDUnitObject";
-import { EnemyUnit } from "@/types/EnemyUnit";
 import { FriendUnit } from "@/types/FriendUnit";
 import { HexUtils } from "@/game-logics/hexUtils";
 import { GameResult } from "@/types/GameTypes";
@@ -28,9 +28,9 @@ export interface ThreeDTurnReplayControllerDeps {
   gridConfig: GridConfig;
   placementService: ThreeDCharacterPlacementService;
   unitObjectById: Map<string, ThreeDUnitObject>;
+  enemyCharacterStatesById: Map<string, ThreeDEnemyCharacterState>;
   playerCharacterStates: Map<ThreeDUnitObject, ThreeDPlayerCharacterState>;
   friendUnitsById: Map<string, FriendUnit>;
-  enemyUnitsById: Map<string, EnemyUnit>;
   clearSelection: () => void;
   onReplayCompleted: (turnNumber: number) => void;
   setActionMode?: (isActionMode: boolean) => void;
@@ -147,15 +147,25 @@ export class ThreeDTurnReplayController {
           worldPosition,
           750,
           () => {
-            unitObject.setWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+            const enemyCharacterState = this.deps.enemyCharacterStatesById.get(action.getUnitId());
+            if (enemyCharacterState) {
+              enemyCharacterState.syncReplayState({
+                unitTypeId: action.getUnitTypeId(),
+                displayGridPosition: targetGridPosition,
+                worldPosition,
+                currentActionPoints: action.getCurrentActionPoints(),
+              });
+            } else {
+              unitObject.syncVisualState({
+                unitTypeId: action.getUnitTypeId(),
+                visible: true,
+                position: worldPosition,
+              });
+            }
+
             if (playerState) {
               playerState.setPosition(targetGridPosition);
               playerState.setActionPoints(action.getCurrentActionPoints());
-            }
-
-            const enemyUnit = this.deps.enemyUnitsById.get(action.getUnitId());
-            if (enemyUnit) {
-              enemyUnit.position = { ...action.getPosition() };
             }
 
             this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
@@ -172,12 +182,21 @@ export class ThreeDTurnReplayController {
           playerState.setActionPoints(action.getCurrentActionPoints());
         }
 
-        const enemyUnit = this.deps.enemyUnitsById.get(action.getUnitId());
-        if (enemyUnit) {
-          enemyUnit.position = { ...action.getPosition() };
+        const enemyCharacterState = this.deps.enemyCharacterStatesById.get(action.getUnitId());
+        if (enemyCharacterState) {
+          enemyCharacterState.syncReplayState({
+            unitTypeId: action.getUnitTypeId(),
+            displayGridPosition: targetGridPosition,
+            worldPosition,
+            currentActionPoints: action.getCurrentActionPoints(),
+          });
+        } else {
+          unitObject.syncVisualState({
+            unitTypeId: action.getUnitTypeId(),
+            visible: true,
+            position: worldPosition,
+          });
         }
-
-        unitObject.setWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
         this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
       }
     }
@@ -198,15 +217,16 @@ export class ThreeDTurnReplayController {
       }
 
       // 3D版は 2D の撃破演出を簡略化し、撃破時は非表示化のみ行う。
-      defendingUnitObject.updateVisibility(false);
+      const enemyCharacterState = this.deps.enemyCharacterStatesById.get(combat.getDefendingUnitId());
+      if (enemyCharacterState) {
+        enemyCharacterState.setBailout(true);
+      } else {
+        defendingUnitObject.updateVisibility(false);
+      }
+
       const friendUnit = this.deps.friendUnitsById.get(combat.getDefendingUnitId());
       if (friendUnit) {
         friendUnit.isBailout = true;
-      }
-
-      const enemyUnit = this.deps.enemyUnitsById.get(combat.getDefendingUnitId());
-      if (enemyUnit) {
-        enemyUnit.isBailout = true;
       }
     }
   }
@@ -241,7 +261,9 @@ export class ThreeDTurnReplayController {
    */
   private checkGameIsCompleted(currentTurn: number): GameResult {
     const playerAlive = Array.from(this.deps.friendUnitsById.values()).filter((unit) => !unit.isBailout);
-    const enemyAlive = Array.from(this.deps.enemyUnitsById.values()).filter((unit) => !unit.isBailout);
+    const enemyAlive = Array.from(this.deps.enemyCharacterStatesById.values()).filter((state) => !state.getEnemyUnit().isBailout);
+
+    console.log(`checkGameIsCompleted: playerAlive=${playerAlive.length}, enemyAlive=${enemyAlive.length}, currentTurn=${currentTurn}`);
 
     const isPlayerDefeated = playerAlive.length === 0;
     const isEnemyDefeated = enemyAlive.length === 0;
@@ -285,12 +307,12 @@ export class ThreeDTurnReplayController {
       return this.deps.friendUnitsById.get(unitId)?.position ?? { col: 0, row: 0 };
     }
 
-    const enemyUnit = this.deps.enemyUnitsById.get(unitId);
-    if (!enemyUnit) {
+    const enemyCharacterState = this.deps.enemyCharacterStatesById.get(unitId);
+    if (!enemyCharacterState) {
       return { col: 0, row: 0 };
     }
 
-    return this.deps.hexUtils.invertPosition(enemyUnit.position);
+    return enemyCharacterState.getDisplayGridPosition() ?? this.deps.hexUtils.invertPosition(enemyCharacterState.getEnemyUnit().position);
   }
 
   /**
@@ -340,10 +362,13 @@ export class ThreeDTurnReplayController {
     y: number,
   ): void {
     const unitId = action.getUnitId();
+    const isEnemyUnit = this.deps.enemyCharacterStatesById.has(unitId);
     const mainTriggerKey = action.getUsingMainTriggerId() as keyof typeof TRIGGER_STATUS;
     const subTriggerKey = action.getUsingSubTriggerId() as keyof typeof TRIGGER_STATUS;
     const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
     const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
+    const mainAzimuth = this.resolveReplayTriggerAzimuth(action.getMainTriggerAzimuth(), isEnemyUnit);
+    const subAzimuth = this.resolveReplayTriggerAzimuth(action.getSubTriggerAzimuth(), isEnemyUnit);
 
     if (mainTriggerStatus) {
       this.upsertReplayTriggerFan(
@@ -355,7 +380,7 @@ export class ThreeDTurnReplayController {
           z: center.z,
         },
         0xff6b6b,
-        action.getMainTriggerAzimuth(),
+        mainAzimuth,
         mainTriggerStatus.angle,
         mainTriggerStatus.range,
       );
@@ -371,11 +396,22 @@ export class ThreeDTurnReplayController {
           z: center.z,
         },
         0x6b6bff,
-        action.getSubTriggerAzimuth(),
+        subAzimuth,
         subTriggerStatus.angle,
         subTriggerStatus.range,
       );
     }
+  }
+
+  /**
+   * 敵ユニットのトリガー向きを、表示用に 180 度反転して返す。
+   */
+  private resolveReplayTriggerAzimuth(azimuth: number, isEnemyUnit: boolean): number {
+    if (!isEnemyUnit) {
+      return azimuth;
+    }
+
+    return (azimuth + 180) % 360;
   }
 
   /**

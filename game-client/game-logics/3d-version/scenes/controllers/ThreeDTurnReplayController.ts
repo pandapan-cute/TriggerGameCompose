@@ -11,6 +11,10 @@ import { Turn } from "@/game-logics/models/Turn";
 import { MAX_TURN } from "@/game-logics/config/game-config";
 import { MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
 import { CHARACTER_STATUS } from "@/game-logics/config/status";
+import { TRIGGER_STATUS } from "@/game-logics/config/status";
+import { GridConfig } from "@/game-logics/types";
+import { ThreeDTriggerFanObject } from "@/game-logics/3d-version/graphics/ThreeDTriggerFanObject";
+import { Scene3D } from "@enable3d/phaser-extension";
 
 /**
  * ThreeDTurnReplayController が参照する依存関係。
@@ -19,8 +23,9 @@ import { CHARACTER_STATUS } from "@/game-logics/config/status";
  * 3D版のターン再生を Scene から分離し、2D版 TurnReplayController と同じ役割分担に寄せる。
  */
 export interface ThreeDTurnReplayControllerDeps {
-  scene3d: Phaser.Scene;
+  scene3d: Scene3D;
   hexUtils: HexUtils;
+  gridConfig: GridConfig;
   placementService: ThreeDCharacterPlacementService;
   unitObjectById: Map<string, ThreeDUnitObject>;
   playerCharacterStates: Map<ThreeDUnitObject, ThreeDPlayerCharacterState>;
@@ -43,6 +48,11 @@ export interface ThreeDTurnReplayControllerDeps {
  * 完了後にゲーム終了判定または行動フェーズ復帰を行う。
  */
 export class ThreeDTurnReplayController {
+  /** リプレイ中に表示するメイントリガー扇形。 */
+  private readonly mainReplayTriggerFans = new Map<string, ThreeDTriggerFanObject>();
+  /** リプレイ中に表示するサブトリガー扇形。 */
+  private readonly subReplayTriggerFans = new Map<string, ThreeDTriggerFanObject>();
+
   constructor(private readonly deps: ThreeDTurnReplayControllerDeps) { }
 
   /**
@@ -51,6 +61,7 @@ export class ThreeDTurnReplayController {
    * @param turn サーバーから受信したターン情報。
    */
   public executeTurn(turn: Turn): void {
+    this.clearAllReplayTriggerFans();
     this.deps.clearSelection();
     this.deps.setActionMode?.(true);
     this.deps.setActionAnimationInProgress?.(true);
@@ -88,6 +99,7 @@ export class ThreeDTurnReplayController {
 
       const gameResult = this.checkGameIsCompleted(turn.getTurnNumber());
       if (gameResult !== "InProgress") {
+        this.clearAllReplayTriggerFans();
         this.deps.completeGame?.(gameResult);
         return;
       }
@@ -124,18 +136,34 @@ export class ThreeDTurnReplayController {
         // 3D版では移動アニメーションを先行し、完了時に状態を確定する。
         unitObject.faceToward(worldPosition);
         unitObject.playAnimation("Running", 120);
-        unitObject.moveTo(worldPosition, 750, () => {
-          unitObject.setWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
-          if (playerState) {
-            playerState.setPosition(targetGridPosition);
-            playerState.setActionPoints(action.getCurrentActionPoints());
-          }
+        // 移動開始時点の位置でトリガー扇形を表示し、移動中は中心座標を追従させる。
+        this.updateReplayTriggerFansForAction(
+          action,
+          { x: unitObject.position.x, y: unitObject.position.y, z: unitObject.position.z },
+          unitObject.position.y + 0.02,
+        );
 
-          const enemyUnit = this.deps.enemyUnitsById.get(action.getUnitId());
-          if (enemyUnit) {
-            enemyUnit.position = { ...action.getPosition() };
-          }
-        });
+        unitObject.moveTo(
+          worldPosition,
+          750,
+          () => {
+            unitObject.setWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+            if (playerState) {
+              playerState.setPosition(targetGridPosition);
+              playerState.setActionPoints(action.getCurrentActionPoints());
+            }
+
+            const enemyUnit = this.deps.enemyUnitsById.get(action.getUnitId());
+            if (enemyUnit) {
+              enemyUnit.position = { ...action.getPosition() };
+            }
+
+            this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
+          },
+          (currentPosition) => {
+            this.updateReplayTriggerFansForAction(action, currentPosition, currentPosition.y + 0.02);
+          },
+        );
       } else {
         // 移動しないアクションは Idle のまま、座標と表示だけを更新する。
         unitObject.playAnimation("Idle", 120);
@@ -150,6 +178,7 @@ export class ThreeDTurnReplayController {
         }
 
         unitObject.setWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+        this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
       }
     }
   }
@@ -190,6 +219,8 @@ export class ThreeDTurnReplayController {
   private completeUnitActionPhase(turnNumber: number): void {
     // 再生中の Running を止め、次の行動設定モードでは全ユニットを待機状態に戻す。
     this.setAllUnitsIdle();
+    // 行動設定フェーズへ戻る前に、リプレイ用トリガー扇形を消す。
+    this.clearAllReplayTriggerFans();
 
     // 前ターンの選択を持ち越すと、次ターンの初回クリックが「同じユニット再クリック」扱いになる。
     this.deps.clearSelection();
@@ -298,5 +329,100 @@ export class ThreeDTurnReplayController {
       state.setRemainSeconds(MAX_UNIT_EXEC_SECONDS);
       state.resetCurrentStep();
     }
+  }
+
+  /**
+   * 1アクション分のトリガー方位を、3Dリプレイ用の扇形へ反映する。
+   */
+  private updateReplayTriggerFansForAction(
+    action: { getUnitId: () => string; getUsingMainTriggerId: () => string; getUsingSubTriggerId: () => string; getMainTriggerAzimuth: () => number; getSubTriggerAzimuth: () => number; },
+    center: { x: number; y: number; z: number; },
+    y: number,
+  ): void {
+    const unitId = action.getUnitId();
+    const mainTriggerKey = action.getUsingMainTriggerId() as keyof typeof TRIGGER_STATUS;
+    const subTriggerKey = action.getUsingSubTriggerId() as keyof typeof TRIGGER_STATUS;
+    const mainTriggerStatus = TRIGGER_STATUS[mainTriggerKey];
+    const subTriggerStatus = TRIGGER_STATUS[subTriggerKey];
+
+    if (mainTriggerStatus) {
+      this.upsertReplayTriggerFan(
+        this.mainReplayTriggerFans,
+        unitId,
+        {
+          x: center.x,
+          y,
+          z: center.z,
+        },
+        0xff6b6b,
+        action.getMainTriggerAzimuth(),
+        mainTriggerStatus.angle,
+        mainTriggerStatus.range,
+      );
+    }
+
+    if (subTriggerStatus) {
+      this.upsertReplayTriggerFan(
+        this.subReplayTriggerFans,
+        unitId,
+        {
+          x: center.x,
+          y,
+          z: center.z,
+        },
+        0x6b6bff,
+        action.getSubTriggerAzimuth(),
+        subTriggerStatus.angle,
+        subTriggerStatus.range,
+      );
+    }
+  }
+
+  /**
+   * リプレイ用トリガー扇形を更新または新規作成する。
+   */
+  private upsertReplayTriggerFan(
+    fanMap: Map<string, ThreeDTriggerFanObject>,
+    unitId: string,
+    center: { x: number; y: number; z: number; },
+    color: number,
+    azimuth: number,
+    angle: number,
+    range: number,
+  ): void {
+    const existing = fanMap.get(unitId);
+    if (existing) {
+      existing.updateTriggerAzimuth(azimuth, center, color, angle, range, true);
+      return;
+    }
+
+    fanMap.set(
+      unitId,
+      new ThreeDTriggerFanObject(
+        this.deps.scene3d,
+        center,
+        color,
+        azimuth,
+        angle,
+        range,
+        this.deps.gridConfig,
+        true,
+      ),
+    );
+  }
+
+  /**
+   * リプレイ中に表示した全ユニットのトリガー扇形を破棄する。
+   */
+  private clearAllReplayTriggerFans(): void {
+    for (const fan of this.mainReplayTriggerFans.values()) {
+      fan.dispose();
+    }
+    this.mainReplayTriggerFans.clear();
+
+    for (const fan of this.subReplayTriggerFans.values()) {
+      fan.dispose();
+    }
+    this.subReplayTriggerFans.clear();
   }
 }

@@ -207,6 +207,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     to: { x: number; y: number; z: number; },
     durationMs: number,
     onComplete?: () => void,
+    onUpdate?: (position: { x: number; y: number; z: number; }) => void,
   ): void {
     const from = {
       x: this.position.x,
@@ -221,14 +222,22 @@ export class ThreeDUnitObject extends ExtendedObject3D {
       ease: "Linear",
       onUpdate: (tween) => {
         const progress = tween.getValue() ?? 0;
+        const currentPosition = {
+          x: from.x + (to.x - from.x) * progress,
+          y: from.y + (to.y - from.y) * progress,
+          z: from.z + (to.z - from.z) * progress,
+        };
+
         this.setWorldPosition(
-          from.x + (to.x - from.x) * progress,
-          from.y + (to.y - from.y) * progress,
-          from.z + (to.z - from.z) * progress,
+          currentPosition.x,
+          currentPosition.y,
+          currentPosition.z,
         );
+        onUpdate?.(currentPosition);
       },
       onComplete: () => {
         this.setWorldPosition(to.x, to.y, to.z);
+        onUpdate?.({ x: to.x, y: to.y, z: to.z });
         onComplete?.();
       },
     });

@@ -154,6 +154,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDTurnReplayController = new ThreeDTurnReplayController({
         scene3d: this,
         hexUtils: this.hexUtils,
+        gridConfig: this.gridConfig,
         placementService: this.placementService,
         unitObjectById: this.unitObjectById,
         playerCharacterStates: this.playerCharacterStates,

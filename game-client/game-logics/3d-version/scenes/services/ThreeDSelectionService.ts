@@ -14,6 +14,8 @@ export interface ThreeDSelectionServiceDeps {
   unitGridPositions: Map<ThreeDUnitObject, { col: number; row: number; }>;
   hexUtils: HexUtils;
   placementService: ThreeDCharacterPlacementService;
+  /** 指定グリッド座標でのユニット配置高さを返す。 */
+  resolveUnitHeightAtGrid?: (col: number, row: number) => number;
   addObjectToScene: (object: THREE.Object3D) => void;
   /** 移動後に視界更新を行うコールバック。 */
   updateFieldViewVisibility?: () => boolean[][] | undefined;
@@ -142,7 +144,7 @@ export class ThreeDSelectionService {
       this.deps.hexUtils,
       target.col,
       target.row,
-      selectedUnit.position.y,
+      this.deps.resolveUnitHeightAtGrid?.(target.col, target.row) ?? selectedUnit.position.y,
     );
 
     // 移動中は候補セルを一旦隠し、Running アニメーションへ切り替える。

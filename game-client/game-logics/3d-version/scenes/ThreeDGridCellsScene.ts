@@ -26,6 +26,10 @@ import { ThreeDTurnReplayController } from "./controllers/ThreeDTurnReplayContro
  * 2Dの GridCellsScene を継承しつつ、3D表示・3D入力・3D移動処理を構成する。
  */
 export class ThreeDGridCellsScene extends GridCellsScene {
+  /** ユニット地面高さのベース値（仮）。 */
+  private static readonly UNIT_BASE_HEIGHT = 1;
+  /** fieldStep 1段あたりの高さ係数（仮）。 */
+  private static readonly UNIT_HEIGHT_PER_FIELD_STEP = 76;
 
   private threeDFieldViewState!: ThreeDFieldViewState;
   /** 3Dユニット表示オブジェクトの一覧 */
@@ -130,6 +134,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     await this.third.warpSpeed("-sky", "-ground"); // 3D空間の初期化
     this.third.camera.position.set(20, 500, 1500);
     this.third.camera.lookAt(0, 0, 0);
+    await this.threeDFieldViewState.loadFieldModel();
 
     // ファークリッピングプレーンを広げて盤面全体が描画されるようにする
     const cam = this.third.camera as THREE.PerspectiveCamera;
@@ -161,6 +166,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
         hexUtils: this.hexUtils,
         gridConfig: this.gridConfig,
         placementService: this.placementService,
+        resolveUnitHeightAtGrid: (col, row) => this.resolveUnitHeightAtGrid(col, row),
         unitObjectById: this.unitObjectById,
         enemyCharacterStatesById: this.threeDCharacterManager.enemyCharacterStatesById,
         playerCharacterStates: this.threeDCharacterManager.playerCharacterStates,
@@ -251,6 +257,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       this.threeDInputController?.unbind();
       this.threeDSelectionService?.dispose();
       this.threeDTriggerSettingController?.stopTriggerSetting();
+      this.threeDFieldViewState.dispose();
     });
   }
 
@@ -378,7 +385,12 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       return;
     }
 
-    const position = placementService.fromGridOnGround(this.hexUtils, col, row, 0.1);
+    const position = placementService.fromGridOnGround(
+      this.hexUtils,
+      col,
+      row,
+      this.resolveUnitHeightAtGrid(col, row),
+    );
     const unitObject = new ThreeDUnitObject(this, unit.unitTypeId, position.x, position.y, position.z);
     unitObject.setSelectUnitHandler(() => this.selectUnit(unitObject));
     unitObject.updateVisibility(!unit.isBailout);
@@ -408,6 +420,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       unitGridPositions: this.threeDCharacterManager.unitGridPositions,
       hexUtils: this.hexUtils,
       placementService: this.placementService,
+      resolveUnitHeightAtGrid: (col, row) => this.resolveUnitHeightAtGrid(col, row),
       addObjectToScene: (object) => {
         this.third.add.existing(object);
       },
@@ -443,6 +456,19 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       hexUtils: this.hexUtils,
       gridConfig: this.gridConfig,
     });
+  }
+
+  /**
+   * fieldSteps から指定マスのユニット配置高さを計算する。
+   *
+   * 高さ係数は仮値のため、見た目に合わせて調整する前提。
+   */
+  private resolveUnitHeightAtGrid(col: number, row: number): number {
+    const fieldStep = this.fieldSteps[row]?.[col] ?? 0;
+    return (
+      ThreeDGridCellsScene.UNIT_BASE_HEIGHT +
+      fieldStep * ThreeDGridCellsScene.UNIT_HEIGHT_PER_FIELD_STEP
+    );
   }
 
 }

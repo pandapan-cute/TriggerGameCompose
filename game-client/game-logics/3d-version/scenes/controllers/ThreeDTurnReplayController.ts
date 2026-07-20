@@ -27,6 +27,8 @@ export interface ThreeDTurnReplayControllerDeps {
   hexUtils: HexUtils;
   gridConfig: GridConfig;
   placementService: ThreeDCharacterPlacementService;
+  /** 指定グリッド座標でのユニット配置高さを返す。 */
+  resolveUnitHeightAtGrid: (col: number, row: number) => number;
   unitObjectById: Map<string, ThreeDUnitObject>;
   enemyCharacterStatesById: Map<string, ThreeDEnemyCharacterState>;
   playerCharacterStates: Map<ThreeDUnitObject, ThreeDPlayerCharacterState>;
@@ -125,7 +127,7 @@ export class ThreeDTurnReplayController {
         this.deps.hexUtils,
         targetGridPosition.col,
         targetGridPosition.row,
-        unitObject.position.y,
+        this.deps.resolveUnitHeightAtGrid(targetGridPosition.col, targetGridPosition.row),
       );
 
       const isMoving =

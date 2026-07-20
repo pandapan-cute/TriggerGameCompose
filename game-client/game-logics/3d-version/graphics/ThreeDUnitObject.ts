@@ -121,7 +121,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    * ユニット種別に応じた待機モデルを読み込む。
    * 共通の体モデルに頭部モデルを差し込んで表示する。
    */
-  async loadDefaultModel(scale: number = 72): Promise<void> {
+  async loadDefaultModel(scale: number = 54): Promise<void> {
     try {
       // 共通体モデルを優先して読み込む（現行アセット配置に合わせる）。
       await this.loadModel("/character/3d/motions/Idle.glb", scale);

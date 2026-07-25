@@ -385,7 +385,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
       return;
     }
 
-    const position = placementService.fromGridOnGround(
+    const position = placementService.fromGridOn3D(
       this.hexUtils,
       col,
       row,

@@ -140,7 +140,7 @@ export class ThreeDSelectionService {
     if (!target) return;
 
     // グリッド座標をワールド座標へ変換し、現在の高さを保ったまま移動させる。
-    const worldPosition = this.deps.placementService.fromGridOnGround(
+    const worldPosition = this.deps.placementService.fromGridOn3D(
       this.deps.hexUtils,
       target.col,
       target.row,
@@ -151,7 +151,6 @@ export class ThreeDSelectionService {
     this.isMoving = true;
     this.clearMovableHexes();
     selectedUnit.faceToward(worldPosition);
-    selectedUnit.playAnimation("Running", 120);
 
     selectedUnit.moveTo(
       { x: worldPosition.x, y: worldPosition.y, z: worldPosition.z },
@@ -241,6 +240,21 @@ export class ThreeDSelectionService {
   private clearMovableHexes(): void {
     // シーン上のメッシュとGPUリソースを破棄してリークを防ぐ。
     this.movableCellHighlights.forEach((mesh) => {
+      mesh.traverse((child) => {
+        if (child === mesh) {
+          return;
+        }
+        const childWithGeometry = child as THREE.Object3D & {
+          geometry?: THREE.BufferGeometry;
+          material?: THREE.Material | THREE.Material[];
+        };
+        childWithGeometry.geometry?.dispose();
+        if (Array.isArray(childWithGeometry.material)) {
+          childWithGeometry.material.forEach((material) => material.dispose());
+        } else {
+          childWithGeometry.material?.dispose();
+        }
+      });
       mesh.removeFromParent();
       mesh.geometry.dispose();
       if (Array.isArray(mesh.material)) {
@@ -302,12 +316,25 @@ export class ThreeDSelectionService {
     });
 
     const highlight = new THREE.Mesh(geometry, material);
+    const outlineGeometry = new THREE.EdgesGeometry(geometry);
+    const outlineMaterial = new THREE.LineBasicMaterial({
+      color: 0x0b4f17,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
+    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
+    outline.position.z = 0.012;
+    outline.renderOrder = 3;
+    highlight.add(outline);
+
+    const baseHeight = this.deps.resolveUnitHeightAtGrid?.(col, row) ?? 0;
     // グリッド座標をワールド座標へ変換して、盤面上に少し浮かせて配置する。
-    const worldPosition = this.deps.placementService.fromGridOnGround(
+    const worldPosition = this.deps.placementService.fromGridOn3D(
       this.deps.hexUtils,
       col,
       row,
-      0.06,
+      baseHeight + 0.06,
     );
     highlight.rotation.x = -Math.PI / 2;
     highlight.position.set(worldPosition.x, worldPosition.y, worldPosition.z);

@@ -70,6 +70,11 @@ export class ThreeDCharacterPlacementService {
 
   /** グリッド座標を地面上の3Dローカル座標へ変換する */
   fromGridOnGround(hexUtils: HexUtils, col: number, row: number, height: number = 0): ThreeDWorldPosition {
+    return this.fromGridOn3D(hexUtils, col, row, height);
+  }
+
+  /** グリッド座標を空間上の3Dローカル座標へ変換する */
+  fromGridOn3D(hexUtils: HexUtils, col: number, row: number, height: number = 0): ThreeDWorldPosition {
     const position2d = hexUtils.getHexPosition(col, row);
     return this.toGroundPosition(position2d, height);
   }

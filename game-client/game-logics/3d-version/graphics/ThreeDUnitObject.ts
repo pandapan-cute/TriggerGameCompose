@@ -22,6 +22,10 @@ const hasShadowProps = (object: THREE.Object3D): object is THREE.Object3D & {
 export class ThreeDUnitObject extends ExtendedObject3D {
   /** 到達後に向けるデフォルト向き（敵陣側）。 */
   private static readonly DEFAULT_ENEMY_TERRITORY_YAW = Math.PI;
+  /** ジャンプ前動作に使う時間の比率。 */
+  private static readonly JUMP_TAKEOFF_RATIO = 0.3;
+  /** 着地動作に使う時間の比率。 */
+  private static readonly JUMP_LANDING_RATIO = 0.3;
 
   private readonly scene3d: Scene3D;
   private readonly unitTypeId: string;
@@ -121,7 +125,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    * ユニット種別に応じた待機モデルを読み込む。
    * 共通の体モデルに頭部モデルを差し込んで表示する。
    */
-  async loadDefaultModel(scale: number = 54): Promise<void> {
+  async loadDefaultModel(scale: number = 36): Promise<void> {
     try {
       // 共通体モデルを優先して読み込む（現行アセット配置に合わせる）。
       await this.loadModel("/character/3d/motions/Idle.glb", scale);
@@ -255,7 +259,51 @@ export class ThreeDUnitObject extends ExtendedObject3D {
       y: this.position.y,
       z: this.position.z,
     };
+    if (!this.isJumpMovement(from.y, to.y)) {
+      this.playAnimation("Running", 120);
+      this.startMoveTween(from, to, durationMs, onComplete, onUpdate);
+      return;
+    }
 
+    const takeoffDurationMs = Math.max(
+      80,
+      Math.round(durationMs * ThreeDUnitObject.JUMP_TAKEOFF_RATIO),
+    );
+    const landingDurationMs = Math.max(
+      80,
+      Math.round(durationMs * ThreeDUnitObject.JUMP_LANDING_RATIO),
+    );
+    const travelDurationMs = Math.max(80, durationMs - takeoffDurationMs - landingDurationMs);
+
+    this.playAnimation("JumpUp", 80);
+    this.scene3d.time.delayedCall(takeoffDurationMs, () => {
+      this.startMoveTween(
+        from,
+        to,
+        travelDurationMs,
+        () => {
+          this.playAnimation("JumpDown", 80);
+          this.scene3d.time.delayedCall(landingDurationMs, () => {
+            this.setWorldPosition(to.x, to.y, to.z);
+            onUpdate?.({ x: to.x, y: to.y, z: to.z });
+            onComplete?.();
+          });
+        },
+        onUpdate,
+      );
+    });
+  }
+
+  /**
+   * 指定座標まで tween で補間移動する。
+   */
+  private startMoveTween(
+    from: { x: number; y: number; z: number; },
+    to: { x: number; y: number; z: number; },
+    durationMs: number,
+    onComplete?: () => void,
+    onUpdate?: (position: { x: number; y: number; z: number; }) => void,
+  ): void {
     this.scene3d.tweens.addCounter({
       from: 0,
       to: 1,
@@ -295,7 +343,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    * ユニットのデフォルトアニメーションを登録する
    */
   private async registerDefaultAnimations(): Promise<void> {
-    const animationNames = ["Running"];
+    const animationNames = ["Running", "JumpUp", "JumpDown"];
     console.info(`[ThreeDUnitObject] registerDefaultAnimations:start unit=${this.unitTypeId} names=${animationNames.join(",")}`);
     await Promise.all(
       animationNames.map(async (name) =>
@@ -379,6 +427,13 @@ export class ThreeDUnitObject extends ExtendedObject3D {
       return name;
     }
     return null;
+  }
+
+  /**
+   * 高さ差のある移動かどうかを返す。
+   */
+  private isJumpMovement(fromY: number, toY: number): boolean {
+    return Math.abs(toY - fromY) > 1e-3;
   }
 
   /**

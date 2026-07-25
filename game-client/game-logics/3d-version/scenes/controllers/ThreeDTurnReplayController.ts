@@ -123,7 +123,7 @@ export class ThreeDTurnReplayController {
       const playerState = this.deps.playerCharacterStates.get(unitObject);
       const currentGridPosition = this.getCurrentGridPosition(action.getUnitId());
       const targetGridPosition = this.resolveGridPosition(action.getUnitId(), action.getPosition());
-      const worldPosition = this.deps.placementService.fromGridOnGround(
+      const worldPosition = this.deps.placementService.fromGridOn3D(
         this.deps.hexUtils,
         targetGridPosition.col,
         targetGridPosition.row,
@@ -137,7 +137,6 @@ export class ThreeDTurnReplayController {
       if (isMoving) {
         // 3D版では移動アニメーションを先行し、完了時に状態を確定する。
         unitObject.faceToward(worldPosition);
-        unitObject.playAnimation("Running", 120);
         // 移動開始時点の位置でトリガー扇形を表示し、移動中は中心座標を追従させる。
         this.updateReplayTriggerFansForAction(
           action,

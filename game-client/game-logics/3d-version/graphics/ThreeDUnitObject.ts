@@ -202,7 +202,11 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   /**
    * 登録済みアニメーションを再生する
    */
-  playAnimation(name: string, transitionDurationMs: number = 350): void {
+  playAnimation(
+    name: string,
+    transitionDurationMs: number = 350,
+    options?: { loop?: boolean; }
+  ): void {
     const resolvedName = this.resolveAnimationName(name);
     if (!resolvedName) return;
 
@@ -212,6 +216,15 @@ export class ThreeDUnitObject extends ExtendedObject3D {
 
     if (this.currentAction) {
       this.currentAction.crossFadeTo(nextAction, transitionDurationMs / 1000, false);
+    }
+
+    const shouldLoop = options?.loop ?? true;
+    if (shouldLoop) {
+      nextAction.setLoop(THREE.LoopRepeat, Infinity);
+      nextAction.clampWhenFinished = false;
+    } else {
+      nextAction.setLoop(THREE.LoopOnce, 1);
+      nextAction.clampWhenFinished = true;
     }
 
     nextAction.reset().play();
@@ -275,14 +288,14 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     );
     const travelDurationMs = Math.max(80, durationMs - takeoffDurationMs - landingDurationMs);
 
-    this.playAnimation("JumpUp", 80);
+    this.playAnimation("JumpUp", takeoffDurationMs, { loop: false });
     this.scene3d.time.delayedCall(takeoffDurationMs, () => {
       this.startMoveTween(
         from,
         to,
         travelDurationMs,
         () => {
-          this.playAnimation("JumpDown", 80);
+          this.playAnimation("JumpDown", landingDurationMs, { loop: false });
           this.scene3d.time.delayedCall(landingDurationMs, () => {
             this.setWorldPosition(to.x, to.y, to.z);
             onUpdate?.({ x: to.x, y: to.y, z: to.z });

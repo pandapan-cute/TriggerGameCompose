@@ -9,7 +9,7 @@ import { EnemyUnit } from "@/types/EnemyUnit";
 import { FriendUnit } from "@/types/FriendUnit";
 import { GameResult, GameState, GameType } from "@/types/GameTypes";
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const GameGrid = dynamic(() => import("@/game-logics/GameGrid"), {
@@ -61,7 +61,9 @@ export default function GamePage() {
 
   // URLパラメータを取得
   const params = useParams();
+  const searchParams = useSearchParams();
   const gameId = params.gameId as string;
+  const gameDimension = searchParams.get("dimension") === "2D" ? "2D" : "3D";
 
   useEffect(() => {
     /** ゲーム状態の受信処理 */
@@ -141,7 +143,7 @@ export default function GamePage() {
       {/* ゲーム画面 */}
       {friendUnits.length > 0 && enemyUnits.length > 0 && gameResult === "InProgress" && (
         <div className="w-full h-full">
-          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} gameDimention="3D" setGameResult={setGameResult} checkGameState={checkGameState} setCurrentTurn={setCurrentTurn} />
+          <GameGrid currentTurn={currentTurn} friendUnits={friendUnits} enemyUnits={enemyUnits} fieldSteps={fieldSteps} visibility={visibility} motionLabEndTime={motionLabEndTime} gameResult={gameResult} gameDimention={gameDimension} setGameResult={setGameResult} checkGameState={checkGameState} setCurrentTurn={setCurrentTurn} />
         </div>
       )}
     </div>

@@ -2,7 +2,6 @@ import Image from "next/image";
 import { Noto_Sans_JP, Orbitron } from "next/font/google";
 import styles from "./index.module.css";
 import { SkyOutlineButton } from "@/components/buttons/sky-outline";
-import { WhiteFillButton } from "@/components/buttons/white-fill";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -28,13 +27,46 @@ export default function TopPage() {
             className={styles.pageLogo}
           />
           <p className={styles.catchCopy}>戦闘シミュレーション演習に挑戦せよ</p>
-          <div className={styles.heroButtons}>
-            <WhiteFillButton href="/pve-lobby">
-              AIとの演習 | PvE
-            </WhiteFillButton>
-            <WhiteFillButton href="/lobby">
-              オンライン対戦 | PvP
-            </WhiteFillButton>
+          <div className={styles.dimensionChoiceGrid}>
+            <article className={styles.dimensionCard}>
+              <Image
+                src="/images/2D_image.webp"
+                alt="2Dバトルプレビュー"
+                fill
+                priority
+                className={styles.dimensionCardImage}
+                sizes="(max-width: 960px) 100vw, 50vw"
+              />
+              <div className={styles.dimensionCardFade} />
+              <div className={styles.dimensionCardContent}>
+                <p className={`${styles.dimensionLabel} ${orbitron.className}`}>2D</p>
+                <p className={styles.dimensionSubcopy}>クラシックな俯瞰視点でわかりやすく</p>
+                <div className={styles.dimensionLinksRow}>
+                  <a className={styles.dimensionLinkButton} href="/pve-lobby?dimension=2D">PvE | AIと対戦</a>
+                  <a className={styles.dimensionLinkButton} href="/lobby?dimension=2D">PvP | プレイヤーと対戦</a>
+                </div>
+              </div>
+            </article>
+
+            <article className={styles.dimensionCard}>
+              <Image
+                src="/images/3D_image.webp"
+                alt="3Dバトルプレビュー"
+                fill
+                priority
+                className={styles.dimensionCardImage}
+                sizes="(max-width: 960px) 100vw, 50vw"
+              />
+              <div className={styles.dimensionCardFade} />
+              <div className={styles.dimensionCardContent}>
+                <p className={`${styles.dimensionLabel} ${orbitron.className}`}>3D</p>
+                <p className={styles.dimensionSubcopy}>立体視点でちびキャラを操作</p>
+                <div className={styles.dimensionLinksRow}>
+                  <a className={styles.dimensionLinkButton} href="/pve-lobby?dimension=3D">PvE | AIと対戦</a>
+                  <a className={styles.dimensionLinkButton} href="/lobby?dimension=3D">PvP | プレイヤーと対戦</a>
+                </div>
+              </div>
+            </article>
           </div>
         </div>
         <div className={styles.heroSkew} />

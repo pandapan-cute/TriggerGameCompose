@@ -154,7 +154,7 @@ export class ThreeDSelectionService {
 
     selectedUnit.moveTo(
       { x: worldPosition.x, y: worldPosition.y, z: worldPosition.z },
-      380,
+      500,
       () => {
         // 移動完了後に内部状態を確定し、Idleへ戻す。
         this.deps.unitGridPositions.set(selectedUnit, {
@@ -172,8 +172,8 @@ export class ThreeDSelectionService {
         // トリガー方位設定中は移動候補セルを表示しない（2D版挙動に揃える）。
         this.clearMovableHexes();
         this.deps.startTriggerSettingForSelectedUnit?.();
-        selectedUnit.faceEnemyTerritoryDefault();
-        selectedUnit.playAnimation("Idle", 150);
+        // selectedUnit.faceEnemyTerritoryDefault(); // 移動後に敵陣向きにする場合はコメントアウトを外す。
+        selectedUnit.playAnimation("Idle");
         this.isMoving = false;
       },
     );

@@ -49,7 +49,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
   private threeDTurnReplayController: ThreeDTurnReplayController | null = null;
 
   constructor(
-    firstMotionLabEndtime: Date,
+    private readonly motionLabEndTime: Date,
     friendUnits: FriendUnit[],
     enemyUnits: EnemyUnit[],
     fieldSteps: number[][],
@@ -59,7 +59,7 @@ export class ThreeDGridCellsScene extends GridCellsScene {
     private readonly handleFinishMotionExecuteHandler: (turnNumber: number) => void,
   ) {
     super(
-      firstMotionLabEndtime,
+      motionLabEndTime,
       friendUnits,
       enemyUnits,
       fieldSteps,
@@ -158,6 +158,9 @@ export class ThreeDGridCellsScene extends GridCellsScene {
           this.sendServerTurn3D(steps);
         },
       });
+
+      // 2D版と同様に初回ターンの締切タイマーを有効化する。
+      this.threeDTurnPlanner.setMotionLabEnd(this.motionLabEndTime);
     }
 
     if (!this.threeDTurnReplayController) {

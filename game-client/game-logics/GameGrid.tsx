@@ -55,6 +55,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   const [isSendingMotionLabTurn, setIsSendingMotionLabTurn] = useState(false);
   const motionLabDialogRef = useRef<MotionLabDialogHandle>(null);
   const motionExecuteDialogRef = useRef<MotionExecuteDialogHandle>(null);
+  const isMotionLabTurnSendDisabled = isSendingMotionLabTurn || gameMode !== "lab";
 
   // WebSocketコンテキストを使用
   const {
@@ -274,7 +275,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
    * 動きの設定を途中送信する
    */
   const handleSendMotionLabTurn = () => {
-    if (isSendingMotionLabTurn) {
+    if (isMotionLabTurnSendDisabled) {
       return;
     }
 
@@ -307,7 +308,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
         <SkyOutlineButton
           href="#"
           onClick={handleSendMotionLabTurn}
-          className={`text-sm text-center ${isSendingMotionLabTurn ? "pointer-events-none opacity-50" : ""}`}
+          className={`text-sm text-center ${isMotionLabTurnSendDisabled ? "pointer-events-none opacity-50" : ""}`}
         >
           動きの設定を送信<br />MotionLab Ready !
         </SkyOutlineButton>

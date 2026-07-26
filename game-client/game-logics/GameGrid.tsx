@@ -12,6 +12,7 @@ import { Turn } from "./models/Turn";
 import { GameResult } from "@/types/GameTypes";
 import MotionLabDialog, { MotionLabDialogHandle } from "@/components/dialogs/MotionMode/MotionLabDialog";
 import MotionExecuteDialog, { MotionExecuteDialogHandle } from "@/components/dialogs/MotionMode/MotionExecuteDialog";
+import LoadingDialog from "@/components/dialogs/Loading";
 import TurnStateMotionLabPanel from "@/components/panels/TurnStatePanel/MotionLab";
 import TurnStateMotionExecutePanel from "@/components/panels/TurnStatePanel/MotionExecute";
 import { MAX_TURN } from "./config/game-config";
@@ -51,6 +52,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   const [gameMode, setGameMode] = useState<"lab" | "execute">("lab");
   const [motionLabEndTimeState, setMotionLabEndTimeState] = useState<Date>(motionLabEndTime);
   const [motionExecuteEndTimeState, setMotionExecuteEndTimeState] = useState<Date>(motionLabEndTime);
+  const [isSendingMotionLabTurn, setIsSendingMotionLabTurn] = useState(false);
   const motionLabDialogRef = useRef<MotionLabDialogHandle>(null);
   const motionExecuteDialogRef = useRef<MotionExecuteDialogHandle>(null);
 
@@ -81,6 +83,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
   const handleTurnExecution = (steps: Step[]) => {
     console.log("Phaserからターン情報を受け取りました:", steps, isConnected, playerId, gameId);
     if (isConnected && playerId && gameId && gameResult === "InProgress") {
+      setIsSendingMotionLabTurn(true);
       const messageData = {
         action: "turnExecution" as const,
         playerId,
@@ -115,6 +118,8 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     /** ターンの実行 */
     const handleTurnResultSubmitted = (data: WebSocketResponseType) => {
       if (data.action === "turnExecutionResult") {
+        setIsSendingMotionLabTurn(false);
+
         let activeScene: GridCellsScene | null = null;
         if (gameRef.current) {
           try {
@@ -142,6 +147,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
     /** 対戦終了結果の処理 */
     const handleCancelMatchingResult = (data: WebSocketResponseType) => {
       if (data.action === "cancelMatchingResult") {
+        setIsSendingMotionLabTurn(false);
         console.log("対戦終了結果を受信:", data);
         console.log("対戦が正常に終了されました。ホーム画面に戻ります。");
         router.push("/");
@@ -268,6 +274,10 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
    * 動きの設定を途中送信する
    */
   const handleSendMotionLabTurn = () => {
+    if (isSendingMotionLabTurn) {
+      return;
+    }
+
     let activeScene: GridCellsScene | null = null;
     if (gameRef.current) {
       try {
@@ -282,6 +292,8 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       console.warn("GridSceneが未初期化のためturnExecutionResultを処理できません");
       return;
     }
+
+    setIsSendingMotionLabTurn(true);
     targetScene.sendServerTurnManual();
   };
 
@@ -292,7 +304,13 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
 
       {/* ゲームモード表示 */}
       <div className="absolute top-2 right-2 p-2 z-50 flex flex-row items-start gap-2">
-        <SkyOutlineButton href="#" onClick={handleSendMotionLabTurn} className="text-sm text-center">動きの設定を送信<br />MotionLab Ready !</SkyOutlineButton>
+        <SkyOutlineButton
+          href="#"
+          onClick={handleSendMotionLabTurn}
+          className={`text-sm text-center ${isSendingMotionLabTurn ? "pointer-events-none opacity-50" : ""}`}
+        >
+          動きの設定を送信<br />MotionLab Ready !
+        </SkyOutlineButton>
         {gameMode === "lab" ? (
           <TurnStateMotionLabPanel turn={currentTurn} endtime={motionLabEndTimeState} maxTurn={MAX_TURN} />
         ) : (
@@ -310,6 +328,7 @@ const GameGrid: React.FC<GameGridProps> = ({ currentTurn, friendUnits, enemyUnit
       {/* 動きの設定とユニットの行動のダイアログ表示 */}
       <MotionLabDialog ref={motionLabDialogRef} turn={currentTurn}></MotionLabDialog>
       <MotionExecuteDialog ref={motionExecuteDialogRef} turn={currentTurn}></MotionExecuteDialog>
+      <LoadingDialog message="Waiting..." isOpen={isSendingMotionLabTurn} />
     </div>
   );
 };

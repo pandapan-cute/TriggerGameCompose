@@ -30,11 +30,12 @@ import { FieldViewService } from "./services/FieldViewService";
 import { EnemyUnit } from "@/types/EnemyUnit";
 import { GameResult } from "@/types/GameTypes";
 import { GRID_CONFIG, MAX_UNIT_EXEC_SECONDS } from "@/game-logics/config/game-config";
+import { Scene3D } from "@enable3d/phaser-extension";
 
 /**
  * グリッドセルを管理するPhaserのシーン
  */
-export class GridCellsScene extends Phaser.Scene {
+export class GridCellsScene extends Scene3D {
 
   // Phaserオブジェクト
   private hoveredCell: { x: number; y: number; } | null = null; // マウスでホバーしているセル
@@ -54,7 +55,7 @@ export class GridCellsScene extends Phaser.Scene {
   private isDraggingTrigger: boolean = false; // トリガー扇形をドラッグ中かどうか
   private currentTriggerAngle: number = 0; // 現在のトリガー角度
 
-  constructor(private firstMotionLabEndtime: Date, private friendUnits: FriendUnit[], private enemyUnits: EnemyUnit[], private fieldSteps: number[][], private visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: (turnNumber: number) => void) {
+  constructor(private firstMotionLabEndtime: Date, protected friendUnits: FriendUnit[], protected enemyUnits: EnemyUnit[], protected fieldSteps: number[][], protected visibility: boolean[][], private sendServerTurn: (steps: Step[]) => void, private completeGame: (friendUnits: FriendUnit[], enemyUnits: EnemyUnit[], result: GameResult) => void, private handleFinishMotionExecute: (turnNumber: number) => void) {
     super({ key: "GridScene" });
     console.log("GridCellsSceneコンストラクタ: friendUnits =", friendUnits, "enemyUnits =", enemyUnits);
   }
@@ -71,9 +72,9 @@ export class GridCellsScene extends Phaser.Scene {
   private pendingTurn: Turn | null = null;
 
   /** グリッドの設定値 */
-  private gridConfig = GRID_CONFIG;
+  protected gridConfig = GRID_CONFIG;
   /** グリッドフィールドの関数群 */
-  private hexUtils!: HexUtils;
+  protected hexUtils!: HexUtils;
   /** ゲーム表示関連のクラス */
   private gameView!: GameView;
   /** 入力処理コントローラ */
@@ -87,7 +88,7 @@ export class GridCellsScene extends Phaser.Scene {
   /** ターン再生コントローラ */
   private turnReplayController: TurnReplayController | null = null;
   /** 視界情報管理サービス */
-  private fieldViewService: FieldViewService | null = null;
+  protected fieldViewService: FieldViewService | null = null;
 
   /**
   * Phaserのpreload段階で呼ばれる
@@ -121,6 +122,9 @@ export class GridCellsScene extends Phaser.Scene {
   initializeGameConfig() {
     this.hexUtils = new HexUtils(this.gridConfig);
     this.gameView = new GameView(this, this.gridConfig);
+  }
+
+  protected initializeFieldViewState() {
     this.fieldViewState = new FieldViewState(
       this.hexUtils,
       this,
@@ -138,6 +142,7 @@ export class GridCellsScene extends Phaser.Scene {
     this.initializeMargins(); // 余白を初期化
     new GameCamera(this, this.gridConfig); // カメラの設定を最初に行う
     this.initializeGameConfig(); // 六角形グリッドの設定値初期化
+    this.initializeFieldViewState(); // フィールドビューの状態管理を初期化
     this.cellHighlight = new HighLightCell(this); // グリッドラインを描画
     this.setupSceneControllers(); // SelectionService / TriggerSettingController を初期化
     this.createCharacters(); // キャラクターを配置
@@ -450,7 +455,7 @@ export class GridCellsScene extends Phaser.Scene {
   /**
    * キャラクターを六角形グリッドに配置する
    */
-  private createCharacters() {
+  protected createCharacters() {
     // 自分のキャラクターを配置
     this.friendUnits.forEach((unit) => {
       const playerCharacterState = new PlayerCharacterState(

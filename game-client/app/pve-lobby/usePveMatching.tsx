@@ -3,7 +3,7 @@ import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import useDeviceOrientation from "@/hooks/device/useDeviceOrientation";
 import { MatchingStatus } from "@/types/MatchingTypes";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 
 /**
@@ -16,7 +16,9 @@ import { useState, useEffect, useCallback } from "react";
  */
 export const usePveMatching = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [matchingStatus, setMatchingStatus] = useState<MatchingStatus>("NotStarted");
+  const dimension = searchParams.get("dimension") === "2D" ? "2D" : "3D";
 
   const {
     isConnected,
@@ -42,7 +44,7 @@ export const usePveMatching = () => {
 
         // 3秒後にゲーム画面に遷移
         setTimeout(() => {
-          router.push(`/game/${data.gameId}`);
+          router.push(`/game/${data.gameId}?dimension=${dimension}`);
         }, 3000);
       }
     };
@@ -62,7 +64,7 @@ export const usePveMatching = () => {
       removeMessageListener("matchmakingResult", handleMatchingResult);
       removeMessageListener("error", handleError);
     };
-  }, [addMessageListener, removeMessageListener, router, setGameId]);
+  }, [addMessageListener, removeMessageListener, dimension, router, setGameId]);
 
   // 接続リスナーのクリーンアップ
   useEffect(() => {

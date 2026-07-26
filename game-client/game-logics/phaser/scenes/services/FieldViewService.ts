@@ -1,15 +1,34 @@
 import { FieldViewState } from "@/game-logics/entities/FieldViewState";
-import { CharacterManager } from "@/game-logics/characterManager";
 import { HexUtils } from "@/game-logics/hexUtils";
 import { GridConfig, Position } from "@/game-logics/types";
 import { FIELD_STEPS } from "@/game-logics/config/FieldData";
 
 /**
+ * 視界計算に必要な最小限のキャラクター情報。
+ */
+type VisibilityCharacter = {
+  position: Position;
+  getIsBailedOut: () => boolean;
+};
+
+/**
+ * 視界計算に必要な最小限のキャラクター一覧提供インターフェース。
+ */
+type VisibilityCharacterProvider = {
+  playerCharacters: VisibilityCharacter[];
+};
+
+/**
+ * 視界マップ反映に必要な最小限の FieldViewState 依存。
+ */
+type VisibilityFieldViewState = Pick<FieldViewState, "setSightAreaFieldView">;
+
+/**
  * FieldViewService が参照する依存関係。
  */
 export interface FieldViewServiceDeps {
-  characterManager: CharacterManager;
-  fieldViewState: FieldViewState;
+  characterManager: VisibilityCharacterProvider;
+  fieldViewState: VisibilityFieldViewState;
   hexUtils: HexUtils;
   gridConfig: GridConfig;
 }
@@ -24,6 +43,9 @@ export class FieldViewService {
   // ゲーム設定定数
   private static readonly BASE_RANGE = 8; // 基本視界範囲
 
+  /**
+   * @param deps 視界計算に必要な依存関係。
+   */
   constructor(private readonly deps: FieldViewServiceDeps) { }
 
   /**
@@ -34,7 +56,7 @@ export class FieldViewService {
     const width = this.deps.gridConfig.gridWidth;
     const height = this.deps.gridConfig.gridHeight;
 
-    const units = this.deps.characterManager.playerCharacters.filter((char) => char.getIsBailedOut() === false);
+    const units = this.deps.characterManager.playerCharacters.filter((char: VisibilityCharacter) => char.getIsBailedOut() === false);
 
     // 視界マップを初期化
     const visibilityMap: boolean[][] = Array(height)

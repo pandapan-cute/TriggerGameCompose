@@ -3,7 +3,7 @@ import { WebSocketResponseType } from "@/contexts/types/WebSocketResponses";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import useDeviceOrientation from "@/hooks/device/useDeviceOrientation";
 import { MatchingStatus } from "@/types/MatchingTypes";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 
 /**
@@ -14,11 +14,9 @@ import { useState, useEffect, useCallback } from "react";
  * 接続中でモバイル縦画面でない、マッチング開始前のとき -> マッチング開始メッセージを送信する
  * マッチング結果の受信 -> ステータスを更新してゲーム画面に遷移
  */
-export const useManageMatching = () => {
+export const useManageMatching = (dimension: "2D" | "3D", type: "PvE" | "PvP") => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [matchingStatus, setMatchingStatus] = useState<MatchingStatus>("NotStarted");
-  const dimension = searchParams.get("dimension") === "2D" ? "2D" : "3D";
 
   const {
     isConnected,
@@ -109,7 +107,7 @@ export const useManageMatching = () => {
     }
 
     sendMessage({
-      action: "matchmaking",
+      action: type === "PvE" ? "pveMatchmaking" : "matchmaking",
       playerId: playerId,
       units: [
         {

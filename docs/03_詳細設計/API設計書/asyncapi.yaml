@@ -1,7 +1,7 @@
 asyncapi: 2.6.0
 info:
   title: TriggerGame WebSocket API
-  version: 1.0.1
+  version: 1.1.0
   description: |
     TriggerGameのクライアントとサーバー間の通信に使用するWebSocket APIの定義です。
 
@@ -57,13 +57,31 @@ components:
       payload:
         type: object
         required:
-          - action
           - playerId
           - units
         properties:
           action:
             type: string
             enum: [matchmaking]
+          playerId:
+            type: string
+          units:
+            type: array
+            items:
+              $ref: '#/components/schemas/CreateUnitDto'
+    
+    PveMatchmakingRequest:
+      name: pveMatchmaking
+      title: AIとの対戦を行うためのマッチングリクエスト
+      payload:
+        type: object
+        required:
+          - playerId
+          - units
+        properties:
+          action:
+            type: string
+            enum: [pveMatchmaking]
           playerId:
             type: string
           units:
@@ -147,12 +165,10 @@ components:
     CancelMatchingRequest:
       name: cancelMatching
       title: Cancel Matching Request
-      x-implementationStatus: client-type-only
       payload:
         type: object
         required:
           - action
-          - playerId
         properties:
           action:
             type: string
@@ -161,12 +177,10 @@ components:
     ConcedeGameRequest:
       name: concedeGame
       title: ゲームの降参リクエスト
-      x-implementationStatus: client-type-only
       payload:
         type: object
         required:
           - action
-          - playerId
         properties:
           action:
             type: string
@@ -219,6 +233,7 @@ components:
         required:
           - action
           - gameState
+          - gameType
           - currentTurnNumber
           - motionLabEndTime
           - enemyUnits
@@ -229,6 +244,12 @@ components:
           action:
             type: string
             enum: [getGameStateResult]
+          gameState:
+            type: string
+            enum: [inProgress, completed]
+          gameType:
+            type: string
+            enum: [pvp, pve]
           currentTurnNumber:
             type: integer
             minimum: 1

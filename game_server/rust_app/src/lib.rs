@@ -3,7 +3,7 @@ pub mod config;
 pub mod domain;
 pub mod infrastructure;
 
-use std::thread::current;
+use std::collections::HashSet;
 
 // Python側に公開したいラッパークラス（構造体）の例
 // ※ domain や application にある実際のゲームロジックを呼び出す役目を持たせます
@@ -48,6 +48,9 @@ use crate::{
     },
     infrastructure::ai::onnx_enemy_strategy_service::OnnxEnemyStrategyService,
 };
+
+/// 学習用環境では「1ターンを1エピソード」として扱う。
+const TRAINING_EPISODE_TURN_LIMIT: i32 = 1;
 
 /// Python側に公開するActionのDTO
 #[pyclass]
@@ -134,8 +137,13 @@ impl WtEnv {
         let game_id = GameId::new(Uuid::new_v4().to_string());
         let my_player_id = PlayerId::new(Uuid::new_v4().to_string());
         let enemy_player_id = PlayerId::new(Uuid::new_v4().to_string());
-        let mut units = create_test_units(&game_id, &my_player_id);
-        units.extend(create_test_units(&game_id, &enemy_player_id));
+        let mut occupied = HashSet::<(i32, i32)>::new();
+        // 味方は下側帯域、敵は上側帯域にランダム配置して初期対称性を崩す。
+        let friend_units = create_random_side_units(&game_id, &my_player_id, 22, 33, &mut occupied);
+        let enemy_units =
+            create_random_side_units(&game_id, &enemy_player_id, 2, 13, &mut occupied);
+        let mut units = friend_units;
+        units.extend(enemy_units);
         WtEnv {
             steps: Vec::new(),
             action_queue: Vec::new(),
@@ -153,8 +161,13 @@ impl WtEnv {
     // 1. 初期化
     fn reset(&mut self) {
         let game_id = GameId::new(Uuid::new_v4().to_string());
-        let mut units = create_test_units(&game_id, &self.my_player_id);
-        units.extend(create_test_units(&game_id, &self.enemy_player_id));
+        let mut occupied = HashSet::<(i32, i32)>::new();
+        let friend_units =
+            create_random_side_units(&game_id, &self.my_player_id, 22, 33, &mut occupied);
+        let enemy_units =
+            create_random_side_units(&game_id, &self.enemy_player_id, 2, 13, &mut occupied);
+        let mut units = friend_units;
+        units.extend(enemy_units);
         self.steps.clear();
         self.action_queue.clear();
         self.units = units;
@@ -410,8 +423,8 @@ impl WtEnv {
             }
         }
 
-        // ゲームが終了しているかどうか（最終ターンに達しているか）
-        if self.turn_number.value() >= 6 {
+        // 学習環境では 1ターンでエピソード終了させる。
+        if self.turn_number.value() >= TRAINING_EPISODE_TURN_LIMIT {
             done = true;
         } else {
             // ターン番号を更新
@@ -453,6 +466,50 @@ fn create_test_game(game_id: &GameId, my_player_id: &PlayerId, enemy_player_id: 
         enemy_player_id.clone(),
     );
     game
+}
+
+/// 指定帯域にユニットをランダム配置して返す。
+///
+/// 制約:
+/// - 盤面内 (0..=35, 0..=35)
+/// - 既存の occupied 座標と重複しない
+fn create_random_side_units(
+    game_id: &GameId,
+    player_id: &PlayerId,
+    row_min: i32,
+    row_max: i32,
+    occupied: &mut HashSet<(i32, i32)>,
+) -> Vec<Unit> {
+    let mut units = create_test_units(game_id, player_id);
+
+    let mut candidates: Vec<(i32, i32)> = Vec::new();
+    for row in row_min..=row_max {
+        for col in 0..36 {
+            if occupied.contains(&(col, row)) {
+                continue;
+            }
+            candidates.push((col, row));
+        }
+    }
+
+    for unit in units.iter_mut() {
+        if candidates.is_empty() {
+            // 候補が尽きた場合は現在位置を使う（理論上は十分な候補があるため通常到達しない）。
+            occupied.insert((unit.position().col(), unit.position().row()));
+            continue;
+        }
+
+        // rand 依存を増やさず UUID を擬似乱数インデックスとして利用する。
+        let bytes = Uuid::new_v4().as_bytes().to_owned();
+        let seed = ((bytes[0] as usize) << 8) | (bytes[1] as usize);
+        let pick_index = seed % candidates.len();
+        let (col, row) = candidates.swap_remove(pick_index);
+
+        unit.set_position(Position::new(col, row));
+        occupied.insert((col, row));
+    }
+
+    units
 }
 
 /// テスト用の敵ユニットを作成する関数

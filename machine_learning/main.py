@@ -18,7 +18,7 @@ class WtGymEnv(gym.Env):
         self.rust_env = wt_env.WtEnv()
         
         # --- 行動空間 (Action Space) の定義 ---
-        self.action_space = spaces.MultiDiscrete([7, 360, 360])  # 6角型マスの移動先or待機のターゲットを選ぶ（-1,0,1の組み合わせ）
+        self.action_space = spaces.MultiDiscrete([7, 12, 12])  # 6角型マスの移動先or待機のターゲットを選ぶ（-1,0,1の組み合わせ）
         
         # --- 状態空間 (Observation Space) の定義 ---
         # AIが見る情報。今回はシンプルに「4体の味方位置(x,y)」と「4体の敵位置(x,y)」＝計16次元のベクトルとします
@@ -63,8 +63,8 @@ class WtGymEnv(gym.Env):
 
     def step(self, action):
         action_idx = int(action[0])  # 0〜6の整数
-        main_trigger_angle = int(action[1])  # 0〜359の整数
-        sub_trigger_angle = int(action[2])  # 0〜359の整数
+        main_trigger_angle = int(action[1]) * 30  # 0〜330の整数（12分割）
+        sub_trigger_angle = int(action[2]) * 30  # 0〜330の整数（12分割）
         # 1. 現在フォーカスされているユニットを取得
         # （Rustのqueue_action内部のロジックをシミュレートしてどのユニットのアクションを作るか特定）
         friends = [u for u in self.rust_env.units if str(u.owner_player_id.value) == str(self.rust_env.my_player_id.value)]

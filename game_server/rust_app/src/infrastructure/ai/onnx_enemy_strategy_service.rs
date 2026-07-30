@@ -135,6 +135,28 @@ fn map_logits_to_actions(logits: &[f32]) -> Result<(usize, i32, i32), String> {
     Ok((move_idx, main_angle, sub_angle))
 }
 
+fn is_in_bounds_move(col: i32, row: i32, move_idx: usize, width: i32, height: i32) -> bool {
+    let (next_col, next_row) = apply_move_from_position(col, row, move_idx, width, height);
+    next_col != col || next_row != row || move_idx == 0
+}
+
+fn select_valid_move_idx(logits: &[f32], col: i32, row: i32, width: i32, height: i32) -> usize {
+    let mut best_idx = 0usize;
+    let mut best_val = f32::NEG_INFINITY;
+
+    for (idx, value) in logits.iter().take(MOVE_HEAD_SIZE).enumerate() {
+        if !is_in_bounds_move(col, row, idx, width, height) {
+            continue;
+        }
+        if *value > best_val {
+            best_val = *value;
+            best_idx = idx;
+        }
+    }
+
+    best_idx
+}
+
 fn apply_move(unit: &Unit, move_idx: usize, width: i32, height: i32) -> (i32, i32) {
     apply_move_from_position(
         unit.position().col(),
@@ -259,10 +281,15 @@ impl EnemyStrategyService for OnnxEnemyStrategyService {
                     .map_err(|e| format!("Output to array failed: {}", e))?;
                 let logits: Vec<f32> = arr.iter().cloned().collect();
 
-                let (move_idx, main_angle, sub_angle) = map_logits_to_actions(&logits)?;
+                let (_raw_move_idx, main_angle, sub_angle) = map_logits_to_actions(&logits)?;
+
+                // 盤外へ出る候補を除外してから移動方向を決定する。
+                // 端で同じ方向を選び続ける固着を避けるため、推論時に有効手マスクをかける。
+                let (current_col, current_row) = simulated_enemy_positions[idx];
+                let move_idx =
+                    select_valid_move_idx(&logits, current_col, current_row, width, height);
 
                 // 実ユニットではなく「仮想位置」から次位置を計算する。
-                let (current_col, current_row) = simulated_enemy_positions[idx];
                 let (target_col, target_row) =
                     apply_move_from_position(current_col, current_row, move_idx, width, height);
 
@@ -376,5 +403,17 @@ mod tests {
         let (col, row) = apply_move(&unit, 1, GRID_SIZE, GRID_SIZE);
 
         assert_eq!((col, row), (0, 0));
+    }
+
+    #[test]
+    fn select_valid_move_idx_avoids_out_of_bounds_choice() {
+        let mut logits = vec![0.0_f32; 31];
+        logits[1] = 10.0;
+        logits[6] = 9.0;
+
+        // (0,0) で move_idx=1 は盤外、move_idx=6 は盤内
+        let selected = select_valid_move_idx(&logits, 0, 0, GRID_SIZE, GRID_SIZE);
+
+        assert_eq!(selected, 6);
     }
 }

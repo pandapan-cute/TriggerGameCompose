@@ -44,7 +44,7 @@ mod tests {
             ActionType::new(ActionTypeValue::Move),
             UnitId::new(Uuid::new_v4().to_string()),
             UnitTypeId::new(Uuid::new_v4().to_string()),
-            Position::new(5, 5),
+            Position::new(5, 9),
             TriggerId::new("IBIS".to_string()),
             TriggerId::new("SHIELD".to_string()),
             TriggerAzimuth::new(0),
@@ -57,7 +57,7 @@ mod tests {
         unit.move_to(&mut action, &mut visibility);
 
         assert_eq!(unit.position().col(), 5);
-        assert_eq!(unit.position().row(), 5);
+        assert_eq!(unit.position().row(), 9);
         assert_eq!(unit.current_action_points().value(), 12);
     }
 

@@ -1,0 +1,77 @@
+/* @theme trigger-sprint */
+
+@import 'gaia';
+
+section {
+  position: relative;
+  overflow: hidden;
+  font-size: 24px;
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: linear-gradient(145deg, #f8fbff 0%, #eef3f8 52%, #e6edf7 100%);
+  color: #16253b;
+  padding: 36px 36px 36px 44px;
+  line-height: 1.1;
+  border: 12px solid #1b4e81;
+}
+
+section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(700px 380px at -6% -12%, rgba(37, 99, 235, 0.11), rgba(37, 99, 235, 0) 70%),
+    radial-gradient(760px 420px at 106% 110%, rgba(13, 148, 136, 0.1), rgba(13, 148, 136, 0) 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+section > * {
+  position: relative;
+  z-index: 2;
+}
+
+h2 {
+  color: #1b4e81;
+  border-bottom: 3px solid #1b4e81;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+
+h3 {
+  color: #2a6baa;
+}
+
+h4 {
+  color: #23405f;
+}
+
+strong {
+  color: #0f766e;
+}
+
+img[alt~="placeholder"] {
+  border: 2px dashed #5b728d;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+ul {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+section.split-right {
+  padding-right: 40%;
+}
+
+section.split-right img.right-fixed {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  width: 34%;
+  max-height: 72%;
+  transform: translateY(-50%);
+  object-fit: contain;
+  z-index: 2;
+}

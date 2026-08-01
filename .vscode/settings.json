@@ -48,4 +48,9 @@
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+
+  // スプリントレビューをパワポにするためのMarpのテーマ設定
+  "markdown.marp.themes": [
+    "./docs/00_プロジェクト管理/スプリント振り返り・目標設定/css/trigger-sprint-theme.css"
+  ],
 }

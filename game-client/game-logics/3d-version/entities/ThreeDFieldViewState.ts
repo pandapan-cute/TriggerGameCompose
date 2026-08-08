@@ -42,11 +42,27 @@ export class ThreeDFieldViewState {
    */
   private static readonly FIELD_MODEL_ENEMY_X_OFFSET_COL = -0.5;
 
+  // ===== ガラス反射（動的環境マップ）調整値 =====
+  /** 反射プローブのキューブマップ解像度。 */
+  private static readonly REFLECTION_PROBE_SIZE = 128;
+  /** マテリアル名のガラス判定キーワード。 */
+  private static readonly GLASS_NAME_KEYWORD = "glass";
+  /** マテリアル名の金属ドア判定キーワード。 */
+  private static readonly DOOR_NAME_KEYWORD = "door";
+
+  // ===== 建物輪郭線（エッジ重ね描画）調整値 =====
+  /** 輪郭線の色。 */
+  private static readonly FIELD_OUTLINE_COLOR = 0x475569;
+  /** 輪郭線の透明度。 */
+  private static readonly FIELD_OUTLINE_OPACITY = 0.5;
+  /** 輪郭線を抽出する角度しきい値（度）。 */
+  private static readonly FIELD_OUTLINE_THRESHOLD_DEG = 45;
+
   // ===== 環境（空・地面・太陽）調整値 =====
   /** 空の背景色。 */
   private static readonly SKY_COLOR = 0xcfe8ff;
   /** 地面プレーンのコンクリート風カラー。 */
-  private static readonly GROUND_COLOR = 0xa0a4a8;
+  private static readonly GROUND_COLOR = 0x4b5563;
   /** 太陽光の色。 */
   private static readonly SUN_LIGHT_COLOR = 0xfff6df;
   /**
@@ -67,6 +83,10 @@ export class ThreeDFieldViewState {
   private sunLight: THREE.DirectionalLight | null = null;
   /** 太陽光の照射ターゲット。 */
   private sunLightTarget: THREE.Object3D | null = null;
+  /** 動的反射に使うキューブレンダーターゲット。 */
+  private reflectionCubeRenderTarget: THREE.WebGLCubeRenderTarget | null = null;
+  /** 地形モデルに重ねた輪郭線オブジェクト一覧。 */
+  private fieldOutlineLines: THREE.LineSegments[] = [];
 
   constructor(protected hexUtils: HexUtils, protected scene: Scene3D, protected gridConfig: GridConfig, protected fieldSteps: number[][], visibility: boolean[][]) {
     this.placementService = new ThreeDCharacterPlacementService(gridConfig);
@@ -192,10 +212,13 @@ export class ThreeDFieldViewState {
 
           child.castShadow = true;
           child.receiveShadow = true;
+          this.attachOutlineToMesh(child);
         });
 
         this.scene.third.add.existing(model);
       }
+
+      this.setupDynamicWindowReflections(anchor);
     } catch (error) {
       console.warn("3D地形モデルの読み込みに失敗しました", error);
     } finally {
@@ -208,6 +231,7 @@ export class ThreeDFieldViewState {
    */
   public dispose(): void {
     this.disposeEnvironmentVisuals();
+    this.disposeFieldOutlines();
 
     if (this.fieldModels.length === 0) {
       return;
@@ -248,7 +272,161 @@ export class ThreeDFieldViewState {
       model.removeFromParent();
     }
 
+    this.disposeDynamicWindowReflections();
     this.fieldModels = [];
+  }
+
+  /**
+   * 地形メッシュにエッジ輪郭線を重ねる。
+   */
+  private attachOutlineToMesh(mesh: THREE.Mesh): void {
+    const outlineGeometry = new THREE.EdgesGeometry(
+      mesh.geometry,
+      ThreeDFieldViewState.FIELD_OUTLINE_THRESHOLD_DEG,
+    );
+
+    if (outlineGeometry.attributes.position.count === 0) {
+      outlineGeometry.dispose();
+      return;
+    }
+
+    const outlineMaterial = new THREE.LineBasicMaterial({
+      color: ThreeDFieldViewState.FIELD_OUTLINE_COLOR,
+      transparent: true,
+      opacity: ThreeDFieldViewState.FIELD_OUTLINE_OPACITY,
+      depthWrite: false,
+    });
+
+    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
+    outline.name = `${mesh.name || "field-mesh"}-outline`;
+    outline.renderOrder = 12;
+    mesh.add(outline);
+    this.fieldOutlineLines.push(outline);
+  }
+
+  /**
+   * 生成済みの輪郭線リソースを破棄する。
+   */
+  private disposeFieldOutlines(): void {
+    for (const outline of this.fieldOutlineLines) {
+      outline.removeFromParent();
+      outline.geometry.dispose();
+      if (Array.isArray(outline.material)) {
+        outline.material.forEach((material) => material.dispose());
+      } else {
+        outline.material.dispose();
+      }
+    }
+    this.fieldOutlineLines = [];
+  }
+
+  /**
+   * 反射プローブを作成し、ガラス候補メッシュへ動的環境マップを割り当てる。
+   */
+  private setupDynamicWindowReflections(anchor: { x: number; y: number; z: number; }): void {
+    this.disposeDynamicWindowReflections();
+
+    const reflectiveGlassMeshes: THREE.Mesh[] = [];
+    for (const model of this.fieldModels) {
+      model.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) {
+          return;
+        }
+
+        // 現状は glass 名の単一マテリアルのみを反射対象として扱う。
+        if (Array.isArray(child.material)) {
+          return;
+        }
+
+        if (!this.isLikelyReflectiveMaterial(child.material)) {
+          return;
+        }
+
+        reflectiveGlassMeshes.push(child);
+      });
+    }
+
+    if (reflectiveGlassMeshes.length === 0) {
+      return;
+    }
+
+    const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(
+      ThreeDFieldViewState.REFLECTION_PROBE_SIZE,
+      {
+        type: THREE.HalfFloatType,
+        generateMipmaps: true,
+        minFilter: THREE.LinearMipmapLinearFilter,
+      },
+    );
+    const cubeCamera = new THREE.CubeCamera(1, 5000, cubeRenderTarget);
+    cubeCamera.layers.enableAll();
+    cubeCamera.position.set(anchor.x, anchor.y + 180, anchor.z);
+
+    this.scene.third.add.existing(cubeCamera);
+
+    this.reflectionCubeRenderTarget = cubeRenderTarget;
+    // 静的反射のみ: 初期化時に1回だけキャプチャして、以後は更新しない。
+    const previousVisibility = reflectiveGlassMeshes.map((mesh) => mesh.visible);
+    reflectiveGlassMeshes.forEach((mesh) => {
+      mesh.visible = false;
+    });
+    cubeCamera.update(this.scene.third.renderer, this.scene.third.scene as THREE.Scene);
+    reflectiveGlassMeshes.forEach((mesh, index) => {
+      mesh.visible = previousVisibility[index] ?? true;
+    });
+
+    cubeCamera.removeFromParent();
+
+    for (const mesh of reflectiveGlassMeshes) {
+      this.applyReflectionEnvMapToMesh(mesh, cubeRenderTarget.texture);
+    }
+  }
+
+  /**
+   * 反射プローブ関連のイベントとGPUリソースを破棄する。
+   */
+  private disposeDynamicWindowReflections(): void {
+    if (this.reflectionCubeRenderTarget) {
+      this.reflectionCubeRenderTarget.dispose();
+      this.reflectionCubeRenderTarget = null;
+    }
+  }
+
+  /**
+   * マテリアル名を手がかりに、反射対象（glass/door）かどうかを判定する。
+   */
+  private isLikelyReflectiveMaterial(material: THREE.Material): boolean {
+    const loweredName = material.name.toLowerCase();
+    return loweredName.includes(ThreeDFieldViewState.GLASS_NAME_KEYWORD)
+      || loweredName.includes(ThreeDFieldViewState.DOOR_NAME_KEYWORD);
+  }
+
+  /**
+   * 窓メッシュのマテリアルへ環境マップを適用して反射を有効化する。
+   */
+  private applyReflectionEnvMapToMesh(mesh: THREE.Mesh, envMap: THREE.Texture): void {
+    if (Array.isArray(mesh.material)) {
+      return;
+    }
+
+    const material = mesh.material;
+    if (!(material instanceof THREE.MeshPhysicalMaterial) && !(material instanceof THREE.MeshStandardMaterial)) {
+      return;
+    }
+
+    const loweredName = material.name.toLowerCase();
+    const isDoorMaterial = loweredName.includes(ThreeDFieldViewState.DOOR_NAME_KEYWORD);
+
+    material.envMap = envMap;
+    material.envMapIntensity = Math.max(material.envMapIntensity, 1.0);
+    material.roughness = Math.max(
+      material.roughness,
+      isDoorMaterial ? 0.28 : (material instanceof THREE.MeshPhysicalMaterial ? 0.18 : 0.2),
+    );
+    if (isDoorMaterial) {
+      material.metalness = Math.max(material.metalness, 0.75);
+    }
+    material.needsUpdate = true;
   }
 
   /**

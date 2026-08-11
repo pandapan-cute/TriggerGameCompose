@@ -17,7 +17,10 @@ export class ThreeDEnemyCharacterState {
     private readonly unitObject: ThreeDUnitObject,
     private readonly enemyUnit: EnemyUnit,
     private readonly hexUtils: HexUtils,
-  ) { }
+  ) {
+    // 初期表示時点の装備トリガーを 3D モデルへ反映する。
+    this.syncTriggerVisuals();
+  }
 
   /** 3Dユニット表示オブジェクトを返す。 */
   public getUnitObject(): ThreeDUnitObject {
@@ -44,16 +47,22 @@ export class ThreeDEnemyCharacterState {
     displayGridPosition: Position;
     worldPosition: { x: number; y: number; z: number; };
     currentActionPoints: number;
+    usingMainTriggerId: string;
+    usingSubTriggerId: string;
   }): void {
     this.enemyUnit.unitTypeId = options.unitTypeId;
     this.enemyUnit.position = { ...this.hexUtils.invertPosition(options.displayGridPosition) };
     this.enemyUnit.currentActionPoints = options.currentActionPoints;
+    this.enemyUnit.usingMainTriggerId = options.usingMainTriggerId;
+    this.enemyUnit.usingSubTriggerId = options.usingSubTriggerId;
     this.displayGridPosition = { ...options.displayGridPosition };
 
     this.unitObject.syncVisualState({
       unitTypeId: options.unitTypeId,
       visible: true,
       position: options.worldPosition,
+      usingMainTriggerId: options.usingMainTriggerId,
+      usingSubTriggerId: options.usingSubTriggerId,
     });
   }
 
@@ -63,5 +72,15 @@ export class ThreeDEnemyCharacterState {
   public setBailout(isBailout: boolean): void {
     this.enemyUnit.isBailout = isBailout;
     this.unitObject.updateVisibility(!isBailout);
+  }
+
+  /**
+   * enemyUnit が保持する現在装備トリガーを 3D モデルへ同期する。
+   */
+  private syncTriggerVisuals(): void {
+    this.unitObject.syncEquippedTriggers({
+      usingMainTriggerId: this.enemyUnit.usingMainTriggerId,
+      usingSubTriggerId: this.enemyUnit.usingSubTriggerId,
+    });
   }
 }

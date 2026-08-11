@@ -155,18 +155,26 @@ export class ThreeDTurnReplayController {
                 displayGridPosition: targetGridPosition,
                 worldPosition,
                 currentActionPoints: action.getCurrentActionPoints(),
+                usingMainTriggerId: action.getUsingMainTriggerId(),
+                usingSubTriggerId: action.getUsingSubTriggerId(),
               });
             } else {
               unitObject.syncVisualState({
                 unitTypeId: action.getUnitTypeId(),
                 visible: true,
                 position: worldPosition,
+                usingMainTriggerId: action.getUsingMainTriggerId(),
+                usingSubTriggerId: action.getUsingSubTriggerId(),
               });
             }
 
             if (playerState) {
-              playerState.setPosition(targetGridPosition);
-              playerState.setActionPoints(action.getCurrentActionPoints());
+              playerState.syncReplayState({
+                displayGridPosition: targetGridPosition,
+                currentActionPoints: action.getCurrentActionPoints(),
+                usingMainTriggerId: action.getUsingMainTriggerId(),
+                usingSubTriggerId: action.getUsingSubTriggerId(),
+              });
             }
 
             this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
@@ -179,8 +187,12 @@ export class ThreeDTurnReplayController {
         // 移動しないアクションは Idle のまま、座標と表示だけを更新する。
         unitObject.playAnimation("Idle", 120);
         if (playerState) {
-          playerState.setPosition(targetGridPosition);
-          playerState.setActionPoints(action.getCurrentActionPoints());
+          playerState.syncReplayState({
+            displayGridPosition: targetGridPosition,
+            currentActionPoints: action.getCurrentActionPoints(),
+            usingMainTriggerId: action.getUsingMainTriggerId(),
+            usingSubTriggerId: action.getUsingSubTriggerId(),
+          });
         }
 
         const enemyCharacterState = this.deps.enemyCharacterStatesById.get(action.getUnitId());
@@ -190,12 +202,16 @@ export class ThreeDTurnReplayController {
             displayGridPosition: targetGridPosition,
             worldPosition,
             currentActionPoints: action.getCurrentActionPoints(),
+            usingMainTriggerId: action.getUsingMainTriggerId(),
+            usingSubTriggerId: action.getUsingSubTriggerId(),
           });
         } else {
           unitObject.syncVisualState({
             unitTypeId: action.getUnitTypeId(),
             visible: true,
             position: worldPosition,
+            usingMainTriggerId: action.getUsingMainTriggerId(),
+            usingSubTriggerId: action.getUsingSubTriggerId(),
           });
         }
         this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);

@@ -48,6 +48,7 @@ export const TRIGGER_STATUS = {
     avoid: 5,
     defense: 0,
     trionEffect: 1,
+    isHoldHand: true,
   },
   RAYGUST: {
     angle: 120,
@@ -56,6 +57,7 @@ export const TRIGGER_STATUS = {
     avoid: 3,
     defense: 10,
     trionEffect: 1,
+    isHoldHand: true,
   },
   SCORPION: {
     angle: 120,
@@ -64,6 +66,7 @@ export const TRIGGER_STATUS = {
     avoid: 10,
     defense: 0,
     trionEffect: 1,
+    isHoldHand: true,
   },
   ASTEROID: {
     angle: 60,
@@ -72,6 +75,7 @@ export const TRIGGER_STATUS = {
     avoid: 10,
     defense: 0,
     trionEffect: 1,
+    isHoldHand: false,
   },
   IBIS: {
     angle: 30,
@@ -80,6 +84,7 @@ export const TRIGGER_STATUS = {
     avoid: 3,
     defense: 0,
     trionEffect: 1,
+    isHoldHand: true,
   },
   SHIELD: {
     angle: 120,
@@ -88,6 +93,7 @@ export const TRIGGER_STATUS = {
     avoid: 10,
     defense: 5,
     trionEffect: 1,
+    isHoldHand: false,
   },
   BAGWORM: {
     angle: 60,
@@ -96,5 +102,6 @@ export const TRIGGER_STATUS = {
     avoid: 10,
     defense: 0,
     trionEffect: 1,
+    isHoldHand: false,
   },
 };

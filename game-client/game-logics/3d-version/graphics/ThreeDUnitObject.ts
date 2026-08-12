@@ -304,6 +304,16 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * モデルを左右反転する。
+   *
+   * サブトリガー攻撃の見た目を反転させるために使う。
+   */
+  setHorizontalMirror(isMirrored: boolean): void {
+    const currentScaleX = Math.abs(this.scale.x);
+    this.scale.x = isMirrored ? -currentScaleX : currentScaleX;
+  }
+
+  /**
    * 指定座標の方向へ体の向きを合わせる（Y軸のみ）。
    * @param to 向き先のワールド座標。
    */

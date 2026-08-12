@@ -54,6 +54,8 @@ export class ThreeDTurnReplayController {
   private readonly mainReplayTriggerFans = new Map<string, ThreeDTriggerFanObject>();
   /** リプレイ中に表示するサブトリガー扇形。 */
   private readonly subReplayTriggerFans = new Map<string, ThreeDTriggerFanObject>();
+  /** ユニットごとに読み込み済みの戦闘モーション名を保持する。 */
+  private readonly loadedCombatMotionsByUnit = new Map<string, Set<string>>();
 
   constructor(private readonly deps: ThreeDTurnReplayControllerDeps) { }
 
@@ -117,8 +119,13 @@ export class ThreeDTurnReplayController {
    */
   private replayActions(step: Step): void {
     for (const action of step.getActions()) {
+      if (this.isUnitBailedOut(action.getUnitId())) {
+        continue;
+      }
+
       const unitObject = this.deps.unitObjectById.get(action.getUnitId());
       if (!unitObject) continue;
+      const combat = step.getCombats().find((currentCombat) => currentCombat.getAttackingUnitId() === action.getUnitId());
 
       const playerState = this.deps.playerCharacterStates.get(unitObject);
       const currentGridPosition = this.getCurrentGridPosition(action.getUnitId());
@@ -146,8 +153,12 @@ export class ThreeDTurnReplayController {
 
         unitObject.moveTo(
           worldPosition,
-          750,
+          500,
           () => {
+            if (this.isUnitBailedOut(action.getUnitId())) {
+              return;
+            }
+
             const enemyCharacterState = this.deps.enemyCharacterStatesById.get(action.getUnitId());
             if (enemyCharacterState) {
               enemyCharacterState.syncReplayState({
@@ -178,6 +189,7 @@ export class ThreeDTurnReplayController {
             }
 
             this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
+            this.playCombatAnimationAfterAction(action, combat, unitObject);
           },
           (currentPosition) => {
             this.updateReplayTriggerFansForAction(action, currentPosition, currentPosition.y + 0.02);
@@ -215,8 +227,124 @@ export class ThreeDTurnReplayController {
           });
         }
         this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
+        this.playCombatAnimationAfterAction(action, combat, unitObject);
       }
     }
+  }
+
+  /**
+   * 対象ユニットが撃墜済みかを判定する。
+   */
+  private isUnitBailedOut(unitId: string): boolean {
+    const friendUnit = this.deps.friendUnitsById.get(unitId);
+    if (friendUnit) {
+      return friendUnit.isBailout;
+    }
+
+    const enemyState = this.deps.enemyCharacterStatesById.get(unitId);
+    return enemyState?.getEnemyUnit().isBailout ?? false;
+  }
+
+  /**
+   * アクション反映後にコンバットがある場合、敵方向へ向いて戦闘モーションを再生する。
+   */
+  private playCombatAnimationAfterAction(action: {
+    getUnitId: () => string;
+    getUsingMainTriggerId: () => string;
+    getUsingSubTriggerId: () => string;
+    getPosition: () => { col: number; row: number; };
+  }, combat: Combat | undefined, unitObject: ThreeDUnitObject): void {
+    const animationSpec = this.resolveCombatAnimationSpec(action, combat);
+    if (!animationSpec.motionType) {
+      return;
+    }
+
+    const defenderGridPosition = combat
+      ? this.resolveGridPosition(combat.getDefendingUnitId(), combat.getDefenderPosition())
+      : action.getPosition();
+    const defenderWorldPosition = this.deps.placementService.fromGridOn3D(
+      this.deps.hexUtils,
+      defenderGridPosition.col,
+      defenderGridPosition.row,
+      this.deps.resolveUnitHeightAtGrid(defenderGridPosition.col, defenderGridPosition.row),
+    );
+
+    unitObject.faceToward(defenderWorldPosition);
+    void this.playCombatMotion(unitObject, action.getUnitId(), animationSpec.motionType, animationSpec.isMirrored);
+  }
+
+  /**
+   * 戦闘時に再生するモーションと左右反転の有無を解決する。
+   */
+  private resolveCombatAnimationSpec(action: {
+    getUsingMainTriggerId: () => string;
+    getUsingSubTriggerId: () => string;
+  }, combat: Combat | undefined): { motionType: string | null; isMirrored: boolean; attackPattern: "main" | "sub" | "both" | "none"; } {
+    if (!combat) {
+      return { motionType: null, isMirrored: false, attackPattern: "none" };
+    }
+
+    const isMainAttack = combat.getIsAttackerMainTriggerAttack();
+    const isSubAttack = combat.getIsAttackerSubTriggerAttack();
+
+    if (isMainAttack && isSubAttack) {
+      return {
+        motionType: this.resolveTriggerMotionType(action.getUsingMainTriggerId()),
+        isMirrored: false,
+        attackPattern: "both",
+      };
+    }
+
+    if (isMainAttack) {
+      return {
+        motionType: this.resolveTriggerMotionType(action.getUsingMainTriggerId()),
+        isMirrored: false,
+        attackPattern: "main",
+      };
+    }
+
+    if (isSubAttack) {
+      return {
+        motionType: this.resolveTriggerMotionType(action.getUsingSubTriggerId()),
+        isMirrored: true,
+        attackPattern: "sub",
+      };
+    }
+
+    return { motionType: null, isMirrored: false, attackPattern: "none" };
+  }
+
+  /**
+   * トリガーIDからモーション名を解決する。
+   */
+  private resolveTriggerMotionType(triggerId: string): string | null {
+    const triggerKey = triggerId as keyof typeof TRIGGER_STATUS;
+    const triggerStatus = TRIGGER_STATUS[triggerKey];
+
+    return triggerStatus?.motionType ?? null;
+  }
+
+  /**
+   * 戦闘モーションを必要に応じて読み込み、短時間再生後に Idle へ戻す。
+   */
+  private async playCombatMotion(unitObject: ThreeDUnitObject, unitId: string, motionType: string, isMirrored: boolean): Promise<void> {
+    const loadedMotions = this.loadedCombatMotionsByUnit.get(unitId) ?? new Set<string>();
+    if (!this.loadedCombatMotionsByUnit.has(unitId)) {
+      this.loadedCombatMotionsByUnit.set(unitId, loadedMotions);
+    }
+
+    if (!loadedMotions.has(motionType)) {
+      await unitObject.addAnimation(motionType, `/character/3d/motions/${motionType}.glb`);
+      loadedMotions.add(motionType);
+    }
+
+    const combatAnimationDurationMs = 420;
+    unitObject.setHorizontalMirror(isMirrored);
+    unitObject.playAnimation(motionType, 80, { loop: false });
+    this.deps.scene3d.time.delayedCall(combatAnimationDurationMs, () => {
+      unitObject.setHorizontalMirror(false);
+      unitObject.playAnimation("Idle", 80);
+    });
   }
 
   /**

@@ -59,7 +59,7 @@ export class ThreeDEnemyCharacterState {
 
     this.unitObject.syncVisualState({
       unitTypeId: options.unitTypeId,
-      visible: true,
+      visible: !this.enemyUnit.isBailout,
       position: options.worldPosition,
       usingMainTriggerId: options.usingMainTriggerId,
       usingSubTriggerId: options.usingSubTriggerId,

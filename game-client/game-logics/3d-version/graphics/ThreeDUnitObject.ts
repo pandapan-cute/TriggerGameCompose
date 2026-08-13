@@ -67,6 +67,8 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   private rightHandTriggerUpdateToken = 0;
   /** 左手トリガー更新の競合を防ぐ更新トークン。 */
   private leftHandTriggerUpdateToken = 0;
+  /** 現在モデルを左右反転しているかどうか。 */
+  private isHorizontallyMirrored = false;
 
   constructor(scene: Scene3D, unitTypeId: string, x: number, y: number, z: number = 0) {
     super();
@@ -309,8 +311,39 @@ export class ThreeDUnitObject extends ExtendedObject3D {
    * サブトリガー攻撃の見た目を反転させるために使う。
    */
   setHorizontalMirror(isMirrored: boolean): void {
+    this.isHorizontallyMirrored = isMirrored;
     const currentScaleX = Math.abs(this.scale.x);
     this.scale.x = isMirrored ? -currentScaleX : currentScaleX;
+
+    // 体を反転すると左右ボーンの表示位置が入れ替わるため、
+    // 武器だけは main/sub の見た目位置を維持できるよう再アタッチする。
+    this.reattachTriggerModelsForCurrentMirror();
+  }
+
+  /**
+   * 指定した手の現在ワールド座標を返す。
+   *
+   * @param hand 取得対象の手。main は右手、sub は左手を指す。
+   * @param isMirrored 表示が左右反転中かどうか。
+   */
+  getHandWorldPosition(hand: "main" | "sub", isMirrored: boolean = false): THREE.Vector3 {
+    const targetBone = this.resolveHandBoneForVisualSide(hand, isMirrored);
+    if (targetBone) {
+      const worldPosition = new THREE.Vector3();
+      targetBone.getWorldPosition(worldPosition);
+      return worldPosition;
+    }
+
+    const fallbackPosition = new THREE.Vector3();
+    this.getWorldPosition(fallbackPosition);
+
+    const sideOffset = hand === "main" ? 0.55 : -0.55;
+    const mirroredOffset = isMirrored ? -sideOffset : sideOffset;
+    fallbackPosition.x += mirroredOffset;
+    fallbackPosition.y += 1.1;
+    fallbackPosition.z += 0.1;
+
+    return fallbackPosition;
   }
 
   /**
@@ -477,6 +510,17 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * 表示上の左右に合わせて、参照すべき手ボーンを返す。
+   */
+  private resolveHandBoneForVisualSide(hand: "main" | "sub", isMirrored: boolean): THREE.Bone | null {
+    if (hand === "main") {
+      return isMirrored ? this.leftHandBone : this.rightHandBone;
+    }
+
+    return isMirrored ? this.rightHandBone : this.leftHandBone;
+  }
+
+  /**
    * モデル未ロード時に積んでいたトリガー反映要求を適用する。
    */
   private async applyPendingTriggerVisuals(): Promise<void> {
@@ -494,7 +538,7 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     const shouldHoldHand = triggerKey ? TRIGGER_STATUS[triggerKey].isHoldHand : false;
     const expectedTriggerKey = shouldHoldHand ? triggerKey : null;
 
-    const targetBone = hand === "main" ? this.rightHandBone : this.leftHandBone;
+    const targetBone = this.resolveHandBoneForVisualSide(hand, this.isHorizontallyMirrored);
     const currentTriggerId = hand === "main" ? this.currentRightTriggerId : this.currentLeftTriggerId;
     const currentModel = hand === "main" ? this.rightHandTriggerModel : this.leftHandTriggerModel;
 
@@ -545,6 +589,21 @@ export class ThreeDUnitObject extends ExtendedObject3D {
       console.info(`[ThreeDUnitObject] trigger-attached unit=${this.unitTypeId} hand=${hand} trigger=${expectedTriggerKey}`);
     } catch (error) {
       console.warn(`[ThreeDUnitObject] trigger-load-failed unit=${this.unitTypeId} hand=${hand} trigger=${expectedTriggerKey} error=${error}`);
+    }
+  }
+
+  /**
+   * 現在の左右反転状態に合わせて、手持ちトリガーモデルの親ボーンを付け替える。
+   */
+  private reattachTriggerModelsForCurrentMirror(): void {
+    const mainBone = this.resolveHandBoneForVisualSide("main", this.isHorizontallyMirrored);
+    if (this.rightHandTriggerModel && mainBone && this.rightHandTriggerModel.parent !== mainBone) {
+      mainBone.add(this.rightHandTriggerModel);
+    }
+
+    const subBone = this.resolveHandBoneForVisualSide("sub", this.isHorizontallyMirrored);
+    if (this.leftHandTriggerModel && subBone && this.leftHandTriggerModel.parent !== subBone) {
+      subBone.add(this.leftHandTriggerModel);
     }
   }
 

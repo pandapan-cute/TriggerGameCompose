@@ -15,6 +15,7 @@ import { TRIGGER_STATUS } from "@/game-logics/config/status";
 import { GridConfig } from "@/game-logics/types";
 import { ThreeDTriggerFanObject } from "@/game-logics/3d-version/graphics/ThreeDTriggerFanObject";
 import { Scene3D } from "@enable3d/phaser-extension";
+import * as THREE from "three";
 
 /**
  * ThreeDTurnReplayController が参照する依存関係。
@@ -56,6 +57,8 @@ export class ThreeDTurnReplayController {
   private readonly subReplayTriggerFans = new Map<string, ThreeDTriggerFanObject>();
   /** ユニットごとに読み込み済みの戦闘モーション名を保持する。 */
   private readonly loadedCombatMotionsByUnit = new Map<string, Set<string>>();
+  /** 射出中のトリオンキューブ。 */
+  private readonly activeTrionCubes: THREE.Mesh[] = [];
 
   constructor(private readonly deps: ThreeDTurnReplayControllerDeps) { }
 
@@ -270,6 +273,9 @@ export class ThreeDTurnReplayController {
     );
 
     unitObject.faceToward(defenderWorldPosition);
+    if (animationSpec.projectilePattern !== "none") {
+      this.fireTrionCubeProjectiles(unitObject, combat, animationSpec);
+    }
     void this.playCombatMotion(unitObject, action.getUnitId(), animationSpec.motionType, animationSpec.isMirrored);
   }
 
@@ -279,39 +285,441 @@ export class ThreeDTurnReplayController {
   private resolveCombatAnimationSpec(action: {
     getUsingMainTriggerId: () => string;
     getUsingSubTriggerId: () => string;
-  }, combat: Combat | undefined): { motionType: string | null; isMirrored: boolean; attackPattern: "main" | "sub" | "both" | "none"; } {
+  }, combat: Combat | undefined): {
+    motionType: string | null;
+    isMirrored: boolean;
+    attackPattern: "main" | "sub" | "both" | "none";
+    projectilePattern: "main" | "sub" | "both" | "none";
+    isStraightProjectile: boolean;
+  } {
     if (!combat) {
-      return { motionType: null, isMirrored: false, attackPattern: "none" };
+      return {
+        motionType: null,
+        isMirrored: false,
+        attackPattern: "none",
+        projectilePattern: "none",
+        isStraightProjectile: false,
+      };
     }
 
     const isMainAttack = combat.getIsAttackerMainTriggerAttack();
     const isSubAttack = combat.getIsAttackerSubTriggerAttack();
+    const mainTriggerId = action.getUsingMainTriggerId();
+    const subTriggerId = action.getUsingSubTriggerId();
+    const mainMotionType = this.resolveTriggerMotionType(mainTriggerId);
+    const subMotionType = this.resolveTriggerMotionType(subTriggerId);
+    const isMainShoot = mainMotionType === "Shoot";
+    const isSubShoot = subMotionType === "Shoot";
 
+    // 将来の複合攻撃モーション差し替えを見据え、
+    // main/sub/both を明示的に分岐して返す。
     if (isMainAttack && isSubAttack) {
+      // 両攻撃時に片方だけ Shoot の場合は、
+      // モーションは非 Shoot 側、射出演出は Shoot 側の手のみを使う。
+      if (isMainShoot !== isSubShoot) {
+        if (isMainShoot) {
+          return {
+            motionType: subMotionType,
+            isMirrored: true,
+            attackPattern: "both",
+            projectilePattern: "main",
+            isStraightProjectile: this.isStraightProjectileTrigger(mainTriggerId),
+          };
+        }
+
+        return {
+          motionType: mainMotionType,
+          isMirrored: false,
+          attackPattern: "both",
+          projectilePattern: "sub",
+          isStraightProjectile: this.isStraightProjectileTrigger(subTriggerId),
+        };
+      }
+
       return {
-        motionType: this.resolveTriggerMotionType(action.getUsingMainTriggerId()),
+        motionType: mainMotionType,
         isMirrored: false,
         attackPattern: "both",
+        projectilePattern: isMainShoot || isSubShoot ? "both" : "none",
+        isStraightProjectile: this.isStraightProjectileTrigger(mainTriggerId),
       };
     }
 
     if (isMainAttack) {
       return {
-        motionType: this.resolveTriggerMotionType(action.getUsingMainTriggerId()),
+        motionType: mainMotionType,
         isMirrored: false,
         attackPattern: "main",
+        projectilePattern: isMainShoot ? "main" : "none",
+        isStraightProjectile: this.isStraightProjectileTrigger(mainTriggerId),
       };
     }
 
     if (isSubAttack) {
       return {
-        motionType: this.resolveTriggerMotionType(action.getUsingSubTriggerId()),
+        motionType: subMotionType,
         isMirrored: true,
         attackPattern: "sub",
+        projectilePattern: isSubShoot ? "sub" : "none",
+        isStraightProjectile: this.isStraightProjectileTrigger(subTriggerId),
       };
     }
 
-    return { motionType: null, isMirrored: false, attackPattern: "none" };
+    return {
+      motionType: null,
+      isMirrored: false,
+      attackPattern: "none",
+      projectilePattern: "none",
+      isStraightProjectile: false,
+    };
+  }
+
+  /**
+   * Shoot モーション時に、トリオンキューブを手元から射出する。
+   */
+  private fireTrionCubeProjectiles(
+    unitObject: ThreeDUnitObject,
+    combat: Combat | undefined,
+    animationSpec: {
+      isMirrored: boolean;
+      attackPattern: "main" | "sub" | "both" | "none";
+      projectilePattern: "main" | "sub" | "both" | "none";
+      isStraightProjectile: boolean;
+    },
+  ): void {
+    if (!combat) {
+      return;
+    }
+
+    const projectileHands = this.resolveProjectileHands(animationSpec.projectilePattern);
+    if (projectileHands.length === 0) {
+      return;
+    }
+
+    const defenderGridPosition = this.resolveGridPosition(combat.getDefendingUnitId(), combat.getDefenderPosition());
+    const defenderWorldPosition = this.deps.placementService.fromGridOn3D(
+      this.deps.hexUtils,
+      defenderGridPosition.col,
+      defenderGridPosition.row,
+      this.deps.resolveUnitHeightAtGrid(defenderGridPosition.col, defenderGridPosition.row),
+    );
+
+    // 両手攻撃(both)時は左右から時間差で射出し、視認性を高める。
+    projectileHands.forEach((hand, index) => {
+      this.deps.scene3d.time.delayedCall(index * 70, () => {
+        this.launchTrionCube(
+          unitObject,
+          hand,
+          animationSpec.isMirrored,
+          defenderWorldPosition,
+          animationSpec.isStraightProjectile,
+        );
+      });
+    });
+  }
+
+  /**
+   * 射出すべき手を返す。
+   */
+  private resolveProjectileHands(attackPattern: "main" | "sub" | "both" | "none"): Array<"main" | "sub"> {
+    switch (attackPattern) {
+      case "main":
+        return ["main"];
+      case "sub":
+        return ["sub"];
+      case "both":
+        return ["main", "sub"];
+      default:
+        return [];
+    }
+  }
+
+  /**
+   * 手元からトリオンキューブを飛ばす。
+   */
+  private launchTrionCube(
+    unitObject: ThreeDUnitObject,
+    hand: "main" | "sub",
+    isMirrored: boolean,
+    targetPosition: { x: number; y: number; z: number; },
+    isStraightProjectile: boolean,
+  ): void {
+    const startPosition = unitObject.getHandWorldPosition(hand, isMirrored);
+    const emitterColor = 0x59f5ff;
+
+    // まず手元に「大きな塊」を短時間だけ表示する。
+    const largeCubeSize = 6;
+    const largeGeometry = new THREE.BoxGeometry(largeCubeSize, largeCubeSize, largeCubeSize);
+    const largeMaterial = new THREE.MeshStandardMaterial({
+      color: emitterColor,
+      emissive: emitterColor,
+      emissiveIntensity: 2.0,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
+    const largeCube = new THREE.Mesh(largeGeometry, largeMaterial);
+    largeCube.position.copy(startPosition);
+    largeCube.renderOrder = 10;
+    this.deps.scene3d.third.add.existing(largeCube);
+    this.activeTrionCubes.push(largeCube);
+
+    // 塊を消して 3x3x3 の小キューブに分割する。
+    this.deps.scene3d.time.delayedCall(80, () => {
+      this.disposeTrionCubeMesh(largeCube, largeGeometry, largeMaterial);
+
+      // 小キューブ1個あたりのサイズ。
+      const fragmentSize = 2;
+      const fragmentGap = 0.5;
+      const fragments: Array<{ mesh: THREE.Mesh; geometry: THREE.BoxGeometry; material: THREE.MeshStandardMaterial; }>
+        = [];
+
+      for (let x = -1; x <= 1; x++) {
+        for (let y = -1; y <= 1; y++) {
+          for (let z = -1; z <= 1; z++) {
+            const geometry = new THREE.BoxGeometry(fragmentSize, fragmentSize, fragmentSize);
+            const material = new THREE.MeshStandardMaterial({
+              color: emitterColor,
+              emissive: emitterColor,
+              emissiveIntensity: 1.7,
+              transparent: true,
+              opacity: 0.9,
+              depthWrite: false,
+            });
+            const fragment = new THREE.Mesh(geometry, material);
+
+            const offset = new THREE.Vector3(
+              x * (fragmentSize + fragmentGap),
+              y * (fragmentSize + fragmentGap),
+              z * (fragmentSize + fragmentGap),
+            );
+            fragment.position.copy(startPosition).add(offset);
+            fragment.renderOrder = 10;
+            this.deps.scene3d.third.add.existing(fragment);
+            this.activeTrionCubes.push(fragment);
+            fragments.push({ mesh: fragment, geometry, material });
+          }
+        }
+      }
+
+      const endPosition = new THREE.Vector3(targetPosition.x, targetPosition.y + 25, targetPosition.z);
+      const travelMs = 220;
+
+      // 小キューブ本体は固定し、そこから弾だけを射出する。
+      fragments.forEach(({ mesh }, index) => {
+        const emitterPosition = mesh.position.clone();
+        const arcHeight = 12 + ((Math.floor(index / 3) % 3) - 1) * 4;
+        const bulletTarget = this.resolveBulletImpactPoint(endPosition, index);
+
+        this.deps.scene3d.time.delayedCall(index * 12, () => {
+          this.launchTrionBulletFromEmitter(
+            emitterPosition,
+            bulletTarget,
+            arcHeight,
+            travelMs,
+            emitterColor,
+            isStraightProjectile,
+          );
+        });
+      });
+
+      // 発射演出の完了後に発射元キューブをまとめて消す。
+      const totalDelayMs = (fragments.length - 1) * 12 + travelMs + 120;
+      this.deps.scene3d.time.delayedCall(totalDelayMs, () => {
+        fragments.forEach(({ mesh, geometry, material }) => {
+          this.disposeTrionCubeMesh(mesh, geometry, material);
+        });
+      });
+    });
+  }
+
+  /**
+   * 固定された小キューブ発射口から、弾道付きの弾を1発射出する。
+   */
+  private launchTrionBulletFromEmitter(
+    emitterPosition: THREE.Vector3,
+    targetPosition: THREE.Vector3,
+    arcHeight: number,
+    travelMs: number,
+    color: number,
+    isStraightProjectile: boolean,
+  ): void {
+    // 射出される弾の半径。
+    const bulletRadius = 0.4;
+    const bulletGeometry = new THREE.SphereGeometry(bulletRadius, 14, 10);
+    const bulletMaterial = new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 2.2,
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+    });
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    bullet.position.copy(emitterPosition);
+    bullet.renderOrder = 11;
+    this.deps.scene3d.third.add.existing(bullet);
+    this.activeTrionCubes.push(bullet);
+
+    this.spawnPulseFlash(emitterPosition, color, 0.45, 0.9, 90);
+
+    const projectileCurve = isStraightProjectile
+      ? null
+      : (() => {
+        const control = emitterPosition.clone().lerp(targetPosition, 0.5);
+        control.y += arcHeight;
+        return new THREE.QuadraticBezierCurve3(
+          emitterPosition.clone(),
+          control,
+          targetPosition.clone(),
+        );
+      })();
+
+    // 弾道線は射出中だけ表示する。
+    const trajectoryPoints = projectileCurve
+      ? projectileCurve.getPoints(24)
+      : [emitterPosition.clone(), targetPosition.clone()];
+    const trajectoryGeometry = new THREE.BufferGeometry().setFromPoints(trajectoryPoints);
+    // 軌道線の太さ。
+    const trajectoryLineWidth = 3;
+    const trajectoryMaterial = new THREE.LineBasicMaterial({
+      color,
+      linewidth: trajectoryLineWidth,
+      transparent: true,
+      opacity: 0.45,
+      depthWrite: false,
+    });
+    const trajectoryLine = new THREE.Line(trajectoryGeometry, trajectoryMaterial);
+    trajectoryLine.renderOrder = 9;
+    this.deps.scene3d.third.add.existing(trajectoryLine);
+
+    this.deps.scene3d.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: travelMs,
+      ease: "Cubic.easeInOut",
+      onUpdate: (tween) => {
+        const progress = tween.getValue() ?? 0;
+        const direction = projectileCurve
+          ? projectileCurve.getTangent(progress).normalize()
+          : targetPosition.clone().sub(emitterPosition).normalize();
+        bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+
+        const stretch = 1.15 + Math.sin(progress * Math.PI) * 0.85;
+        bullet.scale.set(0.75, 0.75, stretch);
+
+        if (isStraightProjectile) {
+          bullet.position.lerpVectors(emitterPosition, targetPosition, progress);
+        } else {
+          const point = projectileCurve?.getPoint(progress);
+          if (!point) {
+            return;
+          }
+          bullet.position.copy(point);
+        }
+      },
+      onComplete: () => {
+        this.spawnPulseFlash(targetPosition, color, 0.7, 1.35, 110);
+        this.disposeTrionCubeMesh(bullet, bulletGeometry, bulletMaterial);
+        this.disposeTrajectoryLine(trajectoryLine, trajectoryGeometry, trajectoryMaterial);
+      },
+    });
+  }
+
+  /**
+   * 発射口や着弾点に短いフラッシュを出して、攻撃の勢いを強める。
+   */
+  private spawnPulseFlash(
+    position: THREE.Vector3,
+    color: number,
+    startScale: number,
+    endScale: number,
+    durationMs: number,
+  ): void {
+    const flashGeometry = new THREE.SphereGeometry(0.4, 12, 8);
+    const flashMaterial = new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 3.2,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+    });
+    const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+    flash.position.copy(position);
+    flash.scale.setScalar(startScale);
+    flash.renderOrder = 12;
+    this.deps.scene3d.third.add.existing(flash);
+    this.activeTrionCubes.push(flash);
+
+    this.deps.scene3d.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: durationMs,
+      ease: "Cubic.easeOut",
+      onUpdate: (tween) => {
+        const progress = tween.getValue() ?? 0;
+        const scale = startScale + (endScale - startScale) * progress;
+        flash.scale.setScalar(scale);
+        flashMaterial.opacity = 0.8 * (1 - progress);
+      },
+      onComplete: () => {
+        this.disposeTrionCubeMesh(flash, flashGeometry, flashMaterial);
+      },
+    });
+  }
+
+  /**
+   * 各弾の着弾点を少し散らして、1点集中の違和感を抑える。
+   */
+  private resolveBulletImpactPoint(baseTarget: THREE.Vector3, index: number): THREE.Vector3 {
+    const xBand = (index % 3) - 1;
+    const yBand = (Math.floor(index / 3) % 3) - 1;
+    const zBand = (Math.floor(index / 9) % 3) - 1;
+
+    const spreadX = xBand * 2.1 + zBand * 2;
+    const spreadZ = zBand * 2.1 + yBand * 2;
+    const spreadY = yBand * 2;
+
+    return baseTarget.clone().add(new THREE.Vector3(spreadX, spreadY, spreadZ));
+  }
+
+  /**
+   * 直線弾道にするトリガーかどうかを返す。
+   */
+  private isStraightProjectileTrigger(triggerId: string): boolean {
+    return triggerId === "ASTEROID";
+  }
+
+  /**
+   * トリオンキューブの描画リソースを破棄する。
+   */
+  private disposeTrionCubeMesh(
+    cube: THREE.Mesh,
+    geometry: THREE.BufferGeometry,
+    material: THREE.MeshStandardMaterial,
+  ): void {
+    cube.removeFromParent();
+    geometry.dispose();
+    material.dispose();
+
+    const index = this.activeTrionCubes.indexOf(cube);
+    if (index >= 0) {
+      this.activeTrionCubes.splice(index, 1);
+    }
+  }
+
+  /**
+   * 弾道線リソースを破棄する。
+   */
+  private disposeTrajectoryLine(
+    line: THREE.Line,
+    geometry: THREE.BufferGeometry,
+    material: THREE.LineBasicMaterial,
+  ): void {
+    line.removeFromParent();
+    geometry.dispose();
+    material.dispose();
   }
 
   /**

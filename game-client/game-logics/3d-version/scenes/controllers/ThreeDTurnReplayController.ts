@@ -59,6 +59,8 @@ export class ThreeDTurnReplayController {
   private readonly loadedCombatMotionsByUnit = new Map<string, Set<string>>();
   /** 射出中のトリオンキューブ。 */
   private readonly activeTrionCubes: THREE.Mesh[] = [];
+  /** 撃墜演出を開始済みのユニットID。 */
+  private readonly defeatedUnitIds = new Set<string>();
 
   constructor(private readonly deps: ThreeDTurnReplayControllerDeps) { }
 
@@ -68,6 +70,7 @@ export class ThreeDTurnReplayController {
    * @param turn サーバーから受信したターン情報。
    */
   public executeTurn(turn: Turn): void {
+    this.defeatedUnitIds.clear();
     this.clearAllReplayTriggerFans();
     this.deps.clearSelection();
     this.deps.setActionMode?.(true);
@@ -121,6 +124,8 @@ export class ThreeDTurnReplayController {
    * @param step 再生対象のステップ。
    */
   private replayActions(step: Step): void {
+    const attackingUnitIdsInStep = new Set(step.getCombats().map((combat) => combat.getAttackingUnitId()));
+
     for (const action of step.getActions()) {
       if (this.isUnitBailedOut(action.getUnitId())) {
         continue;
@@ -192,7 +197,7 @@ export class ThreeDTurnReplayController {
             }
 
             this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
-            this.playCombatAnimationAfterAction(action, combat, unitObject);
+            this.playCombatAnimationAfterAction(action, combat, unitObject, attackingUnitIdsInStep);
           },
           (currentPosition) => {
             this.updateReplayTriggerFansForAction(action, currentPosition, currentPosition.y + 0.02);
@@ -230,7 +235,7 @@ export class ThreeDTurnReplayController {
           });
         }
         this.updateReplayTriggerFansForAction(action, worldPosition, unitObject.position.y + 0.02);
-        this.playCombatAnimationAfterAction(action, combat, unitObject);
+        this.playCombatAnimationAfterAction(action, combat, unitObject, attackingUnitIdsInStep);
       }
     }
   }
@@ -256,7 +261,7 @@ export class ThreeDTurnReplayController {
     getUsingMainTriggerId: () => string;
     getUsingSubTriggerId: () => string;
     getPosition: () => { col: number; row: number; };
-  }, combat: Combat | undefined, unitObject: ThreeDUnitObject): void {
+  }, combat: Combat | undefined, unitObject: ThreeDUnitObject, attackingUnitIdsInStep: Set<string>): void {
     const animationSpec = this.resolveCombatAnimationSpec(action, combat);
     if (!animationSpec.motionType) {
       return;
@@ -273,8 +278,46 @@ export class ThreeDTurnReplayController {
     );
 
     unitObject.faceToward(defenderWorldPosition);
+
+    const defenderUnitObject = combat
+      ? this.deps.unitObjectById.get(combat.getDefendingUnitId())
+      : undefined;
+    const shouldPrioritizeAttackMotion = combat
+      ? attackingUnitIdsInStep.has(combat.getDefendingUnitId())
+      : false;
+    const shieldGuard = combat
+      ? this.resolveShieldGuardSpec(combat)
+      : null;
+
+    // 回避は着弾後ではなく、攻撃演出の途中で入り始めた方が自然に見える。
+    // 3x3x3 キューブ分割(80ms)と初弾射出の後、着弾より前のタイミングで開始する。
+    if (combat && defenderUnitObject && combat.getIsAvoidedCombat() && !shouldPrioritizeAttackMotion && !this.isUnitBailedOut(combat.getDefendingUnitId())) {
+      this.deps.scene3d.time.delayedCall(110, () => {
+        if (this.isUnitBailedOut(combat.getDefendingUnitId())) {
+          return;
+        }
+
+        void this.playCombatMotion(defenderUnitObject, combat.getDefendingUnitId(), "Avoid", false);
+      });
+    }
+
+    // 防御成功時はコンバット再生待ちせず、攻撃演出と同時にシールドを表示する。
+    if (combat && defenderUnitObject && shieldGuard) {
+      this.playShieldGuardEffectIfNeeded(combat, defenderUnitObject, shouldPrioritizeAttackMotion);
+    }
+
+    // SHIELD防御が成立したときの「キューブ弾の着弾先」はここで上書きする。
+    // 見た目位置を調整したい場合は、resolveShieldBarrierPosition 側を編集する。
+    const projectileTargetOverride = combat && shieldGuard
+      ? this.resolveShieldBarrierPosition(
+        combat.getDefendingUnitId(),
+        new THREE.Vector3(defenderWorldPosition.x, defenderWorldPosition.y, defenderWorldPosition.z),
+        shieldGuard.azimuth,
+      )
+      : undefined;
+
     if (animationSpec.projectilePattern !== "none") {
-      this.fireTrionCubeProjectiles(unitObject, combat, animationSpec);
+      this.fireTrionCubeProjectiles(unitObject, combat, animationSpec, projectileTargetOverride);
     }
     void this.playCombatMotion(unitObject, action.getUnitId(), animationSpec.motionType, animationSpec.isMirrored);
   }
@@ -386,6 +429,7 @@ export class ThreeDTurnReplayController {
       projectilePattern: "main" | "sub" | "both" | "none";
       isStraightProjectile: boolean;
     },
+    projectileTargetOverride?: THREE.Vector3,
   ): void {
     if (!combat) {
       return;
@@ -403,6 +447,16 @@ export class ThreeDTurnReplayController {
       defenderGridPosition.row,
       this.deps.resolveUnitHeightAtGrid(defenderGridPosition.col, defenderGridPosition.row),
     );
+    const projectileDestination = projectileTargetOverride
+      ? projectileTargetOverride.clone()
+      : this.resolveProjectilePassThroughPosition(
+        new THREE.Vector3(unitObject.position.x, unitObject.position.y, unitObject.position.z),
+        new THREE.Vector3(defenderWorldPosition.x, defenderWorldPosition.y, defenderWorldPosition.z),
+      );
+    // 通常時は胸付近へ着弾させるため +14 する。
+    // SHIELD防御時は projectileTargetOverride がシールド面座標を指すため、
+    // 追加オフセットを 0 にして「盾そのものに当たる」見た目を優先する。
+    const targetHeightOffset = projectileTargetOverride ? 0 : 14;
 
     // 両手攻撃(both)時は左右から時間差で射出し、視認性を高める。
     projectileHands.forEach((hand, index) => {
@@ -411,8 +465,9 @@ export class ThreeDTurnReplayController {
           unitObject,
           hand,
           animationSpec.isMirrored,
-          defenderWorldPosition,
+          projectileDestination,
           animationSpec.isStraightProjectile,
+          targetHeightOffset,
         );
       });
     });
@@ -443,6 +498,9 @@ export class ThreeDTurnReplayController {
     isMirrored: boolean,
     targetPosition: { x: number; y: number; z: number; },
     isStraightProjectile: boolean,
+    // 弾の最終到達点に加算する高さ。通常は胸付近狙い、
+    // SHIELD防御時は 0 を渡してシールド面へ正確に当てる。
+    targetHeightOffset: number = 14,
   ): void {
     const startPosition = unitObject.getHandWorldPosition(hand, isMirrored);
     const emitterColor = 0x59f5ff;
@@ -502,7 +560,13 @@ export class ThreeDTurnReplayController {
         }
       }
 
-      const endPosition = new THREE.Vector3(targetPosition.x, targetPosition.y + 25, targetPosition.z);
+      // 通常は上半身付近へ着弾させるため高さを持ち上げる。
+      // SHIELD防御時は呼び出し側で 0 を渡し、シールド面そのものを狙う。
+      const endPosition = new THREE.Vector3(
+        targetPosition.x,
+        targetPosition.y + targetHeightOffset,
+        targetPosition.z,
+      );
       const travelMs = 220;
 
       // 小キューブ本体は固定し、そこから弾だけを射出する。
@@ -581,7 +645,7 @@ export class ThreeDTurnReplayController {
       : [emitterPosition.clone(), targetPosition.clone()];
     const trajectoryGeometry = new THREE.BufferGeometry().setFromPoints(trajectoryPoints);
     // 軌道線の太さ。
-    const trajectoryLineWidth = 3;
+    const trajectoryLineWidth = 8;
     const trajectoryMaterial = new THREE.LineBasicMaterial({
       color,
       linewidth: trajectoryLineWidth,
@@ -762,26 +826,290 @@ export class ThreeDTurnReplayController {
    */
   private replayCombats(step: { getCombats: () => Combat[]; }): void {
     for (const combat of step.getCombats()) {
-      const defendingUnitObject = this.deps.unitObjectById.get(combat.getDefendingUnitId());
+      const defendingUnitId = combat.getDefendingUnitId();
+      const defendingUnitObject = this.deps.unitObjectById.get(defendingUnitId);
       if (!defendingUnitObject) continue;
 
       if (!combat.getIsDefeatedCombat()) {
         continue;
       }
 
-      // 3D版は 2D の撃破演出を簡略化し、撃破時は非表示化のみ行う。
-      const enemyCharacterState = this.deps.enemyCharacterStatesById.get(combat.getDefendingUnitId());
+      this.playDefeatSequence(defendingUnitId, defendingUnitObject);
+    }
+  }
+
+  /**
+   * 撃墜時の Defeat モーションを最後まで再生し、完了後に退場させる。
+   */
+  private playDefeatSequence(defendingUnitId: string, defendingUnitObject: ThreeDUnitObject): void {
+    if (this.defeatedUnitIds.has(defendingUnitId)) {
+      return;
+    }
+    this.defeatedUnitIds.add(defendingUnitId);
+
+    // 撃墜済みフラグは先に立て、以後の行動を止める。
+    const friendUnit = this.deps.friendUnitsById.get(defendingUnitId);
+    if (friendUnit) {
+      friendUnit.isBailout = true;
+    }
+    const enemyCharacterState = this.deps.enemyCharacterStatesById.get(defendingUnitId);
+    if (enemyCharacterState) {
+      enemyCharacterState.getEnemyUnit().isBailout = true;
+    }
+
+    void this.playDefeatMotionAndFinalize(defendingUnitId, defendingUnitObject);
+  }
+
+  /**
+   * Defeat モーション再生完了後に、扇形を消してベイルアウト演出を出し、ユニット本体を非表示化する。
+   */
+  private async playDefeatMotionAndFinalize(defendingUnitId: string, defendingUnitObject: ThreeDUnitObject): Promise<void> {
+    const loadedMotions = this.loadedCombatMotionsByUnit.get(defendingUnitId) ?? new Set<string>();
+    if (!this.loadedCombatMotionsByUnit.has(defendingUnitId)) {
+      this.loadedCombatMotionsByUnit.set(defendingUnitId, loadedMotions);
+    }
+
+    if (!loadedMotions.has("Defeat")) {
+      await defendingUnitObject.addAnimation("Defeat", "/character/3d/motions/Defeat.glb");
+      loadedMotions.add("Defeat");
+    }
+
+    defendingUnitObject.setHorizontalMirror(false);
+    defendingUnitObject.playAnimation("Defeat", 80, { loop: false });
+
+    // モーション長が取得できないケースでは安全側で長めに待つ。
+    const defeatDurationMs = Math.max(900, defendingUnitObject.getAnimationDurationMs("Defeat") ?? 0);
+    this.deps.scene3d.time.delayedCall(defeatDurationMs, () => {
+      this.clearReplayTriggerFansForUnit(defendingUnitId);
+      this.spawnBailoutOrbEffect(defendingUnitObject.position.clone());
+
+      const enemyCharacterState = this.deps.enemyCharacterStatesById.get(defendingUnitId);
       if (enemyCharacterState) {
         enemyCharacterState.setBailout(true);
       } else {
         defendingUnitObject.updateVisibility(false);
       }
+    });
+  }
 
-      const friendUnit = this.deps.friendUnitsById.get(combat.getDefendingUnitId());
-      if (friendUnit) {
-        friendUnit.isBailout = true;
-      }
+  /**
+   * ベイルアウト時に、球体が上空へ抜ける演出を表示する。
+   */
+  private spawnBailoutOrbEffect(startPosition: THREE.Vector3): void {
+    const orbColor = 0x9fdcff;
+    // ベイルアウト球体の大きさ(半径)。見た目サイズはここで調整する。
+    const bailoutOrbRadius = 4;
+    const orbGeometry = new THREE.SphereGeometry(bailoutOrbRadius, 18, 14);
+    const orbMaterial = new THREE.MeshStandardMaterial({
+      color: orbColor,
+      emissive: orbColor,
+      emissiveIntensity: 2.4,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
+    const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+    orb.position.copy(startPosition);
+    orb.position.y += 12;
+    orb.renderOrder = 16;
+    this.deps.scene3d.third.add.existing(orb);
+    this.activeTrionCubes.push(orb);
+
+    // ベイルアウト球体が上昇する弾道の高さ。到達高度は endPoint 側で調整する。
+    const bailoutArcMidHeight = 280;
+    const bailoutArcEndHeight = 800;
+    const midPoint = orb.position.clone().add(new THREE.Vector3(0, bailoutArcMidHeight, 0));
+    const endPoint = orb.position.clone().add(new THREE.Vector3(0, bailoutArcEndHeight, 0));
+    const trailCurve = new THREE.QuadraticBezierCurve3(orb.position.clone(), midPoint, endPoint);
+
+    const trailGeometry = new THREE.BufferGeometry().setFromPoints(trailCurve.getPoints(28));
+    const trailMaterial = new THREE.LineBasicMaterial({
+      color: orbColor,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+    });
+    const trail = new THREE.Line(trailGeometry, trailMaterial);
+    trail.renderOrder = 15;
+    this.deps.scene3d.third.add.existing(trail);
+
+    const bailoutDurationMs = 2000;
+    this.deps.scene3d.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: bailoutDurationMs,
+      ease: "Cubic.easeOut",
+      onUpdate: (tween) => {
+        const progress = tween.getValue() ?? 0;
+        const point = trailCurve.getPoint(progress);
+        orb.position.copy(point);
+        orbMaterial.opacity = 0.95 * (1 - progress * 0.7);
+        trailMaterial.opacity = 0.5 * (1 - progress);
+      },
+      onComplete: () => {
+        this.disposeTrionCubeMesh(orb, orbGeometry, orbMaterial);
+        this.disposeTrajectoryLine(trail, trailGeometry, trailMaterial);
+      },
+    });
+  }
+
+  /**
+   * 指定ユニットに紐づくリプレイ用トリガー扇形を破棄する。
+   */
+  private clearReplayTriggerFansForUnit(unitId: string): void {
+    const mainFan = this.mainReplayTriggerFans.get(unitId);
+    if (mainFan) {
+      mainFan.dispose();
+      this.mainReplayTriggerFans.delete(unitId);
     }
+
+    const subFan = this.subReplayTriggerFans.get(unitId);
+    if (subFan) {
+      subFan.dispose();
+      this.subReplayTriggerFans.delete(unitId);
+    }
+  }
+
+  /**
+   * SHIELD による防御成功時、六角柱バリアと必要なら Shield モーションを再生する。
+   *
+   * 同ステップで攻撃中のユニットは攻撃モーション優先とし、バリア表示のみ行う。
+   */
+  private playShieldGuardEffectIfNeeded(
+    combat: Combat,
+    defendingUnitObject: ThreeDUnitObject,
+    shouldSkipShieldMotion: boolean,
+  ): void {
+    const shieldGuard = this.resolveShieldGuardSpec(combat);
+    if (!shieldGuard) {
+      return;
+    }
+
+    this.spawnHexShieldBarrier(combat.getDefendingUnitId(), defendingUnitObject, shieldGuard.azimuth);
+
+    if (shouldSkipShieldMotion || this.isUnitBailedOut(combat.getDefendingUnitId())) {
+      return;
+    }
+
+    void this.playCombatMotion(defendingUnitObject, combat.getDefendingUnitId(), "Shield", shieldGuard.isMirrored);
+  }
+
+  /**
+   * 防御成功した SHIELD の使用側を解決する。
+   * main を優先し、なければ sub を採用する。
+   */
+  private resolveShieldGuardSpec(combat: Combat): { azimuth: number; isMirrored: boolean; } | null {
+    const mainGuardWithShield = combat.getIsDefenderMainTriggerGuard()
+      && combat.getDefenderMainTriggerId() === "SHIELD";
+    if (mainGuardWithShield) {
+      return {
+        azimuth: combat.getDefenderMainTriggerAzimuth(),
+        isMirrored: false,
+      };
+    }
+
+    const subGuardWithShield = combat.getIsDefenderSubTriggerGuard()
+      && combat.getDefenderSubTriggerId() === "SHIELD";
+    if (subGuardWithShield) {
+      return {
+        azimuth: combat.getDefenderSubTriggerAzimuth(),
+        isMirrored: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * 防御方向に、薄い六角柱のシールド本体を短時間表示する。
+   */
+  private spawnHexShieldBarrier(defenderUnitId: string, unitObject: ThreeDUnitObject, azimuth: number): void {
+    const visibleAzimuth = this.resolveReplayTriggerAzimuth(
+      azimuth,
+      this.deps.enemyCharacterStatesById.has(defenderUnitId),
+    );
+    const azimuthRad = THREE.MathUtils.degToRad(visibleAzimuth);
+    const barrierPosition = this.resolveShieldBarrierPosition(
+      defenderUnitId,
+      new THREE.Vector3(unitObject.position.x, unitObject.position.y, unitObject.position.z),
+      azimuth,
+    );
+
+    // 薄い六角柱シールド本体のサイズ指定。
+    // 1,2引数: 半径(見た目の大きさ) / 3引数: 厚み。どちらも従来値から2倍。
+    const barrierGeometry = new THREE.CylinderGeometry(10.4, 10.4, 1.3, 6);
+    const barrierMaterial = new THREE.MeshStandardMaterial({
+      color: 0x66ddff,
+      emissive: 0x44bbff,
+      emissiveIntensity: 2.6,
+      transparent: true,
+      opacity: 0.4,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const barrierMesh = new THREE.Mesh(barrierGeometry, barrierMaterial);
+    barrierMesh.position.copy(barrierPosition);
+    barrierMesh.rotation.y = azimuthRad;
+    // 六角形の頂点を上下に向けるため、面内で90度回転する。
+    barrierMesh.rotation.z = Math.PI / 2;
+    barrierMesh.renderOrder = 14;
+    this.deps.scene3d.third.add.existing(barrierMesh);
+    this.activeTrionCubes.push(barrierMesh);
+
+    const shieldDurationMs = 600;
+    // フェードアウトは行わず、一定時間しっかり表示してから消す。
+    this.deps.scene3d.time.delayedCall(shieldDurationMs, () => {
+      this.disposeTrionCubeMesh(barrierMesh, barrierGeometry, barrierMaterial);
+    });
+  }
+
+  /**
+   * 防御方向に合わせたシールド本体の表示座標を返す。
+   */
+  private resolveShieldBarrierPosition(
+    defenderUnitId: string,
+    defenderWorldPosition: THREE.Vector3,
+    azimuth: number,
+  ): THREE.Vector3 {
+    const isEnemyUnit = this.deps.enemyCharacterStatesById.has(defenderUnitId);
+    const visibleAzimuth = this.resolveReplayTriggerAzimuth(azimuth, isEnemyUnit);
+
+    // 扇形表示(ThreeDTriggerFanObject)と同じ方位角補正式に合わせる。
+    // これでシールド本体も、トリガーが向いている方向へ一致して出る。
+    const correctedDirectionRad = THREE.MathUtils.degToRad(90 - visibleAzimuth);
+    const forward = new THREE.Vector3(
+      Math.cos(correctedDirectionRad),
+      0,
+      -Math.sin(correctedDirectionRad),
+    );
+
+    // 盾はトリガー方位角の「前方」に出す。
+    // この forward 距離(現在20)が、防御成功時にキューブ弾が当たる位置の基準になる。
+    const barrierPosition = defenderWorldPosition.clone().add(forward.multiplyScalar(20));
+    barrierPosition.y += 14;
+
+    return barrierPosition;
+  }
+
+  /**
+   * SHIELDで止めない弾は、防御側ユニットを少し通り越した先まで飛ばす。
+   *
+   * 回避時は「避けたあと背後へ抜ける」見た目になり、
+   * 非回避時も即消えせず、貫通するような勢いを残せる。
+   */
+  private resolveProjectilePassThroughPosition(
+    attackerWorldPosition: THREE.Vector3,
+    defenderWorldPosition: THREE.Vector3,
+  ): THREE.Vector3 {
+    const travelDirection = defenderWorldPosition.clone().sub(attackerWorldPosition);
+    if (travelDirection.lengthSq() <= 1e-8) {
+      return defenderWorldPosition.clone();
+    }
+
+    travelDirection.normalize();
+
+    const passThroughDistance = 48;
+    return defenderWorldPosition.clone().add(travelDirection.multiplyScalar(passThroughDistance));
   }
 
   /**

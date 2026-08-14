@@ -81,6 +81,22 @@ export class Combat {
     return this.defenderPosition;
   }
 
+  getDefenderMainTriggerId(): string {
+    return this.defenderMainTriggerId;
+  }
+
+  getDefenderSubTriggerId(): string {
+    return this.defenderSubTriggerId;
+  }
+
+  getDefenderMainTriggerAzimuth(): number {
+    return this.defenderMainTriggerAzimuth;
+  }
+
+  getDefenderSubTriggerAzimuth(): number {
+    return this.defenderSubTriggerAzimuth;
+  }
+
   getMainTriggerHp(): number {
     return this.mainTriggerHp;
   }

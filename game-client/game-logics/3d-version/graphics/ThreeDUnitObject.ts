@@ -299,6 +299,23 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * 登録済みアニメーションの再生時間(ms)を返す。
+   */
+  getAnimationDurationMs(name: string): number | null {
+    const resolvedName = this.resolveAnimationName(name);
+    if (!resolvedName) {
+      return null;
+    }
+
+    const action = this.animationActions.get(resolvedName);
+    if (!action) {
+      return null;
+    }
+
+    return Math.round(action.getClip().duration * 1000);
+  }
+
+  /**
    * 盤面上の座標へ移動する
    */
   setWorldPosition(x: number, y: number, z: number = 0): void {

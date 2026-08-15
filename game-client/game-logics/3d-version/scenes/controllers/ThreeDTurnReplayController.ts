@@ -61,6 +61,12 @@ export class ThreeDTurnReplayController {
   private readonly activeTrionCubes: THREE.Mesh[] = [];
   /** 撃墜演出を開始済みのユニットID。 */
   private readonly defeatedUnitIds = new Set<string>();
+  /** Snipe の弾道にかける高さ差補正係数。0.0 に近いほど自然、1.0 に近いほど強く下向き補正。 */
+  private readonly snipeAimPitchWeight = 0.55;
+  /** Snipe モーション時の下向き姿勢補正角度(rad)。 */
+  private readonly snipePosePitchCorrection = -0.18;
+  /** Snipe の発射位置を手元からどれだけ前方(狙い先方向)へずらすか。 */
+  private readonly snipeMuzzleForwardOffset = 40;
 
   constructor(private readonly deps: ThreeDTurnReplayControllerDeps) { }
 
@@ -323,6 +329,14 @@ export class ThreeDTurnReplayController {
   }
 
   /**
+   * 射撃系モーションかどうかを返す。
+   * シューターの Shoot とスナイパーの Snipe を両方 projectile として扱う。
+   */
+  private isProjectileMotionType(motionType: string | null): boolean {
+    return motionType === "Shoot" || motionType === "Snipe";
+  }
+
+  /**
    * 戦闘時に再生するモーションと左右反転の有無を解決する。
    */
   private resolveCombatAnimationSpec(action: {
@@ -351,16 +365,16 @@ export class ThreeDTurnReplayController {
     const subTriggerId = action.getUsingSubTriggerId();
     const mainMotionType = this.resolveTriggerMotionType(mainTriggerId);
     const subMotionType = this.resolveTriggerMotionType(subTriggerId);
-    const isMainShoot = mainMotionType === "Shoot";
-    const isSubShoot = subMotionType === "Shoot";
+    const isMainProjectileMotion = this.isProjectileMotionType(mainMotionType);
+    const isSubProjectileMotion = this.isProjectileMotionType(subMotionType);
 
     // 将来の複合攻撃モーション差し替えを見据え、
     // main/sub/both を明示的に分岐して返す。
     if (isMainAttack && isSubAttack) {
-      // 両攻撃時に片方だけ Shoot の場合は、
-      // モーションは非 Shoot 側、射出演出は Shoot 側の手のみを使う。
-      if (isMainShoot !== isSubShoot) {
-        if (isMainShoot) {
+      // 両攻撃時に片方だけ projectile 系のモーションがある場合は、
+      // モーションは非 projectile 側、射出演出は projectile 側の手のみを使う。
+      if (isMainProjectileMotion !== isSubProjectileMotion) {
+        if (isMainProjectileMotion) {
           return {
             motionType: subMotionType,
             isMirrored: true,
@@ -383,7 +397,7 @@ export class ThreeDTurnReplayController {
         motionType: mainMotionType,
         isMirrored: false,
         attackPattern: "both",
-        projectilePattern: isMainShoot || isSubShoot ? "both" : "none",
+        projectilePattern: isMainProjectileMotion || isSubProjectileMotion ? "both" : "none",
         isStraightProjectile: this.isStraightProjectileTrigger(mainTriggerId),
       };
     }
@@ -393,7 +407,7 @@ export class ThreeDTurnReplayController {
         motionType: mainMotionType,
         isMirrored: false,
         attackPattern: "main",
-        projectilePattern: isMainShoot ? "main" : "none",
+        projectilePattern: isMainProjectileMotion ? "main" : "none",
         isStraightProjectile: this.isStraightProjectileTrigger(mainTriggerId),
       };
     }
@@ -403,7 +417,7 @@ export class ThreeDTurnReplayController {
         motionType: subMotionType,
         isMirrored: true,
         attackPattern: "sub",
-        projectilePattern: isSubShoot ? "sub" : "none",
+        projectilePattern: isSubProjectileMotion ? "sub" : "none",
         isStraightProjectile: this.isStraightProjectileTrigger(subTriggerId),
       };
     }
@@ -424,6 +438,7 @@ export class ThreeDTurnReplayController {
     unitObject: ThreeDUnitObject,
     combat: Combat | undefined,
     animationSpec: {
+      motionType: string | null;
       isMirrored: boolean;
       attackPattern: "main" | "sub" | "both" | "none";
       projectilePattern: "main" | "sub" | "both" | "none";
@@ -458,6 +473,19 @@ export class ThreeDTurnReplayController {
     // 追加オフセットを 0 にして「盾そのものに当たる」見た目を優先する。
     const targetHeightOffset = projectileTargetOverride ? 0 : 14;
 
+    if (animationSpec.motionType === "Snipe") {
+      const hand = projectileHands[0];
+      const startPosition = unitObject.getHandWorldPosition(hand, animationSpec.isMirrored);
+      const sniperDestination = projectileDestination.clone();
+      sniperDestination.y += targetHeightOffset;
+      this.launchSniperProjectile(
+        startPosition,
+        sniperDestination,
+        animationSpec.isStraightProjectile,
+      );
+      return;
+    }
+
     // 両手攻撃(both)時は左右から時間差で射出し、視認性を高める。
     projectileHands.forEach((hand, index) => {
       this.deps.scene3d.time.delayedCall(index * 70, () => {
@@ -487,6 +515,152 @@ export class ThreeDTurnReplayController {
       default:
         return [];
     }
+  }
+
+  /**
+   * Snipe の弾道を、相手が下にいる場合に自然に下向き補正する。
+   * 画面上の見た目はsnipeAimPitchWeight係数で調整しやすくする。
+   */
+  private resolveSniperAimDirection(startPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    // まずは「本来の狙い方向」そのものを求める。
+    // ここでは縦方向の差も含めたベクトルが出るが、狙撃銃は武器自体が水平寄りなので、
+    // そのまま使うと「地面にいる敵に対して水平に飛びすぎる」問題が起きる。
+    const rawDirection = targetPosition.clone().sub(startPosition);
+    const rawDistance = rawDirection.length();
+    if (rawDistance <= 1e-6) {
+      return rawDirection.clone().normalize();
+    }
+
+    // 水平面上の向きを抽出して、左右の角度はそのまま維持する。
+    const horizontalDirection = new THREE.Vector3(rawDirection.x, 0, rawDirection.z);
+    const horizontalDistance = horizontalDirection.length();
+    if (horizontalDistance <= 1e-6) {
+      return rawDirection.clone().normalize();
+    }
+
+    // 敵が自分より低い位置にいる場合だけ、縦方向を下へ寄せる。
+    // これがないと、狙撃銃の「水平な銃口」から見て、弾がやや上目に飛ぶ/横に飛ぶように見える。
+    const targetIsLowerThanShooter = startPosition.y > targetPosition.y;
+    if (!targetIsLowerThanShooter) {
+      return rawDirection.clone().normalize();
+    }
+
+    // 高さ差から「どれだけ下向きにするか」を角度として計算する。
+    // atan2(高さ差, 水平距離) で、下にいるほど大きくなる角度が出る。
+    // ここで係数をかけることで、最終的な見た目を調整しやすくする。
+    const heightDifference = startPosition.y - targetPosition.y;
+    const downwardPitchRadians = Math.atan2(heightDifference, horizontalDistance) * this.snipeAimPitchWeight;
+
+    // 進行方向の横方向は維持し、縦方向だけ軽く下向きに補正する。
+    // これで弾道は自然に落ち、銃口と弾の向きのズレを減らせる。
+    const yawDirection = horizontalDirection.clone().divideScalar(horizontalDistance);
+
+    return new THREE.Vector3(
+      yawDirection.x,
+      -Math.sin(downwardPitchRadians),
+      yawDirection.z,
+    ).normalize();
+  }
+
+  /**
+   * スナイパー用の単発弾を、長距離・直線軌道で飛ばす。
+   */
+  private launchSniperProjectile(
+    startPosition: THREE.Vector3,
+    targetPosition: THREE.Vector3,
+    isStraightProjectile: boolean,
+  ): void {
+    const color = 0xffd76a;
+    const bulletRadius = 0.7;
+    const bulletGeometry = new THREE.SphereGeometry(bulletRadius, 14, 10);
+    const bulletMaterial = new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 2.8,
+      transparent: true,
+      opacity: 0.98,
+      depthWrite: false,
+    });
+    // 手元の座標そのままだと発射位置が体に埋まって見えるため、狙い先方向(水平のみ)へ少し前へ出す。
+    const horizontalAimDirection = new THREE.Vector3(targetPosition.x - startPosition.x, 0, targetPosition.z - startPosition.z);
+    if (horizontalAimDirection.lengthSq() > 1e-6) {
+      horizontalAimDirection.normalize();
+    }
+    const muzzleOrigin = startPosition.clone().add(horizontalAimDirection.multiplyScalar(this.snipeMuzzleForwardOffset));
+
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    bullet.position.copy(muzzleOrigin);
+    bullet.renderOrder = 11;
+    this.deps.scene3d.third.add.existing(bullet);
+    this.activeTrionCubes.push(bullet);
+
+    this.spawnPulseFlash(muzzleOrigin, color, 0.65, 1.25, 90);
+
+    // 着弾点は本来の targetPosition のまま変えない(ここをずらすと狙った敵より奥に着弾してしまう)。
+    // 銃口の見た目角度は resolveSniperAimDirection の浅めの向きを「軌道の制御点」だけに使い、
+    // 曲線の終点は常に本来の着弾位置に固定する。
+    const shallowAimDirection = this.resolveSniperAimDirection(muzzleOrigin, targetPosition);
+    const distanceToTarget = targetPosition.clone().sub(muzzleOrigin).length();
+    const travelMs = isStraightProjectile ? 260 : 420;
+    // ここから先は「見た目上の弾道」を作る処理。
+    // 直線射撃と違って、狙撃弾は途中でやや弧を描く感じを出したいので、
+    // 序盤は銃口の見た目角度に寄せつつ、最終的には必ず本来の着弾点へ到達させる。
+    const trajectoryCurve = isStraightProjectile
+      ? null
+      : new THREE.QuadraticBezierCurve3(
+        muzzleOrigin.clone(),
+        // 制御点は「浅い角度の向き」を使って序盤の飛び方だけ演出し、終点は targetPosition で固定する。
+        muzzleOrigin.clone().add(shallowAimDirection.multiplyScalar(distanceToTarget * 0.5)),
+        targetPosition.clone(),
+      );
+
+    // 軌道線自体は描画確認用の補助線で、実際の弾の移動は次の tween で処理する。
+    // つまりこれは「見た目のガイド」ではなく、弾の軌道計算の元になる線を作っている。
+    const trajectoryPoints = trajectoryCurve
+      ? trajectoryCurve.getPoints(18)
+      : [muzzleOrigin.clone(), targetPosition.clone()];
+    const trajectoryGeometry = new THREE.BufferGeometry().setFromPoints(trajectoryPoints);
+    const trajectoryMaterial = new THREE.LineBasicMaterial({
+      color,
+      linewidth: 10,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+    });
+    const trajectoryLine = new THREE.Line(trajectoryGeometry, trajectoryMaterial);
+    trajectoryLine.renderOrder = 9;
+    this.deps.scene3d.third.add.existing(trajectoryLine);
+
+    this.deps.scene3d.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: travelMs,
+      ease: "Linear",
+      onUpdate: (tween) => {
+        // tween の進行率 progress を使って、弾の位置を曲線上で更新する。
+        // これで弾が時間とともに軌道沿いに動いているように見える。
+        const progress = tween.getValue() ?? 0;
+        const bulletPosition = trajectoryCurve
+          ? trajectoryCurve.getPoint(progress)
+          : muzzleOrigin.clone().lerp(targetPosition, progress);
+
+        bullet.position.copy(bulletPosition);
+        // 進行に合わせて弾の見た目を少し伸ばすことで、飛行中の速度感を出す。
+        bullet.scale.set(1, 1, 1.4 + Math.sin(progress * Math.PI) * 0.4);
+
+        // 進行方向に弾の向きも合わせる。これで単なる球ではなく、飛んでいる方向に向く見た目になる。
+        const lookDirection = bulletPosition.clone().sub(muzzleOrigin).normalize();
+        if (lookDirection.lengthSq() > 0) {
+          bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), lookDirection);
+        }
+      },
+      onComplete: () => {
+        // 着弾時に軽いフラッシュを出して、着地/着弾の一瞬を強調する。
+        this.spawnPulseFlash(targetPosition, color, 0.8, 1.6, 100);
+        this.disposeTrionCubeMesh(bullet, bulletGeometry, bulletMaterial);
+        this.disposeTrajectoryLine(trajectoryLine, trajectoryGeometry, trajectoryMaterial);
+      },
+    });
   }
 
   /**
@@ -752,7 +926,7 @@ export class ThreeDTurnReplayController {
    * 直線弾道にするトリガーかどうかを返す。
    */
   private isStraightProjectileTrigger(triggerId: string): boolean {
-    return triggerId === "ASTEROID";
+    return triggerId === "ASTEROID" || triggerId === "IBIS";
   }
 
   /**
@@ -812,9 +986,18 @@ export class ThreeDTurnReplayController {
 
     const combatAnimationDurationMs = 420;
     unitObject.setHorizontalMirror(isMirrored);
+
+    // Snipe は銃口そのものが水平に見えてしまうため、
+    // 実弾の下向き補正だけでなく、キャラの姿勢も少しだけ前傾きさせて
+    // 「狙っている感」を出す。視線と銃口の合成感を整えると、下にいる敵を撃つ時の違和感が減る。
+    if (motionType === "Snipe") {
+      unitObject.rotation.x = this.snipePosePitchCorrection;
+    }
+
     unitObject.playAnimation(motionType, 80, { loop: false });
     this.deps.scene3d.time.delayedCall(combatAnimationDurationMs, () => {
       unitObject.setHorizontalMirror(false);
+      unitObject.rotation.x = 0;
       unitObject.playAnimation("Idle", 80);
     });
   }

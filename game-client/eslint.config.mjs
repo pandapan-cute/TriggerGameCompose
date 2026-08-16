@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/lib/ammo/**", // 3D物理エンジンの wasm ファイルが含まれるため、eslint の対象外にする
   ]),
   ...storybook.configs["flat/recommended"],
   {

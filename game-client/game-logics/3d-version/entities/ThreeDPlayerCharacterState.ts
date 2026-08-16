@@ -22,6 +22,9 @@ export class ThreeDPlayerCharacterState {
     this.position = { ...friendUnit.position };
     this.actionPoints = friendUnit.currentActionPoints;
     this.remainSeconds = MAX_UNIT_EXEC_SECONDS;
+
+    // 初期表示時点の装備トリガーを 3D モデルへ反映する。
+    this.syncTriggerVisuals();
   }
 
   getUnitObject(): ThreeDUnitObject {
@@ -39,6 +42,22 @@ export class ThreeDPlayerCharacterState {
   setPosition(position: Position): void {
     this.position = position;
     this.friendUnit.position = position;
+  }
+
+  /**
+   * リプレイ結果を味方ユニット状態へ反映する。
+   */
+  syncReplayState(options: {
+    displayGridPosition: Position;
+    currentActionPoints: number;
+    usingMainTriggerId: string;
+    usingSubTriggerId: string;
+  }): void {
+    this.setPosition(options.displayGridPosition);
+    this.setActionPoints(options.currentActionPoints);
+    this.friendUnit.usingMainTriggerId = options.usingMainTriggerId;
+    this.friendUnit.usingSubTriggerId = options.usingSubTriggerId;
+    this.syncTriggerVisuals();
   }
 
   getActionPoints(): number {
@@ -71,5 +90,15 @@ export class ThreeDPlayerCharacterState {
   /** ステップ番号を初期値へ戻す。 */
   resetCurrentStep(): void {
     this.currentStep = 0;
+  }
+
+  /**
+   * friendUnit が保持する現在装備トリガーを 3D モデルへ同期する。
+   */
+  private syncTriggerVisuals(): void {
+    this.unitObject.syncEquippedTriggers({
+      usingMainTriggerId: this.friendUnit.usingMainTriggerId,
+      usingSubTriggerId: this.friendUnit.usingSubTriggerId,
+    });
   }
 }

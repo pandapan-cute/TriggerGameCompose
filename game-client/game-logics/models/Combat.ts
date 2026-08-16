@@ -24,6 +24,14 @@ export class Combat {
   private defenderBaseAvoid: number;
   private isAvoided: boolean;
   private isDefeated: boolean;
+  /** 攻撃側のメイントリガーで攻撃を仕掛けたかのフラグ */
+  private isAttackerMainTriggerAttack: boolean;
+  /** 攻撃側のサブトリガーで攻撃を仕掛けたかのフラグ */
+  private isAttackerSubTriggerAttack: boolean;
+  /** 防御側のメイントリガーで攻撃を防御したかのフラグ */
+  private isDefenderMainTriggerGuard: boolean;
+  /** 防御側のサブトリガーで攻撃を防御したかのフラグ */
+  private isDefenderSubTriggerGuard: boolean;
 
   constructor() {
     this.combatId = "";
@@ -46,6 +54,10 @@ export class Combat {
     this.defenderBaseAvoid = 0;
     this.isAvoided = false;
     this.isDefeated = false;
+    this.isAttackerMainTriggerAttack = false;
+    this.isAttackerSubTriggerAttack = false;
+    this.isDefenderMainTriggerGuard = false;
+    this.isDefenderSubTriggerGuard = false;
   }
 
   static fromJSON(rawCombat: unknown): Combat {
@@ -69,6 +81,22 @@ export class Combat {
     return this.defenderPosition;
   }
 
+  getDefenderMainTriggerId(): string {
+    return this.defenderMainTriggerId;
+  }
+
+  getDefenderSubTriggerId(): string {
+    return this.defenderSubTriggerId;
+  }
+
+  getDefenderMainTriggerAzimuth(): number {
+    return this.defenderMainTriggerAzimuth;
+  }
+
+  getDefenderSubTriggerAzimuth(): number {
+    return this.defenderSubTriggerAzimuth;
+  }
+
   getMainTriggerHp(): number {
     return this.mainTriggerHp;
   }
@@ -81,5 +109,25 @@ export class Combat {
   }
   getIsDefeatedCombat(): boolean {
     return this.isDefeated;
+  }
+
+  /** 攻撃側のメイントリガーで攻撃を仕掛けたかのフラグを取得 */
+  getIsAttackerMainTriggerAttack(): boolean {
+    return this.isAttackerMainTriggerAttack;
+  }
+
+  /** 攻撃側のサブトリガーで攻撃を仕掛けたかのフラグを取得 */
+  getIsAttackerSubTriggerAttack(): boolean {
+    return this.isAttackerSubTriggerAttack;
+  }
+
+  /** 防御側のメイントリガーで攻撃を防御したかのフラグを取得 */
+  getIsDefenderMainTriggerGuard(): boolean {
+    return this.isDefenderMainTriggerGuard;
+  }
+
+  /** 防御側のサブトリガーで攻撃を防御したかのフラグを取得 */
+  getIsDefenderSubTriggerGuard(): boolean {
+    return this.isDefenderSubTriggerGuard;
   }
 }

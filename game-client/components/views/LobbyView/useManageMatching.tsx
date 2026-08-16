@@ -152,7 +152,7 @@ export const useManageMatching = (dimension: "2D" | "3D", type: "PvE" | "PvP") =
     // Stateの更新は、この関数が「呼び出されたとき」に1回だけ行う
     setMatchingStatus("InProgress");
     console.log("マッチング開始メッセージを送信しました");
-  }, [matchingStatus, playerId, sendMessage]);
+  }, [matchingStatus, playerId, sendMessage, type]);
 
   // --- マッチングをキャンセルする専用の関数 ---
   const handleCancelMatching = useCallback(() => {

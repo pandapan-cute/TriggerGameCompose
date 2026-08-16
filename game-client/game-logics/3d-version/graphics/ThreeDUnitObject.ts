@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { NormalAnimationBlendMode } from "three";
+import { TRIGGER_STATUS } from "@/game-logics/config/status";
 
 const hasShadowProps = (object: THREE.Object3D): object is THREE.Object3D & {
   castShadow: boolean;
@@ -26,6 +27,10 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   private static readonly JUMP_TAKEOFF_RATIO = 0.3;
   /** 着地動作に使う時間の比率。 */
   private static readonly JUMP_LANDING_RATIO = 0.3;
+  /** 右手ボーン探索時に許容するボーン名候補。 */
+  private static readonly RIGHT_HAND_BONE_KEYWORDS = ["RightHand", "Hand.R", "右手", "mixamorigRightHand"];
+  /** 左手ボーン探索時に許容するボーン名候補。 */
+  private static readonly LEFT_HAND_BONE_KEYWORDS = ["LeftHand", "Hand.L", "左手", "mixamorigLeftHand"];
 
   private readonly scene3d: Scene3D;
   private readonly unitTypeId: string;
@@ -42,6 +47,28 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   private readonly animationNames = new Set<string>();
   private readonly animationActions = new Map<string, THREE.AnimationAction>();
   private selectUnit?: () => void;
+  /** 手持ちトリガー同期に使う右手ボーン。 */
+  private rightHandBone: THREE.Bone | null = null;
+  /** 手持ちトリガー同期に使う左手ボーン。 */
+  private leftHandBone: THREE.Bone | null = null;
+  /** 現在右手に表示中のトリガーID。 */
+  private currentRightTriggerId: TriggerStatusKey | null = null;
+  /** 現在左手に表示中のトリガーID。 */
+  private currentLeftTriggerId: TriggerStatusKey | null = null;
+  /** 現在右手にアタッチされているトリガーモデル。 */
+  private rightHandTriggerModel: THREE.Object3D | null = null;
+  /** 現在左手にアタッチされているトリガーモデル。 */
+  private leftHandTriggerModel: THREE.Object3D | null = null;
+  /** モデル未ロード時に後から適用するメイントリガーID。 */
+  private pendingMainTriggerId: string | null = null;
+  /** モデル未ロード時に後から適用するサブトリガーID。 */
+  private pendingSubTriggerId: string | null = null;
+  /** 右手トリガー更新の競合を防ぐ更新トークン。 */
+  private rightHandTriggerUpdateToken = 0;
+  /** 左手トリガー更新の競合を防ぐ更新トークン。 */
+  private leftHandTriggerUpdateToken = 0;
+  /** 現在モデルを左右反転しているかどうか。 */
+  private isHorizontallyMirrored = false;
 
   constructor(scene: Scene3D, unitTypeId: string, x: number, y: number, z: number = 0) {
     super();
@@ -83,9 +110,11 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     const object = gltf.scene;
 
     this.modelRoot?.removeFromParent();
+    this.resetHandTriggerState();
     this.modelRoot = object;
     this.bodyModel = object;
     this.add(object);
+    this.resolveHandBones();
 
     const boundingBox = new THREE.Box3().setFromObject(object);
     const bboxSize = boundingBox.getSize(new THREE.Vector3());
@@ -117,6 +146,9 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     } else {
       console.warn(`[ThreeDUnitObject] idle-clip:missing unit=${this.unitTypeId} path=${modelPath}`);
     }
+
+    // モデル差し替え前に要求されていたトリガー表示を、ボーン解決後に再適用する。
+    await this.applyPendingTriggerVisuals();
 
     console.info(`[ThreeDUnitObject] loadModel:done unit=${this.unitTypeId} path=${modelPath}`);
   }
@@ -159,6 +191,8 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     unitTypeId?: string;
     visible?: boolean;
     position?: { x: number; y: number; z: number; };
+    usingMainTriggerId?: string;
+    usingSubTriggerId?: string;
   }): void {
     if (options.position) {
       this.setWorldPosition(options.position.x, options.position.y, options.position.z);
@@ -173,6 +207,39 @@ export class ThreeDUnitObject extends ExtendedObject3D {
         void this.updateHeadModel(options.unitTypeId);
       }
     }
+
+    if (options.usingMainTriggerId !== undefined || options.usingSubTriggerId !== undefined) {
+      this.syncEquippedTriggers({
+        usingMainTriggerId: options.usingMainTriggerId,
+        usingSubTriggerId: options.usingSubTriggerId,
+      });
+    }
+  }
+
+  /**
+   * 現在装備中トリガー情報を元に、右手/左手の武器モデルを同期する。
+   *
+   * - メイントリガー: 右手
+   * - サブトリガー: 左手
+   */
+  public syncEquippedTriggers(options: {
+    usingMainTriggerId?: string;
+    usingSubTriggerId?: string;
+  }): void {
+    if (options.usingMainTriggerId !== undefined) {
+      this.pendingMainTriggerId = options.usingMainTriggerId;
+    }
+    if (options.usingSubTriggerId !== undefined) {
+      this.pendingSubTriggerId = options.usingSubTriggerId;
+    }
+
+    // モデル未ロード時は pending のみ更新し、loadModel 後にまとめて反映する。
+    if (!this.bodyModel) {
+      return;
+    }
+
+    void this.updateHandTrigger("main", this.pendingMainTriggerId);
+    void this.updateHandTrigger("sub", this.pendingSubTriggerId);
   }
 
   /**
@@ -232,10 +299,68 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * 登録済みアニメーションの再生時間(ms)を返す。
+   */
+  getAnimationDurationMs(name: string): number | null {
+    const resolvedName = this.resolveAnimationName(name);
+    if (!resolvedName) {
+      return null;
+    }
+
+    const action = this.animationActions.get(resolvedName);
+    if (!action) {
+      return null;
+    }
+
+    return Math.round(action.getClip().duration * 1000);
+  }
+
+  /**
    * 盤面上の座標へ移動する
    */
   setWorldPosition(x: number, y: number, z: number = 0): void {
     this.position.set(x, y, z);
+  }
+
+  /**
+   * モデルを左右反転する。
+   *
+   * サブトリガー攻撃の見た目を反転させるために使う。
+   */
+  setHorizontalMirror(isMirrored: boolean): void {
+    this.isHorizontallyMirrored = isMirrored;
+    const currentScaleX = Math.abs(this.scale.x);
+    this.scale.x = isMirrored ? -currentScaleX : currentScaleX;
+
+    // 体を反転すると左右ボーンの表示位置が入れ替わるため、
+    // 武器だけは main/sub の見た目位置を維持できるよう再アタッチする。
+    this.reattachTriggerModelsForCurrentMirror();
+  }
+
+  /**
+   * 指定した手の現在ワールド座標を返す。
+   *
+   * @param hand 取得対象の手。main は右手、sub は左手を指す。
+   * @param isMirrored 表示が左右反転中かどうか。
+   */
+  getHandWorldPosition(hand: "main" | "sub", isMirrored: boolean = false): THREE.Vector3 {
+    const targetBone = this.resolveHandBoneForVisualSide(hand, isMirrored);
+    if (targetBone) {
+      const worldPosition = new THREE.Vector3();
+      targetBone.getWorldPosition(worldPosition);
+      return worldPosition;
+    }
+
+    const fallbackPosition = new THREE.Vector3();
+    this.getWorldPosition(fallbackPosition);
+
+    const sideOffset = hand === "main" ? 0.55 : -0.55;
+    const mirroredOffset = isMirrored ? -sideOffset : sideOffset;
+    fallbackPosition.x += mirroredOffset;
+    fallbackPosition.y += 1.1;
+    fallbackPosition.z += 0.1;
+
+    return fallbackPosition;
   }
 
   /**
@@ -367,6 +492,139 @@ export class ThreeDUnitObject extends ExtendedObject3D {
   }
 
   /**
+   * 右手・左手に紐づくトリガー表示状態を初期化する。
+   */
+  private resetHandTriggerState(): void {
+    this.rightHandTriggerModel?.removeFromParent();
+    this.leftHandTriggerModel?.removeFromParent();
+    this.rightHandTriggerModel = null;
+    this.leftHandTriggerModel = null;
+    this.rightHandBone = null;
+    this.leftHandBone = null;
+    this.currentRightTriggerId = null;
+    this.currentLeftTriggerId = null;
+  }
+
+  /**
+   * 現在の bodyModel から手ボーンを探索して保持する。
+   */
+  private resolveHandBones(): void {
+    if (!this.bodyModel) {
+      this.rightHandBone = null;
+      this.leftHandBone = null;
+      return;
+    }
+
+    this.rightHandBone = this.findBoneByKeywords(this.bodyModel, ThreeDUnitObject.RIGHT_HAND_BONE_KEYWORDS);
+    this.leftHandBone = this.findBoneByKeywords(this.bodyModel, ThreeDUnitObject.LEFT_HAND_BONE_KEYWORDS);
+
+    if (!this.rightHandBone) {
+      console.warn(`[ThreeDUnitObject] 右手ボーンが見つかりませんでした unit=${this.unitTypeId}`);
+    }
+    if (!this.leftHandBone) {
+      console.warn(`[ThreeDUnitObject] 左手ボーンが見つかりませんでした unit=${this.unitTypeId}`);
+    }
+  }
+
+  /**
+   * 表示上の左右に合わせて、参照すべき手ボーンを返す。
+   */
+  private resolveHandBoneForVisualSide(hand: "main" | "sub", isMirrored: boolean): THREE.Bone | null {
+    if (hand === "main") {
+      return isMirrored ? this.leftHandBone : this.rightHandBone;
+    }
+
+    return isMirrored ? this.rightHandBone : this.leftHandBone;
+  }
+
+  /**
+   * モデル未ロード時に積んでいたトリガー反映要求を適用する。
+   */
+  private async applyPendingTriggerVisuals(): Promise<void> {
+    await Promise.all([
+      this.updateHandTrigger("main", this.pendingMainTriggerId),
+      this.updateHandTrigger("sub", this.pendingSubTriggerId),
+    ]);
+  }
+
+  /**
+   * main/sub の種別に応じて対応する手へトリガーモデルを適用する。
+   */
+  private async updateHandTrigger(hand: "main" | "sub", triggerId: string | null): Promise<void> {
+    const triggerKey = this.toTriggerStatusKey(triggerId);
+    const shouldHoldHand = triggerKey ? TRIGGER_STATUS[triggerKey].isHoldHand : false;
+    const expectedTriggerKey = shouldHoldHand ? triggerKey : null;
+
+    const targetBone = this.resolveHandBoneForVisualSide(hand, this.isHorizontallyMirrored);
+    const currentTriggerId = hand === "main" ? this.currentRightTriggerId : this.currentLeftTriggerId;
+    const currentModel = hand === "main" ? this.rightHandTriggerModel : this.leftHandTriggerModel;
+
+    if (!targetBone) {
+      return;
+    }
+
+    if (expectedTriggerKey === currentTriggerId) {
+      return;
+    }
+
+    // 表示対象がない場合は、既存モデルを外して同期完了。
+    if (!expectedTriggerKey) {
+      currentModel?.removeFromParent();
+      if (hand === "main") {
+        this.rightHandTriggerModel = null;
+        this.currentRightTriggerId = null;
+      } else {
+        this.leftHandTriggerModel = null;
+        this.currentLeftTriggerId = null;
+      }
+      return;
+    }
+
+    const updateToken = hand === "main"
+      ? ++this.rightHandTriggerUpdateToken
+      : ++this.leftHandTriggerUpdateToken;
+
+    try {
+      const gltf = await this.gltfLoader.loadAsync(`/game/weapon/${expectedTriggerKey}.glb`);
+      const latestToken = hand === "main" ? this.rightHandTriggerUpdateToken : this.leftHandTriggerUpdateToken;
+      if (updateToken !== latestToken) {
+        gltf.scene.removeFromParent();
+        return;
+      }
+
+      currentModel?.removeFromParent();
+      targetBone.add(gltf.scene);
+
+      if (hand === "main") {
+        this.rightHandTriggerModel = gltf.scene;
+        this.currentRightTriggerId = expectedTriggerKey;
+      } else {
+        this.leftHandTriggerModel = gltf.scene;
+        this.currentLeftTriggerId = expectedTriggerKey;
+      }
+
+      console.info(`[ThreeDUnitObject] trigger-attached unit=${this.unitTypeId} hand=${hand} trigger=${expectedTriggerKey}`);
+    } catch (error) {
+      console.warn(`[ThreeDUnitObject] trigger-load-failed unit=${this.unitTypeId} hand=${hand} trigger=${expectedTriggerKey} error=${error}`);
+    }
+  }
+
+  /**
+   * 現在の左右反転状態に合わせて、手持ちトリガーモデルの親ボーンを付け替える。
+   */
+  private reattachTriggerModelsForCurrentMirror(): void {
+    const mainBone = this.resolveHandBoneForVisualSide("main", this.isHorizontallyMirrored);
+    if (this.rightHandTriggerModel && mainBone && this.rightHandTriggerModel.parent !== mainBone) {
+      mainBone.add(this.rightHandTriggerModel);
+    }
+
+    const subBone = this.resolveHandBoneForVisualSide("sub", this.isHorizontallyMirrored);
+    if (this.leftHandTriggerModel && subBone && this.leftHandTriggerModel.parent !== subBone) {
+      subBone.add(this.leftHandTriggerModel);
+    }
+  }
+
+  /**
    * 頭部モデルをアタッチする
    * @returns {void}
    */
@@ -465,8 +723,37 @@ export class ThreeDUnitObject extends ExtendedObject3D {
     return found;
   }
 
+  /**
+   * 指定キーワード群でボーン名を部分一致検索する。
+   */
+  private findBoneByKeywords(root: THREE.Object3D, keywords: string[]): THREE.Bone | null {
+    let found: THREE.Bone | null = null;
+    root.traverse((object) => {
+      if (found) return;
+      if (!(object instanceof THREE.Bone)) return;
+
+      if (keywords.some((keyword) => object.name.includes(keyword))) {
+        found = object;
+      }
+    });
+    return found;
+  }
+
+  /**
+   * 文字列IDを TRIGGER_STATUS のキーへ安全に変換する。
+   */
+  private toTriggerStatusKey(triggerId: string | null): TriggerStatusKey | null {
+    if (!triggerId) return null;
+    if (triggerId in TRIGGER_STATUS) {
+      return triggerId as TriggerStatusKey;
+    }
+    return null;
+  }
+
   private handleSceneUpdate(_time: number, delta: number): void {
     if (!this.gltfAnimationMixer) return;
     this.gltfAnimationMixer.update(delta / 1000);
   }
 }
+
+type TriggerStatusKey = keyof typeof TRIGGER_STATUS;

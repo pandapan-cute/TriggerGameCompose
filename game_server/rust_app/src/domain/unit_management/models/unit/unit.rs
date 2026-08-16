@@ -377,6 +377,23 @@ impl Unit {
         }
     }
 
+    /// 待機時間を増加
+    /// # Arguments
+    /// * `amount` - 増加させる待機時間の量
+    pub fn increase_wait_time(&mut self, amount: i32) {
+        self.wait_time.increase(amount);
+    }
+
+    /// 待機時間を1減少
+    pub fn decrease_wait_time(&mut self) {
+        self.wait_time.decrease();
+    }
+
+    /// 待機時間をリセット
+    pub fn reset_wait_time(&mut self) {
+        self.wait_time = WaitTime::new(0);
+    }
+
     /// サブトリガーHPを減少
     pub fn decrease_sub_trigger_hp(&mut self, amount: i32) {
         self.sub_trigger_hp.decrease(amount);

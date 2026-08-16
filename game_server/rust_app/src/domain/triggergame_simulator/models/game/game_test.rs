@@ -225,4 +225,58 @@ use crate::domain::unit_management::models::unit::{
         assert_eq!(units[0].position(), &Position::new(3, 2));
         assert_eq!(units[1].position(), &Position::new(5, 2));
     }
+
+    #[test]
+    fn test_turn_start_keeps_pending_actions_blocked_until_head_action_can_move() {
+        // 仕様: 未消費アクション列の先頭が移動できない間は、後続アクションを飛ばさない。
+        let game_id = GameId::new(Uuid::new_v4().to_string());
+        let player1_id = create_player_id();
+        let player2_id = create_player_id();
+        let mut game = Game::create(game_id.clone(), &player1_id, &player2_id);
+
+        let mut units = vec![create_unit(&game_id, &player1_id, Position::new(2, 2))];
+
+        let first_action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            units[0].unit_id().clone(),
+            units[0].unit_type_id().clone(),
+            Position::new(4, 2),
+            TriggerId::new("KOGETSU".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(10),
+        );
+        let second_action = Action::create(
+            ActionType::new(ActionTypeValue::Move),
+            units[0].unit_id().clone(),
+            units[0].unit_type_id().clone(),
+            Position::new(3, 2),
+            TriggerId::new("KOGETSU".to_string()),
+            TriggerId::new("SHIELD".to_string()),
+            TriggerAzimuth::new(0),
+            TriggerAzimuth::new(0),
+            CurrentActionPoints::new(10),
+        );
+
+        let mut p1_turn = Turn::create(
+            game_id.clone(),
+            player1_id.clone(),
+            TurnNumber::new(1),
+            Utc::now(),
+        );
+        p1_turn.set_steps(vec![create_step(first_action), create_step(second_action)]);
+
+        let mut p2_turn = Turn::create(
+            game_id.clone(),
+            player2_id.clone(),
+            TurnNumber::new(1),
+            Utc::now(),
+        );
+
+        game.turn_start(&mut p1_turn, &mut p2_turn, &mut units)
+            .unwrap();
+
+        assert_eq!(units[0].position(), &Position::new(2, 2));
+    }
 }

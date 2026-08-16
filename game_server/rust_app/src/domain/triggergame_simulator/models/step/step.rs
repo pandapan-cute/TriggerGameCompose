@@ -1,3 +1,5 @@
+use std::collections::{HashMap, VecDeque};
+
 use crate::domain::player_management::models::player::player_id::player_id::PlayerId;
 use crate::domain::triggergame_simulator::models::action::Action;
 use crate::domain::triggergame_simulator::models::combat::Combat;
@@ -7,6 +9,7 @@ use crate::domain::triggergame_simulator::services::{
     step_execution_service::StepExecutionService,
     visibility_projection_service::VisibilityProjectionService,
 };
+use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::Unit;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -42,10 +45,11 @@ impl Step {
     /// 戦闘演算の開始
     pub fn step_start(
         &mut self,
+        pending_actions_by_unit: &mut HashMap<UnitId, VecDeque<Action>>,
         units: &mut Vec<Unit>,
         visibility: &mut Visibility,
     ) -> Result<(), String> {
-        StepExecutionService::new().execute_step(self, units, visibility)
+        StepExecutionService::new().execute_step(self, pending_actions_by_unit, units, visibility)
     }
 
     /// プレイヤーごとに見せるべき情報をフィルタリングする処理

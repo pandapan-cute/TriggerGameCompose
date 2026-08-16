@@ -25,6 +25,23 @@ impl WaitTime {
             panic!("WaitTimeは0以上である必要があります");
         }
     }
+
+    /// 待機時間を増加
+    pub fn increase(&mut self, amount: i32) {
+        let new_value = self.value + amount;
+        Self::validate(new_value);
+        self.value = new_value;
+    }
+
+    /// 待機時間を1減少
+    pub fn decrease(&mut self) {
+        // 待機時間が1以上の場合のみ減少させる
+        if self.value >= 1 {
+            let new_value: i32 = self.value - 1;
+            Self::validate(new_value);
+            self.value = new_value;
+        }
+    }
 }
 
 // 等価性の比較を実装

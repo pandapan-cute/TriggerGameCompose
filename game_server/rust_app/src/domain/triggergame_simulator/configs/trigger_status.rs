@@ -16,6 +16,8 @@ pub struct TriggerStatus {
     avoid: i32,
     /// 消費行動力
     action_points: i32,
+    /// 待機時間
+    wait_time: i32,
 }
 
 impl TriggerStatus {
@@ -32,6 +34,7 @@ impl TriggerStatus {
                     defense: 0,
                     avoid: 1,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
             (
@@ -44,6 +47,7 @@ impl TriggerStatus {
                     defense: 10,
                     avoid: 1,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
             (
@@ -52,10 +56,11 @@ impl TriggerStatus {
                     trigger_id: "SCORPION".to_string(),
                     angle: 120,
                     range: 1,
-                    attack: 8,
+                    attack: 6,
                     defense: 0,
                     avoid: 4,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
             (
@@ -68,6 +73,7 @@ impl TriggerStatus {
                     defense: 0,
                     avoid: 4,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
             (
@@ -76,10 +82,11 @@ impl TriggerStatus {
                     trigger_id: "IBIS".to_string(),
                     angle: 30,
                     range: 10,
-                    attack: 10,
+                    attack: 12,
                     defense: 0,
                     avoid: 1,
                     action_points: 2,
+                    wait_time: 1,
                 },
             ),
             (
@@ -92,6 +99,7 @@ impl TriggerStatus {
                     defense: 5,
                     avoid: 4,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
             (
@@ -104,17 +112,11 @@ impl TriggerStatus {
                     defense: 0,
                     avoid: 5,
                     action_points: 1,
+                    wait_time: 1,
                 },
             ),
         ]);
-        if let Some(trigger_info) = trigger_statuses.get(trigger_id).cloned() {
-            trigger_info
-        } else {
-            panic!(
-                "指定されたトリガーステータスIDが存在しません: {}",
-                trigger_id
-            );
-        }
+        trigger_statuses.get(trigger_id).cloned().unwrap()
     }
 
     // 各種ステータス取得メソッド
@@ -141,6 +143,10 @@ impl TriggerStatus {
     pub fn action_points(&self) -> i32 {
         self.action_points
     }
+
+    pub fn wait_time(&self) -> i32 {
+        self.wait_time
+    }
 }
 
 impl Clone for TriggerStatus {
@@ -153,6 +159,7 @@ impl Clone for TriggerStatus {
             avoid: self.avoid,
             defense: self.defense,
             action_points: self.action_points,
+            wait_time: self.wait_time,
         }
     }
 }

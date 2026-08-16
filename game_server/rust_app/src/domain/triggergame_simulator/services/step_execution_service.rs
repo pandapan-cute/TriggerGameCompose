@@ -4,7 +4,9 @@ use crate::domain::triggergame_simulator::models::{
     game::visibility::Visibility,
     step::step::Step,
 };
+use crate::domain::unit_management::models::unit::unit_id::unit_id::UnitId;
 use crate::domain::unit_management::models::unit::Unit;
+use std::collections::{HashMap, VecDeque};
 
 /// Step実行のドメインサービス。
 ///
@@ -31,6 +33,7 @@ impl StepExecutionService {
     pub fn execute_step(
         &self,
         step: &mut Step,
+        pending_actions_by_unit: &mut HashMap<UnitId, VecDeque<Action>>,
         units: &mut Vec<Unit>,
         visibility: &mut Visibility,
     ) -> Result<(), String> {
@@ -39,10 +42,10 @@ impl StepExecutionService {
         // - Step::step_start の全体オーケストレーション
 
         // 1) アクションと対象ユニットの整合性を検証する。
-        self.validate_action_targets(step, units)?;
+        self.validate_action_targets(step, units, pending_actions_by_unit)?;
 
         // 2) 移動とトリガー状態更新を適用する。
-        self.apply_action_movements(step, units, visibility)?;
+        self.apply_action_movements(step, units, pending_actions_by_unit, visibility)?;
 
         // 3) 有効射程に基づいてcombatを生成する。
         self.generate_combats(step, units, visibility)?;
@@ -64,10 +67,25 @@ impl StepExecutionService {
     /// # 戻り値
     /// - `Ok(())`: すべてのアクションが有効な場合。
     /// - `Err(String)`: 存在しないユニット参照が1件以上ある場合。
-    pub fn validate_action_targets(&self, step: &Step, units: &Vec<Unit>) -> Result<(), String> {
+    pub fn validate_action_targets(
+        &self,
+        step: &Step,
+        units: &Vec<Unit>,
+        pending_actions_by_unit: &HashMap<UnitId, VecDeque<Action>>,
+    ) -> Result<(), String> {
         // 移動元:
         // - src/domain/triggergame_simulator/models/step/step.rs
         // - Step::step_start の「1. アクションとユニットの整合性チェック」
+
+        // pending_actions_by_unit -> unit の対応を検証し、不一致時はドメインエラーを返す。
+        for unit_id in pending_actions_by_unit.keys() {
+            if units.iter().all(|u| u.unit_id() != unit_id) {
+                return Err(format!(
+                    "ユニットID {:?} が未消費アクションキューに見つかりますが、units に存在しません",
+                    unit_id
+                ));
+            }
+        }
 
         // action -> unit の対応を検証し、不一致時はドメインエラーを返す。
         for action in step.actions() {
@@ -98,17 +116,32 @@ impl StepExecutionService {
         &self,
         step: &mut Step,
         units: &mut Vec<Unit>,
+        pending_actions_by_unit: &mut HashMap<UnitId, VecDeque<Action>>,
         visibility: &mut Visibility,
     ) -> Result<(), String> {
         // 移動元:
         // - src/domain/triggergame_simulator/models/step/step.rs
         // - Step::step_start の「2. アクションに従ってユニットの移動と使用トリガーの設定」
 
+        // 各ユニットの待機時間を1減少させる
+        for unit in units.iter_mut() {
+            unit.decrease_wait_time();
+        }
+
+        // pending_actions_by_unit から各ユニットの先頭アクションを1件ずつ取り出す。
+        let mut queued_actions = Vec::new();
+        for queue in pending_actions_by_unit.values_mut() {
+            if let Some(action) = queue.pop_front() {
+                queued_actions.push(action);
+            }
+        }
+
         // 各アクションごとに:
         // - 離脱済みユニットはスキップ
         // - ユニットを移動
         // - 行動ポイント条件を満たす場合にトリガーID/方位角を更新
-        for action in step.actions_mut() {
+        let mut executed_actions = Vec::new();
+        for mut action in queued_actions {
             let Some(unit) = units.iter_mut().find(|u| u.unit_id() == action.unit_id()) else {
                 return Err(format!(
                     "ユニットID {:?} がアクション {:?} に見つかりません",
@@ -118,13 +151,13 @@ impl StepExecutionService {
             };
 
             // 目的: 離脱済みユニットには移動・トリガー更新を適用しない。
-            if unit.is_bailed_out() {
-                // この分岐に入る条件: 対象ユニットが離脱済みの場合。
+            if unit.is_bailed_out() || unit.wait_time().value() > 0 {
+                // この分岐に入る条件: 対象ユニットが離脱済み または 待機中 の場合。
                 println!("ユニットID {:?} の移動をスキップ", unit.unit_id());
                 continue;
             }
 
-            unit.move_to(action, visibility);
+            unit.move_to(&mut action, visibility);
 
             let _ = unit.set_using_triggers(
                 &action.using_main_trigger_id(),
@@ -132,7 +165,11 @@ impl StepExecutionService {
             );
             unit.set_main_trigger_azimuth(action.main_trigger_azimuth().clone());
             unit.set_sub_trigger_azimuth(action.sub_trigger_azimuth().clone());
+            executed_actions.push(action);
         }
+
+        step.actions_mut().clear();
+        step.actions_mut().extend(executed_actions);
 
         // actionが未指定のユニットには待機アクションを補完する。
         let acted_unit_ids = step
@@ -312,6 +349,7 @@ mod tests {
         having_trigger_ids::having_trigger_ids::HavingTriggerIds, position::position::Position,
         trigger_id::trigger_id::TriggerId, unit_type_id::unit_type_id::UnitTypeId, Unit,
     };
+    use std::collections::{HashMap, VecDeque};
     use uuid::Uuid;
 
     fn create_unit_with_ap(action_points: i32) -> Unit {
@@ -364,9 +402,18 @@ mod tests {
         let mut step = create_step_for(&unit);
         let mut units = vec![unit.clone()];
         let mut visibility = Visibility::create();
+        let mut pending_actions_by_unit = HashMap::from([(
+            unit.unit_id().clone(),
+            VecDeque::from([step.actions()[0].clone()]),
+        )]);
 
         StepExecutionService::new()
-            .apply_action_movements(&mut step, &mut units, &mut visibility)
+            .apply_action_movements(
+                &mut step,
+                &mut units,
+                &mut pending_actions_by_unit,
+                &mut visibility,
+            )
             .unwrap();
 
         assert_eq!(

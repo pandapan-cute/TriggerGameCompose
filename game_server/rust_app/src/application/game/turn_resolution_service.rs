@@ -81,6 +81,9 @@ impl TurnResolutionService {
 
         game.turn_start(&mut player1_turn, &mut player2_turn, &mut units)?;
 
+        // ユニットの待機時間をリセットする
+        self.reset_units_wait_time(&mut units);
+
         self.persist_units(&units).await?;
 
         game.advance_to_next_turn()
@@ -138,6 +141,15 @@ impl TurnResolutionService {
             .get_game_units(game_id)
             .await
             .map_err(|e| format!("ユニット情報の取得に失敗しました: {}", e))
+    }
+
+    /// ユニットの待機時間をリセットする
+    /// # Arguments
+    /// - `units`: 待機時間をリセットするユニット配列
+    fn reset_units_wait_time(&self, units: &mut Vec<Unit>) {
+        for unit in units.iter_mut() {
+            unit.reset_wait_time();
+        }
     }
 
     /// ターン演算結果をユニットへ反映して永続化する。
